@@ -47,7 +47,7 @@ pip install "peekmem[speed]"
 ```console
 $ peekmem
 Welcome to Peekmem 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
-Type 'help' for the command list, 'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.
+Type 'help' for the command list, or 'help scanning' for a walkthrough.
 
 peekmem> ps:list game
 +-------+----------+

@@ -217,8 +217,8 @@ class Shell:
         return (
             f"Welcome to Peekmem {__version__}, a terminal client for "
             f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
-            "Type 'help' for the command list, "
-            "'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.\n"
+            "Type 'help' for the command list, or 'help scanning' for a "
+            "walkthrough.\n"
         )
 
     def interact(self, *, banner: bool = True) -> int:

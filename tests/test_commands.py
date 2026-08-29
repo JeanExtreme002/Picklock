@@ -49,11 +49,12 @@ def test_only_shell_commands_are_top_level():
     ]
 
 
-@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
+@pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
 def test_a_bare_namespace_lists_it(shell, capture, namespace):
     """Including 'scan' and 'pointer', which are command aliases as well."""
     shell.run_line(namespace)
-    assert f"Commands under '{namespace}:'" in capture.out
+    assert f"usage: {namespace}[:COMMAND]" in capture.out
+    assert f"{namespace} commands:" in capture.out
     assert capture.err == ""
 
 
@@ -93,7 +94,7 @@ def test_a_parent_name_is_a_prefix_of_its_children(entry):
 
 
 def test_namespaces_are_listed_in_the_declared_order():
-    order = [name for name, _, _ in NAMESPACES]
+    order = [item.name for item in NAMESPACES]
     seen = [entry.namespace for entry in COMMANDS if not entry.is_top_level]
     positions = [order.index(name) for name in seen]
     assert positions == sorted(positions)
@@ -124,18 +125,18 @@ def test_the_overview_shows_layers_not_every_command(shell, capture):
         assert namespace in out
     for entry in top_level():
         assert entry.name in out
-    # The point of the layering: the forty-odd namespaced commands are not
-    # listed here, only pointed at. Checked line-first, because the prose does
-    # name one of them as an example of the alias rule.
-    listed = {line.strip().split()[0] for line in out.splitlines() if line.startswith("  ")}
-    assert not any(":" in item for item in listed), f"a namespaced command is listed: {listed}"
-    assert "<name>:help" in out
+    # The point of the layering: the deeper commands are pointed at, not
+    # listed. A couple of them appear in the worked example, which is why this
+    # names ones that do not.
+    for hidden in ("memory:regions", "scan:results:keep", "pointer:paths:save"):
+        assert hidden not in out
+    assert "<namespace>:help" in out
 
 
-@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
+@pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
 def test_namespace_help_lists_that_layer(shell, capture, namespace):
     shell.run_line(f"{namespace}:help")
-    assert f"Commands under '{namespace}:'" in capture.out
+    assert f"{namespace} commands:" in capture.out
     for entry in children(namespace):
         assert entry.name in capture.out
     assert capture.err == ""
@@ -143,7 +144,7 @@ def test_namespace_help_lists_that_layer(shell, capture, namespace):
 
 def test_a_deeper_help_lists_the_third_layer(shell, capture):
     shell.run_line("scan:results:help")
-    assert "Commands under 'scan:results:'" in capture.out
+    assert "scan:results commands:" in capture.out
     assert "scan:results:keep" in capture.out
 
 
@@ -154,14 +155,15 @@ def test_a_listing_points_at_the_layer_below_it(shell, capture):
     assert "type 'scan:results:help'" in capture.out
 
 
-@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
+@pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
 def test_every_namespace_has_commands(namespace):
     assert children(namespace), f"namespace {namespace!r} is empty"
 
 
 def test_typing_a_namespace_lists_it(shell, capture):
     shell.run_line("memory")
-    assert "Commands under 'memory:'" in capture.out
+    assert "usage: memory[:COMMAND]" in capture.out
+    assert "memory commands:" in capture.out
     assert "memory:read" in capture.out
     assert capture.err == ""
 
@@ -180,7 +182,47 @@ def test_a_namespace_with_nonsense_arguments_is_still_explained(shell, capture):
 
 def test_help_on_a_namespace_lists_it(shell, capture):
     shell.run_line("help memory")
+    assert "memory commands:" in capture.out
     assert "memory:read" in capture.out
+
+
+def test_a_namespace_listing_shows_argument_signatures(shell, capture):
+    """The dokku shape: what it is called and what it takes, in one line."""
+    shell.run_line("memory:help")
+    assert "memory:dump <address> [length]" in capture.out
+    assert "memory:read <address> [type] [length]" in capture.out
+
+
+def test_a_namespace_listing_carries_a_worked_example(shell, capture):
+    shell.run_line("process:help")
+    assert "Example:" in capture.out
+    assert "peekmem> process:list chrome" in capture.out
+
+
+def test_a_long_signature_is_cut_at_a_token_boundary(shell, capture):
+    shell.run_line("pointer:help")
+    # The listing row, not the worked example above it.
+    line = next(
+        line
+        for line in capture.out.splitlines()
+        if line.strip().startswith("pointer:scan")
+    )
+    signature = line.strip().split("  ")[0]
+    assert signature.endswith("...")
+    assert len(signature) <= 44
+    assert "  " not in signature.strip(), "cut mid-token"
+
+
+def test_namespace_help_can_describe_one_subcommand(shell, capture):
+    """'scan:help aob' — exactly what the listing header advertises."""
+    shell.run_line("scan:help aob")
+    assert "scan:aob — Scan for a byte pattern" in capture.out
+    assert "Usage: scan:aob" in capture.out
+
+
+def test_namespace_help_with_a_bad_subcommand_is_reported(shell, capture):
+    assert shell.run_line("scan:help nosuch") is False
+    assert "Unknown command" in capture.err
 
 
 def test_a_namespace_shadowed_by_an_alias_still_announces_itself(shell, capture):
@@ -193,7 +235,7 @@ def test_a_namespace_shadowed_by_an_alias_still_announces_itself(shell, capture)
 @pytest.mark.parametrize("topic", ["pointer:", "scan:", "memory:"])
 def test_a_trailing_colon_asks_for_the_namespace(shell, capture, topic):
     shell.run_line(f"help {topic}")
-    assert f"Commands under '{topic.rstrip(':')}:'" in capture.out
+    assert f"{topic.rstrip(':')} commands:" in capture.out
 
 
 def test_help_on_a_parent_command_lists_its_subcommands(shell, capture):

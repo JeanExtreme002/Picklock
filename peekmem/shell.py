@@ -173,9 +173,19 @@ class Shell:
             # future, without one 'help' command per namespace cluttering the
             # very listings it exists to print.
             if head.endswith(":help"):
+                prefix = head[: -len(":help")]
+
+                # 'scan:help aob' — describe one command in the namespace,
+                # which is what the listing header tells the reader to type.
+                # It prints help; it must not run the command it names.
+                if args:
+                    target = lookup(f"{prefix}:{args[0]}")
+                    lookup("help").handler(self.session, [target.name])
+                    raise _Handled()
+
                 from .commands.session_commands import print_namespace
 
-                if print_namespace(self.session, head[: -len(":help")]):
+                if print_namespace(self.session, prefix):
                     raise _Handled()
 
             if not children(head):

@@ -26,6 +26,7 @@ from . import (
     command,
     describe_action,
     lookup,
+    namespace,
     namespace_summary,
     namespaces,
     top_level,
@@ -112,54 +113,97 @@ def _print_types(session: Session) -> None:
     session.printer.write()
 
 
-#: Width of the canonical-name column in a listing, so the alias column lines
-#: up across every section rather than jumping about per namespace.
-_NAME_WIDTH = 18
+#: Widest an argument signature gets in a listing before it is cut short. The
+#: listing exists to show you what a command is *called* and roughly what it
+#: takes; the full argument list is one 'help <command>' away, so a signature
+#: long enough to push every summary off the screen has stopped helping.
+_SIGNATURE_WIDTH = 44
 
-#: Width of the alias column, padded so every section of the overview lines up
-#: as one grid instead of re-aligning per namespace.
-_ALIAS_WIDTH = 9
+#: Overall width these listings wrap to. Wider than the 78 used elsewhere
+#: because a signature plus a summary genuinely needs the room.
+_LISTING_WIDTH = 106
+
+
+def _signature(entry: Command, limit: int = _SIGNATURE_WIDTH) -> str:
+    """The command's usage line, cut at a token boundary when it runs long."""
+    usage = " ".join(entry.usage.split())
+    if len(usage) <= limit:
+        return usage
+
+    kept: List[str] = []
+    length = 0
+    for token in usage.split(" "):
+        if kept and length + 1 + len(token) > limit - 3:
+            break
+        length += (1 if kept else 0) + len(token)
+        kept.append(token)
+    return " ".join(kept) + "..."
 
 
 def _command_rows(commands) -> List[Tuple[str, str]]:
-    """Label/summary pairs for a command listing.
+    """Signature/summary pairs for a command listing.
 
-    The label carries both spellings in two aligned columns — the full name
-    says where the command lives, the alias is what anybody actually types.
+    The signature rather than the bare name, so the listing answers "what does
+    this take?" at the same time as "what is it called" — the shape dokku's
+    plugin help uses, and the reason its listings are worth reading straight
+    through.
     """
-    return [
-        (
-            f"{entry.name.ljust(_NAME_WIDTH)}  {entry.short.ljust(_ALIAS_WIDTH)}",
-            entry.summary,
-        )
-        for entry in commands
-    ]
+    return [(_signature(entry), entry.summary) for entry in commands]
+
+
+def _print_example(session: Session, example: str) -> None:
+    """Print an indented ``Example:`` block, verbatim."""
+    if not example:
+        return
+    session.printer.write("Example:")
+    session.printer.write()
+    for line in example.splitlines():
+        session.printer.write(f"    {line}" if line else "")
+    session.printer.write()
 
 
 def _print_overview(session: Session) -> None:
     """The top layer: the four subjects, and the words that drive the shell.
 
-    Deliberately not a list of every command. Thirty-four lines is a wall to
-    read past, not an answer; four namespaces and six commands is something you
-    can take in, with one obvious move to get deeper.
+    Deliberately not a list of every command. Thirty-five lines is a wall to
+    read past, not an answer; four namespaces and seven commands is something
+    you can take in, with one obvious move to get deeper.
     """
     printer = session.printer
+
+    printer.write("usage: COMMAND[:SUBCOMMAND] [arguments]")
+    printer.write()
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    printer.write("Namespaces — type '<name>:help' to list what is in one:")
+    _print_example(
+        session,
+        "peekmem> process:open 4242\n"
+        "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)\n"
+        "\n"
+        "peekmem> memory:read game.exe+0x1234 int32",
+    )
+
+    printer.write("peekmem namespaces: (get help with <namespace>:help)")
+    printer.write()
     printer.write(
         render_definitions(
             [(name, namespace_summary(name)) for name in namespaces()],
-            label_width=10,
+            indent=4,
+            label_width=12,
+            total_width=_LISTING_WIDTH,
         )
     )
     printer.write()
 
-    printer.write("Commands:")
+    printer.write("peekmem commands: (get help with help COMMAND)")
+    printer.write()
     printer.write(
         render_definitions(
-            [(entry.name, entry.summary) for entry in top_level()], label_width=10
+            [(entry.name, entry.summary) for entry in top_level()],
+            indent=4,
+            label_width=12,
+            total_width=_LISTING_WIDTH,
         )
     )
     printer.write()
@@ -167,10 +211,6 @@ def _print_overview(session: Session) -> None:
     printer.write(
         "Every command in a namespace also has a short alias: 'memory:read' "
         "and 'read'\nare the same command."
-    )
-    printer.write(
-        "Type 'help <command>' — or '<command> --help' — for a command's "
-        "arguments."
     )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
     printer.write("End the session with 'exit', Ctrl+C, Ctrl+D, or \\q.")
@@ -189,20 +229,52 @@ def print_namespace(session: Session, prefix: str) -> bool:
         return False
 
     head = prefix.strip().lower().rstrip(":")
-    session.printer.write(f"Commands under '{head}:'")
-    session.printer.write()
-    session.printer.write(render_definitions(_command_rows(entries), label_width=30))
-    session.printer.write()
+    printer = session.printer
+
+    printer.write(f"usage: {head}[:COMMAND]")
+    printer.write()
+
+    # The description and example come from the declared namespace, or — for a
+    # prefix that is itself a command, like 'scan:results' — from that command.
+    declared = namespace(head)
+    parent = None
+    if declared is None:
+        try:
+            parent = lookup(head)
+        except CommandError:
+            parent = None
+
+    description = declared.summary if declared else (parent.summary if parent else "")
+    if description:
+        printer.write(description)
+        printer.write()
+
+    if declared is not None:
+        _print_example(session, declared.example)
+    elif parent is not None and parent.examples:
+        _print_example(session, "peekmem> " + parent.examples[0])
+
+    printer.write(f"{head} commands: (get help with {head}:help SUBCOMMAND)")
+    printer.write()
+    printer.write(
+        render_definitions(
+            _command_rows(entries),
+            indent=4,
+            label_width=_SIGNATURE_WIDTH,
+            total_width=_LISTING_WIDTH,
+        )
+    )
+    printer.write()
 
     # Point at the next layer down rather than printing it here.
     for entry in entries:
         deeper = children(entry.name)
         if deeper:
-            session.printer.write(
+            printer.write(
                 f"'{entry.name}' has {len(deeper)} subcommands of its own — "
                 f"type '{entry.name}:help'."
             )
-            session.printer.write()
+            printer.write()
     return True
 
 

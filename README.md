@@ -128,29 +128,44 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 ## What it can do
 
 The help is layered. `help` shows four namespaces and the handful of commands
-that drive the shell — not a wall of forty:
+that drive the shell — not a wall of forty. Each namespace then documents
+itself: a usage line, a worked example, and its commands with the arguments
+they take.
 
 ```console
-peekmem> help
-Namespaces — type '<name>:help' to list what is in one:
-  process  Find a target process and attach to it.
-  memory   Read, write and inspect the target's memory.
-  scan     Search memory for a value, then narrow what you found.
-  pointer  Follow pointer chains, and find ones that survive a restart.
+peekmem> scan:help
+usage: scan[:COMMAND]
 
-Commands:
-  clear    Clear the terminal.
-  exit     Leave the shell.
-  help     List the commands, or describe one.
-  set      Show or change a session setting.
-  source   Run the commands in a file.
-  status   Show the session state and versions.
-  version  Print the Peekmem and PyMemoryEditor versions.
+Search memory for a value, then narrow what you found.
+
+Example:
+
+    peekmem> scan:value int32 100 --writable
+    Showing 20 of 3184 rows (1.42 sec)
+
+    peekmem> scan:next 95
+    +-----+--------------------+-------+
+    | ROW | ADDRESS            | VALUE |
+    +-----+--------------------+-------+
+    |  #1 | 0x00000201A4C0F118 | 95    |
+    +-----+--------------------+-------+
+    1 row in set (0.02 sec)
+
+scan commands: (get help with scan:help SUBCOMMAND)
+
+    scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
+    scan:next [op] [value]                       Narrow the results with another comparison.
+    scan:regex <pattern> [--length N] [--max N]  Scan for text matching a regular expression.
+    scan:results [--limit N] [--offset N]...     Show the current result set, re-read.
+    scan:value <type> [value] [--op OP]...       Search the whole address space for a value.
+
+'scan:results' has 3 subcommands of its own — type 'scan:results:help'.
 ```
 
-`scan:help` opens the next layer, `scan:results:help` the one below that — or
-just type the namespace, `scan`. Each listing shows one level and points at the
-next, so you never read past what you came for.
+`scan:results:help` opens the layer below that; `scan:help aob` describes one
+command. Typing the namespace alone — `scan` — does the same as `scan:help`.
+Each listing shows one level and points at the next, so you never read past
+what you came for.
 
 Every namespaced command also has a short alias — `memory:read` and `read` are
 the same command, so the hierarchy costs nothing at the keyboard.

@@ -21,6 +21,19 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..errors import CommandError
 
+
+@dataclass(frozen=True)
+class Namespace:
+    """One subject the commands are grouped under."""
+
+    name: str
+    title: str
+    summary: str
+    #: A worked example for the namespace's help — a line someone would type
+    #: and what comes back. Indented by the renderer, so write it flush left.
+    example: str = ""
+
+
 #: Namespaces in the order ``help`` prints them, each with the heading it gets
 #: and the one line that says what it is for. A command's namespace is the part
 #: of its name before the first colon, so the grouping cannot drift from the
@@ -30,23 +43,66 @@ from ..errors import CommandError
 #: have no namespace. They are not a subject you go looking through; they are
 #: the handful of words you type between doing real work, and burying them one
 #: level down would cost more than the tidiness is worth.
-NAMESPACES: Tuple[Tuple[str, str, str], ...] = (
-    ("process", "Process", "Find a target process and attach to it."),
-    ("memory", "Memory", "Read, write and inspect the target's memory."),
-    ("scan", "Scanning", "Search memory for a value, then narrow what you found."),
-    (
+NAMESPACES: Tuple[Namespace, ...] = (
+    Namespace(
+        "process",
+        "Process",
+        "Find a target process and attach to it.",
+        "peekmem> process:list chrome\n"
+        "\n"
+        "+-------+------------+\n"
+        "| PID   | NAME       |\n"
+        "+-------+------------+\n"
+        "| 41902 | chrome.exe |\n"
+        "+-------+------------+\n"
+        "1 row in set (0.01 sec)",
+    ),
+    Namespace(
+        "memory",
+        "Memory",
+        "Read, write and inspect the target's memory.",
+        "peekmem> memory:read game.exe+0x1234 int32\n"
+        "\n"
+        "+--------------------+-------+-------+\n"
+        "| ADDRESS            | TYPE  | VALUE |\n"
+        "+--------------------+-------+-------+\n"
+        "| 0x00007FF6A41B1234 | int32 | 100   |\n"
+        "+--------------------+-------+-------+\n"
+        "1 row in set (0.00 sec)",
+    ),
+    Namespace(
+        "scan",
+        "Scanning",
+        "Search memory for a value, then narrow what you found.",
+        "peekmem> scan:value int32 100 --writable\n"
+        "Showing 20 of 3184 rows (1.42 sec)\n"
+        "\n"
+        "peekmem> scan:next 95\n"
+        "+-----+--------------------+-------+\n"
+        "| ROW | ADDRESS            | VALUE |\n"
+        "+-----+--------------------+-------+\n"
+        "|  #1 | 0x00000201A4C0F118 | 95    |\n"
+        "+-----+--------------------+-------+\n"
+        "1 row in set (0.02 sec)",
+    ),
+    Namespace(
         "pointer",
         "Pointers",
         "Follow pointer chains, and find ones that survive a restart.",
+        "peekmem> pointer:scan #1 --depth 3\n"
+        "+-----+-------------------+---------+--------------------+\n"
+        "| ROW | BASE              | OFFSETS | TARGET             |\n"
+        "+-----+-------------------+---------+--------------------+\n"
+        "|  #1 | game.exe+0x3BA228 | 0x3E8   | 0x00000201A4C0F118 |\n"
+        "+-----+-------------------+---------+--------------------+\n"
+        "1 row in set (6.18 sec)",
     ),
 )
 
-_NAMESPACE_TITLES: Dict[str, str] = {name: title for name, title, _ in NAMESPACES}
-_NAMESPACE_SUMMARIES: Dict[str, str] = {
-    name: summary for name, _, summary in NAMESPACES
-}
+_NAMESPACES_BY_NAME: Dict[str, Namespace] = {item.name: item for item in NAMESPACES}
+_NAMESPACE_TITLES: Dict[str, str] = {item.name: item.title for item in NAMESPACES}
 _NAMESPACE_ORDER: Dict[str, int] = {
-    name: index for index, (name, _, _) in enumerate(NAMESPACES)
+    item.name: index for index, item in enumerate(NAMESPACES)
 }
 
 Handler = Callable[..., None]
@@ -273,9 +329,15 @@ def top_level() -> List[Command]:
     return [entry for entry in all_commands() if entry.is_top_level]
 
 
+def namespace(name: str) -> Optional[Namespace]:
+    """The declared namespace called ``name``, if there is one."""
+    return _NAMESPACES_BY_NAME.get(name.strip().lower().rstrip(":"))
+
+
 def namespace_summary(name: str) -> str:
     """The one line describing a namespace, for the top-level help."""
-    return _NAMESPACE_SUMMARIES.get(name.strip().lower().rstrip(":"), "")
+    entry = namespace(name)
+    return entry.summary if entry else ""
 
 
 def children(prefix: str) -> List[Command]:
@@ -304,7 +366,7 @@ def children(prefix: str) -> List[Command]:
 def namespaces() -> List[str]:
     """Every namespace that has at least one command registered in it."""
     known = {entry.namespace for entry in _COMMANDS.values()}
-    return [name for name, _, _ in NAMESPACES if name in known]
+    return [item.name for item in NAMESPACES if item.name in known]
 
 
 def command_words() -> List[str]:
@@ -333,12 +395,14 @@ __all__ = (
     "Command",
     "CommandParser",
     "NAMESPACES",
+    "Namespace",
     "all_commands",
     "children",
     "command",
     "command_words",
     "describe_action",
     "lookup",
+    "namespace",
     "namespace_summary",
     "namespaces",
     "option_words",

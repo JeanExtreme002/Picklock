@@ -322,7 +322,7 @@ def _scan_parser() -> CommandParser:
     "scan:value",
     parser=_scan_parser,
     summary="Search the whole address space for a value.",
-    usage="scan:value <type> <value> [--op eq|ne|gt|lt|ge|le] | scan:value <type> --between A B",
+    usage="scan:value <type> [value] [--op OP] [--between A B] [--writable] [--max N]",
     aliases=("scan", "find", "search"),
     details=(
         "The first scan of a cycle. Every matching address is kept as the "
@@ -446,8 +446,7 @@ def _next_parser() -> CommandParser:
     "scan:next",
     parser=_next_parser,
     summary="Narrow the results with another comparison.",
-    usage="scan:next [op] [value]  (op: eq ne gt lt ge le between changed "
-    "unchanged increased decreased increased-by decreased-by)",
+    usage="scan:next [op] [value]",
     aliases=("next", "refine"),
     details=(
         "Re-reads every address in the result set and keeps the ones that "

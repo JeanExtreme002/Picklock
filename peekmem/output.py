@@ -230,6 +230,28 @@ class Printer:
         self.stderr.write(f"{prefix}: {message}\n")
         self.stderr.flush()
 
+    def clear_screen(self) -> bool:
+        """Wipe the terminal. False when there is no terminal to wipe.
+
+        A no-op when stdout is redirected: clearing is a courtesy to a human
+        looking at a screen, and emitting escape codes into a pipe or a log
+        file would be vandalism rather than tidying.
+        """
+        self.clear_progress()
+        if not getattr(self.stdout, "isatty", lambda: False)():
+            return False
+
+        if sys.platform == "win32":  # pragma: no cover - Windows only
+            # Not every Windows console has VT processing enabled, so the
+            # escape sequence below cannot be relied on. `cls` always works.
+            os.system("cls")
+        else:
+            # 2J wipes the screen, 3J the scrollback (so the shell matches what
+            # `clear` does), H parks the cursor at the top.
+            self.stdout.write("\033[2J\033[3J\033[H")
+            self.stdout.flush()
+        return True
+
     def note(self, message: str) -> None:
         """Print an aside — a warning that did not stop the command."""
         self.clear_progress()

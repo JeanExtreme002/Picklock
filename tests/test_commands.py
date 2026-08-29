@@ -39,6 +39,7 @@ def test_every_command_is_placed(entry):
 def test_only_shell_commands_are_top_level():
     """Anything that touches the target belongs to a subject namespace."""
     assert sorted(entry.name for entry in top_level()) == [
+        "clear",
         "exit",
         "help",
         "set",
@@ -46,6 +47,31 @@ def test_only_shell_commands_are_top_level():
         "status",
         "version",
     ]
+
+
+@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
+def test_a_bare_namespace_lists_it(shell, capture, namespace):
+    """Including 'scan' and 'pointer', which are command aliases as well."""
+    shell.run_line(namespace)
+    assert f"Commands under '{namespace}:'" in capture.out
+    assert capture.err == ""
+
+
+@pytest.mark.parametrize("line", ["scan int32 100", "pointer 0x10"])
+def test_an_alias_that_shadows_a_namespace_still_runs_with_arguments(shell, line):
+    """The listing rule applies to the bare word only; the command is intact."""
+    with pytest.raises(NoProcessError):
+        shell.run_line(line, raise_errors=True)
+
+
+def test_clear_leaves_the_session_alone(shell, capture):
+    """It wipes the screen, not the work: a cleared terminal is not a reset."""
+    from peekmem import valuetypes
+
+    shell.session.store_scan(valuetypes.resolve("int32"), 4, [0x10], [1], "t")
+    shell.run_line("clear")
+    assert shell.session.scan is not None
+    assert capture.err == ""
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)

@@ -74,6 +74,19 @@ def test_vertical_block_aligns_the_keys():
     assert text == " PID: 1\nName: init"
 
 
+def test_clear_screen_is_a_no_op_without_a_terminal(capture):
+    """Escape codes in a pipe or a log file are vandalism, not tidying."""
+    assert capture.printer.clear_screen() is False
+    assert capture.out == ""
+
+
+def test_clear_screen_wipes_screen_and_scrollback(capture):
+    capture.printer.stdout.isatty = lambda: True  # type: ignore[method-assign]
+    assert capture.printer.clear_screen() is True
+    # 2J the screen, 3J the scrollback, H the cursor — what `clear` itself does.
+    assert capture.out == "\033[2J\033[3J\033[H"
+
+
 def test_progress_is_silent_when_stderr_is_not_a_terminal(capture):
     capture.printer.progress("Scanning", 0.5)
     assert capture.err == ""

@@ -151,10 +151,22 @@ class Shell:
         command", exactly as ``memory:help`` does. With arguments it is a
         mistake worth naming precisely: the user almost always meant the colon.
         """
+        head = word.strip().lower()
+
+        # A bare namespace lists what is in it even when the word is *also* a
+        # command alias, which 'scan' and 'pointer' are. Nothing is lost: both
+        # of those commands require arguments, so a bare 'scan' could only ever
+        # have produced "the following arguments are required". With arguments
+        # the alias still wins, so 'scan int32 100' is untouched.
+        if not args and head in namespaces():
+            from .commands.session_commands import print_namespace
+
+            print_namespace(self.session, head)
+            raise _Handled()
+
         try:
             return lookup(word)
         except CommandError:
-            head = word.strip().lower()
 
             # '<prefix>:help' — the layered way down. It is a convention rather
             # than a registered command so it works at every depth, present and

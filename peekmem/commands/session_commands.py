@@ -451,6 +451,32 @@ def cmd_source(session: Session, args: List[str]) -> None:
             raise CommandError(f"{options.file}:{number}: {error}")
 
 
+def _clear_parser() -> CommandParser:
+    return CommandParser("clear")
+
+
+@command(
+    "clear",
+    parser=_clear_parser,
+    summary="Clear the terminal.",
+    usage="clear",
+    aliases=("cls",),
+    details=(
+        "Takes no arguments.\n\n"
+        "Wipes the screen and the scrollback, the way the shell's own 'clear' "
+        "does. Nothing about the session changes: the process stays attached, "
+        "the scan results and pointer paths are all still there.\n\n"
+        "To discard the scan results instead, that is 'reset' "
+        "(scan:results:clear).\n\n"
+        "Does nothing when the output is redirected — escape codes in a log "
+        "file would be vandalism rather than tidying."
+    ),
+)
+def cmd_clear(session: Session, args: List[str]) -> None:
+    _clear_parser().parse_args(args)
+    session.printer.clear_screen()
+
+
 def _version_parser() -> CommandParser:
     return CommandParser("version")
 

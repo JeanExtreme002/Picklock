@@ -139,6 +139,7 @@ Namespaces — type '<name>:help' to list what is in one:
   pointer  Follow pointer chains, and find ones that survive a restart.
 
 Commands:
+  clear    Clear the terminal.
   exit     Leave the shell.
   help     List the commands, or describe one.
   set      Show or change a session setting.
@@ -147,9 +148,9 @@ Commands:
   version  Print the Peekmem and PyMemoryEditor versions.
 ```
 
-`scan:help` opens the next layer, `scan:results:help` the one below that. Each
-listing shows one level and points at the next, so you never read past what you
-came for.
+`scan:help` opens the next layer, `scan:results:help` the one below that — or
+just type the namespace, `scan`. Each listing shows one level and points at the
+next, so you never read past what you came for.
 
 Every namespaced command also has a short alias — `memory:read` and `read` are
 the same command, so the hierarchy costs nothing at the keyboard.
@@ -160,7 +161,7 @@ the same command, so the hierarchy costs nothing at the keyboard.
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `results:keep` (keep) · `results:drop` (drop) · `results:clear` (reset) |
 | **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `paths:save` (ptrsave) · `paths:load` (ptrload) · `paths:diff` (ptrdiff) |
-| Top level | `help` · `set` · `source` · `status` · `version` · `exit` |
+| Top level | `help` · `set` · `source` · `status` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
 argument, every flag, and examples. That list is generated from the command's

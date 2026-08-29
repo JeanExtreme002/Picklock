@@ -234,25 +234,11 @@ def print_namespace(session: Session, prefix: str) -> bool:
     printer.write(f"usage: {head}[:COMMAND]")
     printer.write()
 
-    # The description and example come from the declared namespace, or — for a
-    # prefix that is itself a command, like 'scan:results' — from that command.
     declared = namespace(head)
-    parent = None
-    if declared is None:
-        try:
-            parent = lookup(head)
-        except CommandError:
-            parent = None
-
-    description = declared.summary if declared else (parent.summary if parent else "")
-    if description:
-        printer.write(description)
-        printer.write()
-
     if declared is not None:
+        printer.write(declared.summary)
+        printer.write()
         _print_example(session, declared.example)
-    elif parent is not None and parent.examples:
-        _print_example(session, "peekmem> " + parent.examples[0])
 
     printer.write(f"{head} commands: (get help with {head}:help SUBCOMMAND)")
     printer.write()
@@ -265,16 +251,6 @@ def print_namespace(session: Session, prefix: str) -> bool:
         )
     )
     printer.write()
-
-    # Point at the next layer down rather than printing it here.
-    for entry in entries:
-        deeper = children(entry.name)
-        if deeper:
-            printer.write(
-                f"'{entry.name}' has {len(deeper)} subcommands of its own — "
-                f"type '{entry.name}:help'."
-            )
-            printer.write()
     return True
 
 
@@ -318,12 +294,6 @@ def _print_command_help(session: Session, name: str) -> None:
     for title, items in _argument_sections(entry):
         printer.write(f"{title}:")
         printer.write(render_definitions(items))
-        printer.write()
-
-    subcommands = children(entry.name)
-    if subcommands:
-        printer.write("Subcommands:")
-        printer.write(render_definitions(_command_rows(subcommands), label_width=30))
         printer.write()
 
     if entry.details:
@@ -539,7 +509,7 @@ def _clear_parser() -> CommandParser:
         "does. Nothing about the session changes: the process stays attached, "
         "the scan results and pointer paths are all still there.\n\n"
         "To discard the scan results instead, that is 'reset' "
-        "(scan:results:clear).\n\n"
+        "(scan:reset).\n\n"
         "Does nothing when the output is redirected — escape codes in a log "
         "file would be vandalism rather than tidying."
     ),

@@ -381,16 +381,16 @@ def cmd_paths(session: Session, args: List[str]) -> None:
 
 
 def _ptrsave_parser() -> CommandParser:
-    parser = CommandParser("pointer:paths:save")
+    parser = CommandParser("pointer:save")
     parser.add_argument("file", help="path of the JSON file to write")
     return parser
 
 
 @command(
-    "pointer:paths:save",
+    "pointer:save",
     parser=_ptrsave_parser,
     summary="Save the current pointer paths to a file.",
-    usage="pointer:paths:save <file>",
+    usage="pointer:save <file>",
     aliases=("ptrsave",),
     details=(
         "Writes the paths as JSON, keeping the module name and module-relative "
@@ -402,7 +402,7 @@ def _ptrsave_parser() -> CommandParser:
 def cmd_ptrsave(session: Session, args: List[str]) -> None:
     options = _ptrsave_parser().parse_args(args)
 
-    process = session.require_process("pointer:paths:save")
+    process = session.require_process("pointer:save")
     if not session.pointer_paths:
         raise CommandError("No pointer paths to save.")
 
@@ -420,16 +420,16 @@ def cmd_ptrsave(session: Session, args: List[str]) -> None:
 
 
 def _ptrload_parser() -> CommandParser:
-    parser = CommandParser("pointer:paths:load")
+    parser = CommandParser("pointer:load")
     parser.add_argument("file", help="path of a JSON file written by 'ptrsave'")
     return parser
 
 
 @command(
-    "pointer:paths:load",
+    "pointer:load",
     parser=_ptrload_parser,
     summary="Load pointer paths from a file.",
-    usage="pointer:paths:load <file>",
+    usage="pointer:load <file>",
     aliases=("ptrload",),
     details=(
         "Replaces the paths currently held. Each base is rebased onto the "
@@ -441,7 +441,7 @@ def _ptrload_parser() -> CommandParser:
 def cmd_ptrload(session: Session, args: List[str]) -> None:
     options = _ptrload_parser().parse_args(args)
 
-    process = session.require_process("pointer:paths:load")
+    process = session.require_process("pointer:load")
     if not os.path.exists(options.file):
         raise CommandError(f"No such file: {options.file}")
 
@@ -534,7 +534,7 @@ def cmd_ptrrescan(session: Session, args: List[str]) -> None:
 
 
 def _ptrdiff_parser() -> CommandParser:
-    parser = CommandParser("pointer:paths:diff")
+    parser = CommandParser("pointer:diff")
     parser.add_argument(
         "files",
         nargs="*",
@@ -545,10 +545,10 @@ def _ptrdiff_parser() -> CommandParser:
 
 
 @command(
-    "pointer:paths:diff",
+    "pointer:diff",
     parser=_ptrdiff_parser,
     summary="Intersect pointer-path files from several runs.",
-    usage="pointer:paths:diff <file> <file> [file ...]",
+    usage="pointer:diff <file> <file> [file ...]",
     aliases=("ptrdiff",),
     details=(
         "Keeps only the paths present in *every* file, compared by their "
@@ -563,7 +563,7 @@ def _ptrdiff_parser() -> CommandParser:
 def cmd_ptrdiff(session: Session, args: List[str]) -> None:
     options = _ptrdiff_parser().parse_args(args)
 
-    process = session.require_process("pointer:paths:diff")
+    process = session.require_process("pointer:diff")
     if len(options.files) < 2:
         raise CommandError("ptrdiff needs at least two files.")
     for name in options.files:

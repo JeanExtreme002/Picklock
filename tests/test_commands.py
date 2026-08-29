@@ -87,10 +87,25 @@ def test_every_command_keeps_a_short_alias(entry):
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
-def test_a_parent_name_is_a_prefix_of_its_children(entry):
-    for child in children(entry.name):
-        assert child.name.startswith(entry.name + ":")
-        assert child.namespace == entry.namespace
+def test_names_go_at_most_one_level_deep(entry):
+    """Two levels is the ceiling: 'scan:keep', never 'scan:results:keep'.
+
+    A third level buys a tidier name at the cost of a listing that has to be
+    walked twice to be read once.
+    """
+    assert entry.name.count(":") <= 1
+
+
+def test_the_registry_refuses_a_third_level():
+    from peekmem.commands import CommandParser, command
+
+    with pytest.raises(RuntimeError, match="one level deep"):
+        command(
+            "scan:results:keep",
+            parser=lambda: CommandParser("scan:results:keep"),
+            summary="Never registered.",
+            usage="scan:results:keep",
+        )(lambda session, args: None)
 
 
 def test_namespaces_are_listed_in_the_declared_order():
@@ -106,16 +121,19 @@ def test_top_level_commands_sort_last():
     assert names == sorted(names), "a namespaced command came after a top-level one"
 
 
-def test_children_are_one_level_deep():
-    """The layering depends on this: a listing shows a screen, not a tree."""
+def test_children_are_the_commands_of_a_namespace():
     names = [entry.name for entry in children("scan")]
-    assert "scan:results" in names
-    assert "scan:results:keep" not in names
-    assert [entry.name for entry in children("scan:results")] == [
-        "scan:results:clear",
-        "scan:results:drop",
-        "scan:results:keep",
+    assert names == [
+        "scan:aob",
+        "scan:drop",
+        "scan:keep",
+        "scan:next",
+        "scan:regex",
+        "scan:reset",
+        "scan:results",
+        "scan:value",
     ]
+    assert children("scan:results") == [], "a command has no commands under it"
 
 
 def test_the_overview_shows_layers_not_every_command(shell, capture):
@@ -128,7 +146,7 @@ def test_the_overview_shows_layers_not_every_command(shell, capture):
     # The point of the layering: the deeper commands are pointed at, not
     # listed. A couple of them appear in the worked example, which is why this
     # names ones that do not.
-    for hidden in ("memory:regions", "scan:results:keep", "pointer:paths:save"):
+    for hidden in ("memory:regions", "scan:keep", "pointer:save"):
         assert hidden not in out
     assert "<namespace>:help" in out
 
@@ -142,17 +160,11 @@ def test_namespace_help_lists_that_layer(shell, capture, namespace):
     assert capture.err == ""
 
 
-def test_a_deeper_help_lists_the_third_layer(shell, capture):
-    shell.run_line("scan:results:help")
-    assert "scan:results commands:" in capture.out
-    assert "scan:results:keep" in capture.out
-
-
-def test_a_listing_points_at_the_layer_below_it(shell, capture):
+def test_a_namespace_listing_is_the_whole_namespace(shell, capture):
+    """With two levels there is nowhere deeper to point at."""
     shell.run_line("scan:help")
-    assert "scan:results" in capture.out
-    assert "scan:results:keep" not in capture.out, "that is the next layer down"
-    assert "type 'scan:results:help'" in capture.out
+    for entry in children("scan"):
+        assert entry.name in capture.out
 
 
 @pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
@@ -236,12 +248,6 @@ def test_a_namespace_shadowed_by_an_alias_still_announces_itself(shell, capture)
 def test_a_trailing_colon_asks_for_the_namespace(shell, capture, topic):
     shell.run_line(f"help {topic}")
     assert f"{topic.rstrip(':')} commands:" in capture.out
-
-
-def test_help_on_a_parent_command_lists_its_subcommands(shell, capture):
-    shell.run_line("help scan:results")
-    assert "Subcommands:" in capture.out
-    assert "scan:results:keep" in capture.out
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)

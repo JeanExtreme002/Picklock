@@ -192,7 +192,7 @@ class Command:
     """One registered command.
 
     The ``name`` is a colon-separated path — ``memory:read``,
-    ``scan:results:keep`` — so related commands sort and group together and a
+    ``scan:keep`` — so related commands sort and group together and a
     name says what it acts on. The short spellings people actually type
     (``read``, ``keep``) are registered as aliases, which is why the hierarchy
     costs nothing at the keyboard.
@@ -276,6 +276,13 @@ def command(
             raise RuntimeError(f"Duplicate command name: {name}")
         if ":" in name and name.split(":", 1)[0] not in _NAMESPACE_TITLES:
             raise RuntimeError(f"Unknown namespace in command name: {name}")
+        # Two levels, deliberately. A third — 'scan:results:keep' — buys a
+        # tidier name at the cost of a listing that has to be walked twice to
+        # be read once, which is a bad trade for six commands.
+        if name.count(":") > 1:
+            raise RuntimeError(
+                f"Command names go at most one level deep: {name}"
+            )
 
         entry = Command(
             name=name,
@@ -341,26 +348,15 @@ def namespace_summary(name: str) -> str:
 
 
 def children(prefix: str) -> List[Command]:
-    """The commands one level below ``prefix``.
+    """The commands in the namespace ``prefix``.
 
-    One level, not all of them: ``children("scan")`` yields ``scan:results``
-    but not ``scan:results:keep``. That is what makes the help layered — each
-    listing shows a screen you can take in, and points at the next level down
-    rather than dumping it.
-
-    Works the same for a namespace (``memory``) and for a command that has
-    commands beneath it (``scan:results``), because it is the same question in
-    both cases: what can follow this word?
+    Names go two levels deep at most, so this is always "the commands in a
+    namespace" — there is no deeper layer to walk.
     """
     head = prefix.strip().lower().rstrip(":")
     if not head:
         return []
-    depth = head.count(":") + 1
-    return [
-        entry
-        for entry in all_commands()
-        if entry.name.startswith(head + ":") and entry.name.count(":") == depth
-    ]
+    return [entry for entry in all_commands() if entry.namespace == head]
 
 
 def namespaces() -> List[str]:

@@ -116,11 +116,14 @@ Two rules keep the shape:
        ...
    ```
 
-   A name with a third segment (`scan:results:keep`) is fine: it shows up as a
-   **Subcommands** section under its parent's help, and `scan:results:help`
-   lists that layer. The `<prefix>:help` form is a dispatcher convention rather
-   than a registered command, so it works at any depth without one `help`
-   command per namespace cluttering the listings it exists to print.
+   Names go **two levels at most** — `scan:keep`, never `scan:results:keep`.
+   The registry rejects a third level, and a test pins that down: a deeper name
+   buys tidiness at the cost of a listing that has to be walked twice to be
+   read once.
+
+   `<namespace>:help` is a dispatcher convention rather than a registered
+   command, so it works for every namespace without one `help` command per
+   namespace cluttering the listings it exists to print.
 
 3. Use `CommandParser`, not a bare `ArgumentParser`: it raises instead of
    calling `sys.exit`, which would kill the shell on a typo.

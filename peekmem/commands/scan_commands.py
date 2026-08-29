@@ -819,16 +819,16 @@ _ROWS_HELP = "row numbers from 'results', singly or as ranges: 1 4 7-9 (a '#' pr
 
 
 def _keep_parser() -> CommandParser:
-    parser = CommandParser("scan:results:keep")
+    parser = CommandParser("scan:keep")
     parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
     return parser
 
 
 @command(
-    "scan:results:keep",
+    "scan:keep",
     parser=_keep_parser,
     summary="Keep only the named result rows.",
-    usage="scan:results:keep <row> [row ...]",
+    usage="scan:keep <row> [row ...]",
     aliases=("keep",),
     details=(
         "Use it when you can see which candidates are real and would rather "
@@ -839,7 +839,7 @@ def _keep_parser() -> CommandParser:
 def cmd_keep(session: Session, args: List[str]) -> None:
     options = _keep_parser().parse_args(args)
     state = session.require_scan()
-    session.require_process("scan:results:keep")
+    session.require_process("scan:keep")
     indexes = _parse_row_selection(options.rows, len(state.addresses))
     ordered = sorted(set(indexes))
 
@@ -854,16 +854,16 @@ def cmd_keep(session: Session, args: List[str]) -> None:
 
 
 def _drop_parser() -> CommandParser:
-    parser = CommandParser("scan:results:drop")
+    parser = CommandParser("scan:drop")
     parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
     return parser
 
 
 @command(
-    "scan:results:drop",
+    "scan:drop",
     parser=_drop_parser,
     summary="Remove the named result rows.",
-    usage="scan:results:drop <row> [row ...]",
+    usage="scan:drop <row> [row ...]",
     aliases=("drop",),
     details="The inverse of 'keep'. Ranges work the same way.",
     examples=("drop 2", "drop 5-12"),
@@ -871,7 +871,7 @@ def _drop_parser() -> CommandParser:
 def cmd_drop(session: Session, args: List[str]) -> None:
     options = _drop_parser().parse_args(args)
     state = session.require_scan()
-    session.require_process("scan:results:drop")
+    session.require_process("scan:drop")
     removed = set(_parse_row_selection(options.rows, len(state.addresses)))
     remaining = [index for index in range(len(state.addresses)) if index not in removed]
 
@@ -886,14 +886,14 @@ def cmd_drop(session: Session, args: List[str]) -> None:
 
 
 def _reset_parser() -> CommandParser:
-    return CommandParser("scan:results:clear")
+    return CommandParser("scan:reset")
 
 
 @command(
-    "scan:results:clear",
+    "scan:reset",
     parser=_reset_parser,
     summary="Discard the current scan results.",
-    usage="scan:results:clear",
+    usage="scan:reset",
     aliases=("reset", "unscan"),
     details=(
         "Takes no arguments.\n\n"

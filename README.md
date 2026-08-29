@@ -154,18 +154,18 @@ Example:
 scan commands: (get help with scan:help SUBCOMMAND)
 
     scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
+    scan:drop <row> [row ...]                    Remove the named result rows.
+    scan:keep <row> [row ...]                    Keep only the named result rows.
     scan:next [op] [value]                       Narrow the results with another comparison.
     scan:regex <pattern> [--length N] [--max N]  Scan for text matching a regular expression.
+    scan:reset                                   Discard the current scan results.
     scan:results [--limit N] [--offset N]...     Show the current result set, re-read.
     scan:value <type> [value] [--op OP]...       Search the whole address space for a value.
-
-'scan:results' has 3 subcommands of its own — type 'scan:results:help'.
 ```
 
-`scan:results:help` opens the layer below that; `scan:help aob` describes one
-command. Typing the namespace alone — `scan` — does the same as `scan:help`.
-Each listing shows one level and points at the next, so you never read past
-what you came for.
+`scan:help aob` describes one command. Typing the namespace alone — `scan` —
+does the same as `scan:help`. Names go two levels at most, so there is never a
+third listing to walk.
 
 Every namespaced command also has a short alias — `memory:read` and `read` are
 the same command, so the hierarchy costs nothing at the keyboard.
@@ -174,8 +174,8 @@ the same command, so the hierarchy costs nothing at the keyboard.
 | --- | --- |
 | **`process:`** | `list` (ps) · `open` · `close` · `info` |
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
-| **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `results:keep` (keep) · `results:drop` (drop) · `results:clear` (reset) |
-| **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `paths:save` (ptrsave) · `paths:load` (ptrload) · `paths:diff` (ptrdiff) |
+| **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
+| **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `save` (ptrsave) · `load` (ptrload) · `diff` (ptrdiff) |
 | Top level | `help` · `set` · `source` · `status` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every

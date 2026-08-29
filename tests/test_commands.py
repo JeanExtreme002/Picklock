@@ -4,7 +4,13 @@
 
 import pytest
 
-from peekmem.commands import GROUPS, all_commands, command_words, lookup
+from peekmem.commands import (
+    GROUPS,
+    all_commands,
+    command_words,
+    describe_action,
+    lookup,
+)
 from peekmem.errors import CommandError, NoProcessError
 
 
@@ -25,6 +31,69 @@ def test_every_command_has_help(entry, shell, capture):
     assert entry.summary in capture.out
     for alias in entry.aliases:
         assert lookup(alias).name == entry.name
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_every_command_declares_a_parser(entry):
+    """Without one, 'help' cannot list what the command accepts."""
+    assert entry.parser is not None
+    assert entry.parser().prog == entry.name
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_every_argument_is_documented(entry):
+    """An undocumented flag is a flag nobody can discover."""
+    for action in entry.arguments():
+        label = describe_action(action)
+        assert action.help, f"{entry.name}: {label} has no help text"
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_help_lists_every_flag(entry, shell, capture):
+    """Each option a command accepts must appear in its help output."""
+    shell.run_line(f"help {entry.name}")
+    for action in entry.arguments():
+        for flag in action.option_strings:
+            assert flag in capture.out, f"{entry.name}: {flag} missing from help"
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_usage_line_advertises_only_real_flags(entry):
+    """The usage line is hand-written; a flag it names must still exist.
+
+    The other direction is deliberately not checked: a usage line is a summary
+    for a human, so it is free to leave a rarely-used flag to the generated
+    Options section below it.
+    """
+    declared = {
+        flag for action in entry.arguments() for flag in action.option_strings
+    }
+    for word in entry.usage.replace("[", " ").replace("]", " ").split():
+        if word.startswith("--") and len(word) > 2:
+            assert word in declared, (
+                f"{entry.name}: usage names {word}, which the parser does not accept"
+            )
+
+
+@pytest.mark.parametrize("flag", ["--help", "-h"])
+def test_a_command_can_be_asked_for_its_own_help(shell, capture, flag):
+    shell.run_line(f"scan {flag}")
+    assert "Search the whole address space" in capture.out
+    assert "--between A B" in capture.out
+
+
+def test_help_flag_wins_over_a_bad_argument(shell, capture):
+    """'scan --help' must explain, not complain about the missing value."""
+    assert shell.run_line("scan --help") is True
+    assert capture.err == ""
+
+
+def test_option_words_come_from_the_parser():
+    from peekmem.commands import option_words
+
+    assert "--writable" in option_words("scan")
+    assert "--between" in option_words("find")  # an alias resolves too
+    assert option_words("nosuchcommand") == []
 
 
 def test_command_words_are_unique():

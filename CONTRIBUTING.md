@@ -109,10 +109,17 @@ Two rules keep the shape:
 4. Take addresses through `parse_address` so your command speaks the same
    `[game.exe+0x10]+0x8` and `#3` language as every other one.
 
-`help` and `peekmem --help` are generated from the registry, so a command
-cannot be added without also being documented. `tests/test_commands.py`
-enforces that: it checks every command's summary, usage and examples, and that
-`help <name>` works — so a new command is covered the moment it is registered.
+Pass every argument a `help=` string. `help <command>` (and `<command> --help`)
+builds its **Arguments** and **Options** sections from the parser itself, so
+the documentation cannot drift from what the command accepts — there is only
+one definition of either.
+
+`help` and `peekmem --help` are likewise generated from the registry, so a
+command cannot be added without also being documented. `tests/test_commands.py`
+enforces all of it: every command must declare a parser, every argument must
+carry help text, every flag must appear in the command's help, and a usage line
+may not advertise a flag the parser does not accept. A new command is covered
+the moment it is registered.
 
 ## Submitting changes
 

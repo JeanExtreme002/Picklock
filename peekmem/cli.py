@@ -29,7 +29,10 @@ from .output import Printer
 from .session import Session
 from .shell import Shell
 
-_EPILOG_INTRO = "Commands (run 'peekmem -e \"help <command>\"' for the details):"
+_EPILOG_INTRO = (
+    "Commands — run 'peekmem <command> --help' for one command's arguments,\n"
+    "or 'peekmem help' for the topics:"
+)
 
 
 def _format_commands() -> str:

@@ -23,7 +23,7 @@ from typing import Iterable, List, Optional, Sequence, TextIO, Tuple
 from PyMemoryEditor import PyMemoryEditorError
 
 from . import __version__, valuetypes
-from .commands import all_commands, command_words, lookup
+from .commands import all_commands, command_words, lookup, option_words
 from .errors import CommandError, ExitShell
 from .output import Printer
 from .session import SETTINGS, Session
@@ -33,6 +33,10 @@ HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".peekmem_history")
 HISTORY_LENGTH = 1000
 
 _LEADING_WORD = re.compile(r"\s*(\S+)\s*(.*)", re.DOTALL)
+
+#: Asking a command for its own help is a reflex worth honouring — nobody
+#: should have to learn that this shell spells it 'help <command>'.
+_HELP_FLAGS = frozenset(("-h", "--help", "-?"))
 
 
 class Shell:
@@ -96,6 +100,11 @@ class Shell:
                 return True
             word, args = parsed
             entry = lookup(word)
+
+            if any(argument in _HELP_FLAGS for argument in args):
+                lookup("help").handler(self.session, [entry.name])
+                return True
+
             entry.handler(self.session, args)
             return True
 
@@ -244,6 +253,10 @@ class Shell:
                 candidates = [setting.name for setting in SETTINGS]
             elif head == "help":
                 candidates = command_words() + ["types", "address", "scanning"]
+            elif text.startswith("-"):
+                # Completing a flag: offer exactly the ones this command
+                # declares, which is the same list 'help <command>' prints.
+                candidates = option_words(head)
             else:
                 candidates = valuetypes.type_names()
 

@@ -16,6 +16,7 @@ the exact text a user would have seen.
 
 import os
 import sys
+import textwrap
 import time
 from typing import Any, Iterable, List, Optional, Sequence, TextIO, Tuple
 
@@ -116,6 +117,63 @@ def render_vertical(pairs: Iterable[Tuple[str, Any]]) -> str:
         return ""
     width = max(len(key) for key, _ in items)
     return "\n".join(f"{key.rjust(width)}: {value}" for key, value in items)
+
+
+def render_paragraphs(text: str, width: int = 78) -> str:
+    """Wrap prose to ``width``, leaving hand-laid-out blocks alone.
+
+    A command's long description is written as ordinary paragraphs, which
+    should reflow; but some of them contain small aligned tables (the list of
+    'next' comparisons, say) whose whole value is the alignment. A paragraph
+    with an indented line is taken to be one of those and is printed verbatim.
+    """
+    blocks = []
+    for block in text.split("\n\n"):
+        if not block.strip():
+            continue
+        if any(line.startswith(("  ", "\t")) for line in block.splitlines()):
+            blocks.append(block)
+        else:
+            blocks.append(textwrap.fill(" ".join(block.split()), width))
+    return "\n\n".join(blocks)
+
+
+def render_definitions(
+    items: Sequence[Tuple[str, str]],
+    *,
+    indent: int = 2,
+    label_width: int = 22,
+    total_width: int = 78,
+) -> str:
+    """Render label/description pairs as an aligned, wrapped block.
+
+    This is the shape ``help`` uses for a command's arguments — the layout
+    every command-line tool's ``--help`` has, so it needs no explaining. A
+    label longer than ``label_width`` takes a line of its own rather than
+    pushing every description out of alignment.
+    """
+    if not items:
+        return ""
+
+    width = min(max(len(label) for label, _ in items), label_width)
+    pad = " " * indent
+    continuation = pad + " " * (width + 2)
+    text_width = max(24, total_width - len(continuation))
+    lines: List[str] = []
+
+    for label, description in items:
+        wrapped = textwrap.wrap(description, text_width) if description else []
+        if not wrapped:
+            lines.append(pad + label)
+            continue
+        if len(label) <= width:
+            lines.append(f"{pad}{label.ljust(width)}  {wrapped[0]}")
+        else:
+            lines.append(pad + label)
+            lines.append(continuation + wrapped[0])
+        lines.extend(continuation + extra for extra in wrapped[1:])
+
+    return "\n".join(lines)
 
 
 def render_hexdump(data: bytes, base_address: int = 0, width: int = 16) -> str:
@@ -277,7 +335,9 @@ __all__ = (
     "format_address",
     "format_duration",
     "format_size",
+    "render_definitions",
     "render_hexdump",
+    "render_paragraphs",
     "render_table",
     "render_vertical",
     "supports_color",

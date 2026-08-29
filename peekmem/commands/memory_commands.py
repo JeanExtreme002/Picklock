@@ -19,6 +19,18 @@ from ..session import Session
 from ..valuetypes import ValueType
 from . import CommandParser, command
 
+#: The help text shared by every argument that takes an address expression.
+_ADDRESS_HELP = (
+    "address expression: a literal, module+offset, [pointer] or #N — "
+    "see 'help address'"
+)
+
+#: The help text shared by every optional type argument.
+_TYPE_HELP = "value type; defaults to int32 (see 'help types')"
+
+#: The help text shared by the length argument of the variable-width types.
+_LENGTH_HELP = "byte width, required for the 'string' and 'bytes' types"
+
 
 def _resolve_type(name: Optional[str]) -> ValueType:
     return valuetypes.DEFAULT_TYPE if name is None else valuetypes.resolve(name)
@@ -36,8 +48,44 @@ def _permissions(region) -> str:
     )
 
 
+def _regions_parser() -> CommandParser:
+    parser = CommandParser("regions")
+    parser.add_argument(
+        "--writable", action="store_true", help="keep only writable regions"
+    )
+    parser.add_argument(
+        "--executable", action="store_true", help="keep only executable regions"
+    )
+    parser.add_argument(
+        "--shared",
+        action="store_true",
+        help="keep only shared or file-backed mappings",
+    )
+    parser.add_argument(
+        "--path",
+        default=None,
+        metavar="TEXT",
+        help="keep regions whose backing file path contains TEXT",
+    )
+    parser.add_argument(
+        "--at",
+        default=None,
+        metavar="ADDRESS",
+        help="show only the region containing this address",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="print at most N rows, overriding the 'limit' setting",
+    )
+    return parser
+
+
 @command(
     "regions",
+    parser=_regions_parser,
     summary="List the target's mapped memory regions.",
     usage="regions [--writable] [--executable] [--path TEXT] [--at ADDRESS] [--limit N]",
     group="Memory",
@@ -45,23 +93,13 @@ def _permissions(region) -> str:
     details=(
         "The memory map is re-read on every call, so it reflects allocations "
         "the target made since the last look.\n\n"
-        "  --writable / --executable / --shared   keep only regions with that bit\n"
-        "  --path TEXT   keep regions backed by a file whose path contains TEXT\n"
-        "  --at ADDRESS  show only the region containing ADDRESS\n\n"
         "The PERMS column reads like /proc/<pid>/maps: rwx plus 's' for a "
         "shared/file-backed mapping or 'p' for a private one."
     ),
     examples=("regions --writable", "regions --at 0x7ffee3a01000", "regions --path libc"),
 )
 def cmd_regions(session: Session, args: List[str]) -> None:
-    parser = CommandParser("regions")
-    parser.add_argument("--writable", action="store_true")
-    parser.add_argument("--executable", action="store_true")
-    parser.add_argument("--shared", action="store_true")
-    parser.add_argument("--path", default=None)
-    parser.add_argument("--at", default=None)
-    parser.add_argument("--limit", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _regions_parser().parse_args(args)
 
     process = session.require_process("regions")
 
@@ -106,8 +144,27 @@ def cmd_regions(session: Session, args: List[str]) -> None:
     )
 
 
+def _modules_parser() -> CommandParser:
+    parser = CommandParser("modules")
+    parser.add_argument(
+        "pattern",
+        nargs="?",
+        default=None,
+        help="keep modules whose name or path contains this text",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="print at most N rows, overriding the 'limit' setting",
+    )
+    return parser
+
+
 @command(
     "modules",
+    parser=_modules_parser,
     summary="List the modules loaded in the target.",
     usage="modules [pattern] [--limit N]",
     group="Memory",
@@ -121,10 +178,7 @@ def cmd_regions(session: Session, args: List[str]) -> None:
     examples=("modules", "modules libc"),
 )
 def cmd_modules(session: Session, args: List[str]) -> None:
-    parser = CommandParser("modules")
-    parser.add_argument("pattern", nargs="?", default=None)
-    parser.add_argument("--limit", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _modules_parser().parse_args(args)
 
     process = session.require_process("modules")
 
@@ -162,8 +216,21 @@ def cmd_modules(session: Session, args: List[str]) -> None:
     )
 
 
+def _threads_parser() -> CommandParser:
+    parser = CommandParser("threads")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="print at most N rows, overriding the 'limit' setting",
+    )
+    return parser
+
+
 @command(
     "threads",
+    parser=_threads_parser,
     summary="List the target's threads.",
     usage="threads [--limit N]",
     group="Memory",
@@ -175,9 +242,7 @@ def cmd_modules(session: Session, args: List[str]) -> None:
     ),
 )
 def cmd_threads(session: Session, args: List[str]) -> None:
-    parser = CommandParser("threads")
-    parser.add_argument("--limit", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _threads_parser().parse_args(args)
 
     process = session.require_process("threads")
 
@@ -203,8 +268,27 @@ def cmd_threads(session: Session, args: List[str]) -> None:
     )
 
 
+def _read_parser() -> CommandParser:
+    parser = CommandParser("read")
+    parser.add_argument("address", help=_ADDRESS_HELP)
+    parser.add_argument("type", nargs="?", default=None, help=_TYPE_HELP)
+    parser.add_argument("length", nargs="?", type=int, default=None, help=_LENGTH_HELP)
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=1,
+        metavar="N",
+        help="read N consecutive values, stepping by the type's width",
+    )
+    parser.add_argument(
+        "--hex", action="store_true", help="print integers in hexadecimal"
+    )
+    return parser
+
+
 @command(
     "read",
+    parser=_read_parser,
     summary="Read a typed value from an address.",
     usage="read <address> [type] [length] [--count N] [--hex]",
     group="Memory",
@@ -212,8 +296,6 @@ def cmd_threads(session: Session, args: List[str]) -> None:
     details=(
         "The type defaults to int32. 'string' and 'bytes' need a length in "
         "bytes; the fixed-width types ignore one.\n\n"
-        "  --count N   read N consecutive values, stepping by the type's width\n"
-        "  --hex       print integers in hexadecimal\n\n"
         "The address is an expression — see 'help address' — so a pointer "
         "chain can be read in one go."
     ),
@@ -226,13 +308,7 @@ def cmd_threads(session: Session, args: List[str]) -> None:
     ),
 )
 def cmd_read(session: Session, args: List[str]) -> None:
-    parser = CommandParser("read")
-    parser.add_argument("address")
-    parser.add_argument("type", nargs="?", default=None)
-    parser.add_argument("length", nargs="?", type=int, default=None)
-    parser.add_argument("--count", type=int, default=1)
-    parser.add_argument("--hex", action="store_true")
-    options = parser.parse_args(args)
+    options = _read_parser().parse_args(args)
 
     process = session.require_process("read")
     value_type = _resolve_type(options.type)
@@ -270,19 +346,40 @@ def cmd_read(session: Session, args: List[str]) -> None:
     )
 
 
+def _write_parser() -> CommandParser:
+    parser = CommandParser("write")
+    parser.add_argument("address", help=_ADDRESS_HELP)
+    parser.add_argument("type", help="value type (see 'help types')")
+    parser.add_argument(
+        "value",
+        help="the value to write, parsed according to the type: integers "
+        "accept 0x/0o/0b prefixes, booleans accept true/false/on/off, 'bytes' "
+        "takes hex ('DE AD BE EF') and 'string' takes the text verbatim",
+    )
+    parser.add_argument(
+        "--length",
+        type=int,
+        default=None,
+        metavar="N",
+        help="buffer width for string/bytes; defaults to the natural width "
+        "of the value given",
+    )
+    parser.add_argument(
+        "--null-terminated",
+        action="store_true",
+        help="append a NUL after a string, for C-string writes",
+    )
+    return parser
+
+
 @command(
     "write",
+    parser=_write_parser,
     summary="Write a typed value to an address.",
     usage="write <address> <type> <value> [--length N] [--null-terminated]",
     group="Memory",
     aliases=("poke",),
     details=(
-        "The value is parsed according to the type: integers accept 0x/0o/0b "
-        "prefixes, booleans accept true/false/on/off, 'bytes' takes hex "
-        "('DE AD BE EF') and 'string' takes the text verbatim.\n\n"
-        "  --length N          buffer width for string/bytes; defaults to the\n"
-        "                      natural width of the value given\n"
-        "  --null-terminated   append a NUL after a string (C-string writes)\n\n"
         "There is no confirmation and no undo. Writing into a live process can "
         "crash it — read the address first if you are not sure of it."
     ),
@@ -294,13 +391,7 @@ def cmd_read(session: Session, args: List[str]) -> None:
     ),
 )
 def cmd_write(session: Session, args: List[str]) -> None:
-    parser = CommandParser("write")
-    parser.add_argument("address")
-    parser.add_argument("type")
-    parser.add_argument("value")
-    parser.add_argument("--length", type=int, default=None)
-    parser.add_argument("--null-terminated", action="store_true")
-    options = parser.parse_args(args)
+    options = _write_parser().parse_args(args)
 
     process = session.require_process("write")
     value_type = valuetypes.resolve(options.type)
@@ -329,27 +420,42 @@ def cmd_write(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _dump_parser() -> CommandParser:
+    parser = CommandParser("dump")
+    parser.add_argument("address", help=_ADDRESS_HELP)
+    parser.add_argument(
+        "length",
+        nargs="?",
+        default="256",
+        help="number of bytes to read (default 256); hex accepted",
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=None,
+        metavar="N",
+        help="bytes per line, overriding the 'dump_width' setting",
+    )
+    return parser
+
+
 @command(
     "dump",
+    parser=_dump_parser,
     summary="Hex-dump a range of memory.",
     usage="dump <address> [length] [--width N]",
     group="Memory",
     aliases=("hexdump", "x"),
     details=(
         "Prints the classic three-column layout: absolute address, hex bytes, "
-        "printable ASCII. Length defaults to 256 bytes and the line width to "
-        "the 'dump_width' setting.\n\n"
+        "printable ASCII.\n\n"
         "The read is a single call, so a range that crosses into an unmapped "
         "page fails as a whole rather than returning half the bytes."
     ),
     examples=("dump 0x7ffee3a01000", "dump game.exe+0x1000 512", "dump #1 64 --width 8"),
 )
 def cmd_dump(session: Session, args: List[str]) -> None:
-    parser = CommandParser("dump")
-    parser.add_argument("address")
-    parser.add_argument("length", nargs="?", default="256")
-    parser.add_argument("--width", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _dump_parser().parse_args(args)
 
     process = session.require_process("dump")
     address = parse_address(options.address, session)
@@ -375,20 +481,43 @@ def cmd_dump(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _watch_parser() -> CommandParser:
+    parser = CommandParser("watch")
+    parser.add_argument("address", help=_ADDRESS_HELP)
+    parser.add_argument("type", nargs="?", default=None, help=_TYPE_HELP)
+    parser.add_argument("length", nargs="?", type=int, default=None, help=_LENGTH_HELP)
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=None,
+        metavar="S",
+        help="seconds between reads, overriding the 'watch_interval' setting",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=0,
+        metavar="N",
+        help="stop after N samples; without it, watch runs until Ctrl+C",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="print every sample, not only the ones whose value changed",
+    )
+    return parser
+
+
 @command(
     "watch",
+    parser=_watch_parser,
     summary="Poll an address and print it as it changes.",
     usage="watch <address> [type] [length] [--interval S] [--count N] [--all]",
     group="Memory",
     details=(
         "Reads the address on a timer and prints a line per sample. By default "
         "only samples whose value differs from the previous one are printed, "
-        "which turns the terminal into a change log; --all prints every "
-        "sample.\n\n"
-        "  --interval S  seconds between reads (default: the 'watch_interval'\n"
-        "                setting)\n"
-        "  --count N     stop after N samples; without it, watch runs until\n"
-        "                Ctrl+C\n\n"
+        "which turns the terminal into a change log.\n\n"
         "This is the terminal answer to a cheat table: leave it running in one "
         "window while the target does its thing."
     ),
@@ -399,14 +528,7 @@ def cmd_dump(session: Session, args: List[str]) -> None:
     ),
 )
 def cmd_watch(session: Session, args: List[str]) -> None:
-    parser = CommandParser("watch")
-    parser.add_argument("address")
-    parser.add_argument("type", nargs="?", default=None)
-    parser.add_argument("length", nargs="?", type=int, default=None)
-    parser.add_argument("--interval", type=float, default=None)
-    parser.add_argument("--count", type=int, default=0)
-    parser.add_argument("--all", action="store_true")
-    options = parser.parse_args(args)
+    options = _watch_parser().parse_args(args)
 
     process = session.require_process("watch")
     value_type = _resolve_type(options.type)
@@ -461,26 +583,36 @@ def cmd_watch(session: Session, args: List[str]) -> None:
     printer.write()
 
 
+def _alloc_parser() -> CommandParser:
+    parser = CommandParser("alloc")
+    parser.add_argument(
+        "size", help="number of bytes to allocate; hex accepted (e.g. 0x1000)"
+    )
+    parser.add_argument(
+        "--permission",
+        default=None,
+        metavar="N",
+        help="platform-specific protection: a PAGE_* value on Windows "
+        "(default PAGE_EXECUTE_READWRITE), a VM_PROT_* bitmask on macOS",
+    )
+    return parser
+
+
 @command(
     "alloc",
+    parser=_alloc_parser,
     summary="Allocate memory inside the target.",
     usage="alloc <size> [--permission N]",
     group="Memory",
     details=(
         "Reserves and commits SIZE bytes in the target's address space and "
         "prints the base address. The region stays until 'free' releases it.\n\n"
-        "  --permission N  platform-specific protection: a PAGE_* value on\n"
-        "                  Windows (default PAGE_EXECUTE_READWRITE), a VM_PROT_*\n"
-        "                  bitmask on macOS.\n\n"
         "Not available on Linux, which has no cross-process allocation syscall."
     ),
     examples=("alloc 4096", "alloc 0x1000"),
 )
 def cmd_alloc(session: Session, args: List[str]) -> None:
-    parser = CommandParser("alloc")
-    parser.add_argument("size")
-    parser.add_argument("--permission", default=None)
-    options = parser.parse_args(args)
+    options = _alloc_parser().parse_args(args)
 
     process = session.require_process("alloc")
     size = parse_int(options.size, "size")
@@ -513,23 +645,30 @@ def cmd_alloc(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _free_parser() -> CommandParser:
+    parser = CommandParser("free")
+    parser.add_argument("address", help="base address returned by 'alloc'")
+    parser.add_argument(
+        "size",
+        nargs="?",
+        default=None,
+        help="region size; only needed to free a region this session did not "
+        "allocate, since PyMemoryEditor remembers its own",
+    )
+    return parser
+
+
 @command(
     "free",
+    parser=_free_parser,
     summary="Release memory allocated with 'alloc'.",
     usage="free <address> [size]",
     group="Memory",
-    details=(
-        "The size may be omitted for a region this session allocated — "
-        "PyMemoryEditor remembers it. Give one only to free a region it did "
-        "not allocate."
-    ),
+    details="Not available on Linux, for the same reason as 'alloc'.",
     examples=("free 0x7ffee3a01000", "free 0x7ffee3a01000 4096"),
 )
 def cmd_free(session: Session, args: List[str]) -> None:
-    parser = CommandParser("free")
-    parser.add_argument("address")
-    parser.add_argument("size", nargs="?", default=None)
-    options = parser.parse_args(args)
+    options = _free_parser().parse_args(args)
 
     process = session.require_process("free")
     address = parse_address(options.address, session)

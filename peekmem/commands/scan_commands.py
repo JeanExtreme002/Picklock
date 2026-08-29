@@ -61,6 +61,8 @@ _REFINE_OPS = (
     "between",
 )
 
+_MAX_HELP = "stop after N hits, overriding the 'max_results' setting"
+
 
 def _normalize_op(name: str) -> str:
     key = name.strip().lower()
@@ -226,8 +228,60 @@ def _print_results(
     )
 
 
+def _scan_parser() -> CommandParser:
+    parser = CommandParser("scan")
+    parser.add_argument("type", help="value type to search for (see 'help types')")
+    parser.add_argument(
+        "value",
+        nargs="?",
+        default=None,
+        help="the value to search for; omit it when using --between",
+    )
+    # Deliberately no `choices=`: argparse would reject the symbol spellings
+    # ('>' and friends) before _normalize_op ever sees them, and those are the
+    # ones people reach for first. The check below reports them itself.
+    parser.add_argument(
+        "--op",
+        default="eq",
+        metavar="OP",
+        help="comparison against the value: eq (default), ne, gt, lt, ge, le. "
+        "The symbols =, !=, >, <, >=, <= are accepted too",
+    )
+    parser.add_argument(
+        "--between",
+        nargs=2,
+        metavar=("A", "B"),
+        default=None,
+        help="keep values inside the range A..B, inclusive",
+    )
+    parser.add_argument(
+        "--outside", action="store_true", help="invert --between"
+    )
+    parser.add_argument(
+        "--writable",
+        action="store_true",
+        help="scan only writable regions — much faster, and where a changing "
+        "value almost always lives",
+    )
+    parser.add_argument(
+        "--all-regions",
+        action="store_true",
+        help="scan everything, overriding the 'writable_only' setting",
+    )
+    parser.add_argument(
+        "--length",
+        type=int,
+        default=None,
+        metavar="N",
+        help="buffer width for string/bytes scans",
+    )
+    parser.add_argument("--max", type=int, default=None, metavar="N", help=_MAX_HELP)
+    return parser
+
+
 @command(
     "scan",
+    parser=_scan_parser,
     summary="Search the whole address space for a value.",
     usage="scan <type> <value> [--op eq|ne|gt|lt|ge|le] | scan <type> --between A B",
     group="Scanning",
@@ -236,16 +290,6 @@ def _print_results(
         "The first scan of a cycle. Every matching address is kept as the "
         "result set that 'next', 'results' and the '#N' address form work "
         "on.\n\n"
-        "  --op OP        comparison against the value; eq (the default), ne,\n"
-        "                 gt, lt, ge, le. The symbols =, !=, >, <, >=, <= work\n"
-        "                 too.\n"
-        "  --between A B  keep values inside the range, inclusive\n"
-        "  --outside      invert --between\n"
-        "  --writable     scan only writable regions — much faster, and where\n"
-        "                 a changing value almost always lives\n"
-        "  --all-regions  scan everything, overriding the writable_only setting\n"
-        "  --length N     buffer width for string/bytes scans\n"
-        "  --max N        stop after N hits (default: the max_results setting)\n\n"
         "Ctrl+C stops a scan and keeps what it had already found."
     ),
     examples=(
@@ -257,17 +301,7 @@ def _print_results(
     ),
 )
 def cmd_scan(session: Session, args: List[str]) -> None:
-    parser = CommandParser("scan")
-    parser.add_argument("type")
-    parser.add_argument("value", nargs="?", default=None)
-    parser.add_argument("--op", default="eq")
-    parser.add_argument("--between", nargs=2, metavar=("A", "B"), default=None)
-    parser.add_argument("--outside", action="store_true")
-    parser.add_argument("--writable", action="store_true")
-    parser.add_argument("--all-regions", action="store_true")
-    parser.add_argument("--length", type=int, default=None)
-    parser.add_argument("--max", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _scan_parser().parse_args(args)
 
     process = session.require_process("scan")
     value_type = valuetypes.resolve(options.type)
@@ -345,8 +379,29 @@ def cmd_scan(session: Session, args: List[str]) -> None:
     _report(session, state, timer.elapsed, interrupted=interrupted)
 
 
+def _next_parser() -> CommandParser:
+    parser = CommandParser("next")
+    parser.add_argument(
+        "op",
+        nargs="?",
+        default=None,
+        help="the comparison to apply: eq, ne, gt, lt, ge, le, between, "
+        "changed, unchanged, increased, decreased, increased-by, "
+        "decreased-by. Omit it to mean eq",
+    )
+    parser.add_argument(
+        "value",
+        nargs="*",
+        default=[],
+        help="the value the comparison needs — two for 'between', one for the "
+        "six ordinary comparisons and the *-by pair, none for the rest",
+    )
+    return parser
+
+
 @command(
     "next",
+    parser=_next_parser,
     summary="Narrow the results with another comparison.",
     usage="next [op] [value] — op: eq ne gt lt ge le between changed unchanged increased decreased increased-by decreased-by",
     group="Scanning",
@@ -354,13 +409,13 @@ def cmd_scan(session: Session, args: List[str]) -> None:
     details=(
         "Re-reads every address in the result set and keeps the ones that "
         "still match. Bare 'next 100' means 'next eq 100'.\n\n"
-        "Comparisons against a value you supply:\n"
+        "Comparisons against a value you supply:\n\n"
         "  eq ne gt lt ge le VALUE      the usual six\n"
         "  between A B                  inside the range, inclusive\n"
         "  increased-by N               grew by exactly N since the last scan\n"
         "  decreased-by N               shrank by exactly N since the last scan\n\n"
         "Comparisons against the previous scan, for when you do not know the "
-        "value — the health bar moved, but to what?\n"
+        "value — the health bar moved, but to what?\n\n"
         "  changed / unchanged          differs from / equals the last reading\n"
         "  increased / decreased        moved in that direction\n\n"
         "Addresses that have become unreadable (the target freed them) are "
@@ -369,10 +424,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
     examples=("next 95", "next changed", "next decreased", "next gt 50", "next between 10 20"),
 )
 def cmd_next(session: Session, args: List[str]) -> None:
-    parser = CommandParser("next")
-    parser.add_argument("op", nargs="?", default=None)
-    parser.add_argument("value", nargs="*", default=[])
-    options = parser.parse_args(args)
+    options = _next_parser().parse_args(args)
 
     state = session.require_scan()
     session.require_process("next")
@@ -470,16 +522,25 @@ def cmd_next(session: Session, args: List[str]) -> None:
     _print_results(session, new_state, limit=None, elapsed=timer.elapsed)
 
 
+def _aob_parser() -> CommandParser:
+    parser = CommandParser("aob")
+    parser.add_argument(
+        "pattern",
+        help="IDA-style signature: hex bytes separated by spaces, with '?' or "
+        "'??' for any single byte. Quote it, since it contains spaces",
+    )
+    parser.add_argument("--max", type=int, default=None, metavar="N", help=_MAX_HELP)
+    return parser
+
+
 @command(
     "aob",
+    parser=_aob_parser,
     summary="Scan for a byte pattern with wildcards (AOB).",
     usage="aob <pattern> [--max N]",
     group="Scanning",
     aliases=("pattern",),
     details=(
-        "Takes an IDA-style signature: hex bytes separated by spaces, with '?' "
-        "or '??' standing for any single byte. Quote it, since it contains "
-        "spaces.\n\n"
         "This is how you find code that moves between builds: the opcodes stay "
         "put while the operands change, so you wildcard the operands. The "
         "result set holds the address of each match and can be refined with "
@@ -488,10 +549,7 @@ def cmd_next(session: Session, args: List[str]) -> None:
     examples=('aob "48 8B ? ? 00 00"', 'aob "DE AD BE EF"'),
 )
 def cmd_aob(session: Session, args: List[str]) -> None:
-    parser = CommandParser("aob")
-    parser.add_argument("pattern")
-    parser.add_argument("--max", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _aob_parser().parse_args(args)
 
     process = session.require_process("aob")
 
@@ -528,29 +586,41 @@ def cmd_aob(session: Session, args: List[str]) -> None:
     _report(session, state, timer.elapsed, interrupted=interrupted)
 
 
+def _regex_parser() -> CommandParser:
+    parser = CommandParser("regex")
+    parser.add_argument(
+        "pattern",
+        help="a regular expression, UTF-8 encoded and matched against raw memory",
+    )
+    parser.add_argument(
+        "--length",
+        type=int,
+        default=64,
+        metavar="N",
+        help="the widest match to expect, in bytes (default 64); also how "
+        "many bytes are read back for the VALUE column",
+    )
+    parser.add_argument("--max", type=int, default=None, metavar="N", help=_MAX_HELP)
+    return parser
+
+
 @command(
     "regex",
+    parser=_regex_parser,
     summary="Scan for text matching a regular expression.",
     usage="regex <pattern> [--length N] [--max N]",
     group="Scanning",
     details=(
-        "The pattern is a normal regex, UTF-8 encoded and matched against raw "
-        "memory. Because the match runs over *bytes*, a metacharacter spans "
-        "one byte: '.' matches any single byte and '\\d' is ASCII-only, so "
-        "quantify with care around non-ASCII text.\n\n"
-        "  --length N  the widest match to expect, in bytes (default 64). A\n"
-        "              regex has no fixed width, and this is what lets a match\n"
-        "              straddling an internal chunk boundary still be found —\n"
-        "              and how many bytes are read back for the VALUE column."
+        "Because the match runs over *bytes*, a metacharacter spans one byte: "
+        "'.' matches any single byte and '\\d' is ASCII-only, so quantify with "
+        "care around non-ASCII text.\n\n"
+        "A regex has no fixed width, which is why --length matters: it is what "
+        "lets a match straddling an internal chunk boundary still be found."
     ),
     examples=('regex "Player[0-9]+"', 'regex "https?://[a-z.]+" --length 128'),
 )
 def cmd_regex(session: Session, args: List[str]) -> None:
-    parser = CommandParser("regex")
-    parser.add_argument("pattern")
-    parser.add_argument("--length", type=int, default=64)
-    parser.add_argument("--max", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _regex_parser().parse_args(args)
 
     process = session.require_process("regex")
 
@@ -594,8 +664,31 @@ def cmd_regex(session: Session, args: List[str]) -> None:
     _report(session, state, timer.elapsed, interrupted=interrupted)
 
 
+def _results_parser() -> CommandParser:
+    parser = CommandParser("results")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="print at most N rows, overriding the 'limit' setting",
+    )
+    parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        metavar="N",
+        help="start at row N+1, for paging through a long result set",
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="print every row, ignoring the limit"
+    )
+    return parser
+
+
 @command(
     "results",
+    parser=_results_parser,
     summary="Show the current result set, re-read.",
     usage="results [--limit N] [--offset N] [--all]",
     group="Scanning",
@@ -611,11 +704,7 @@ def cmd_regex(session: Session, args: List[str]) -> None:
     examples=("results", "results --all", "results --offset 20 --limit 10"),
 )
 def cmd_results(session: Session, args: List[str]) -> None:
-    parser = CommandParser("results")
-    parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--offset", type=int, default=0)
-    parser.add_argument("--all", action="store_true")
-    options = parser.parse_args(args)
+    options = _results_parser().parse_args(args)
 
     state = session.require_scan()
     process = session.require_process("results")
@@ -688,22 +777,32 @@ def _parse_row_selection(tokens: Sequence[str], count: int) -> List[int]:
     return selected
 
 
+_ROWS_HELP = "row numbers from 'results', singly or as ranges: 1 4 7-9 (a '#' prefix is optional)"
+
+
+def _keep_parser() -> CommandParser:
+    parser = CommandParser("keep")
+    parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
+    return parser
+
+
 @command(
     "keep",
+    parser=_keep_parser,
     summary="Keep only the named result rows.",
     usage="keep <row> [row ...]",
     group="Scanning",
     details=(
-        "Rows may be given singly or as ranges: 'keep 1 4 7-9'. Use it when "
-        "you can see which candidates are real and would rather not invent a "
-        "comparison that happens to exclude the others."
+        "Use it when you can see which candidates are real and would rather "
+        "not invent a comparison that happens to exclude the others."
     ),
     examples=("keep 1", "keep 1 3 7-9"),
 )
 def cmd_keep(session: Session, args: List[str]) -> None:
+    options = _keep_parser().parse_args(args)
     state = session.require_scan()
     session.require_process("keep")
-    indexes = _parse_row_selection(args, len(state.addresses))
+    indexes = _parse_row_selection(options.rows, len(state.addresses))
     ordered = sorted(set(indexes))
 
     new_state = session.store_scan(
@@ -716,8 +815,15 @@ def cmd_keep(session: Session, args: List[str]) -> None:
     _print_results(session, new_state, limit=None, elapsed=None)
 
 
+def _drop_parser() -> CommandParser:
+    parser = CommandParser("drop")
+    parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
+    return parser
+
+
 @command(
     "drop",
+    parser=_drop_parser,
     summary="Remove the named result rows.",
     usage="drop <row> [row ...]",
     group="Scanning",
@@ -725,9 +831,10 @@ def cmd_keep(session: Session, args: List[str]) -> None:
     examples=("drop 2", "drop 5-12"),
 )
 def cmd_drop(session: Session, args: List[str]) -> None:
+    options = _drop_parser().parse_args(args)
     state = session.require_scan()
     session.require_process("drop")
-    removed = set(_parse_row_selection(args, len(state.addresses)))
+    removed = set(_parse_row_selection(options.rows, len(state.addresses)))
     remaining = [index for index in range(len(state.addresses)) if index not in removed]
 
     new_state = session.store_scan(
@@ -740,19 +847,25 @@ def cmd_drop(session: Session, args: List[str]) -> None:
     _print_results(session, new_state, limit=None, elapsed=None)
 
 
+def _reset_parser() -> CommandParser:
+    return CommandParser("reset")
+
+
 @command(
     "reset",
+    parser=_reset_parser,
     summary="Discard the current scan results.",
     usage="reset",
     group="Scanning",
     aliases=("unscan",),
     details=(
+        "Takes no arguments.\n\n"
         "Clears the result set so the next 'scan' starts a fresh cycle. The "
         "attached process is left alone."
     ),
 )
 def cmd_reset(session: Session, args: List[str]) -> None:
-    CommandParser("reset").parse_args(args)
+    _reset_parser().parse_args(args)
     count = len(session.scan) if session.scan else 0
     session.scan = None
     session.printer.ok(f"Discarded {count} result(s).")

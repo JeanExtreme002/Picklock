@@ -14,28 +14,50 @@ from ..session import Session
 from . import CommandParser, command
 
 
+def _ps_parser() -> CommandParser:
+    parser = CommandParser("ps")
+    parser.add_argument(
+        "pattern",
+        nargs="?",
+        default=None,
+        help="keep processes whose name contains this text; an all-digit "
+        "pattern also matches that PID exactly",
+    )
+    parser.add_argument(
+        "--pid-sort",
+        action="store_true",
+        help="sort by PID instead of by name",
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="match the pattern case-sensitively",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="print at most N rows, overriding the 'limit' setting",
+    )
+    return parser
+
+
 @command(
     "ps",
+    parser=_ps_parser,
     summary="List the processes visible to you.",
     usage="ps [pattern] [--pid-sort] [--case-sensitive] [--limit N]",
     group="Process",
     aliases=("processes", "list"),
     details=(
-        "With no pattern, every visible process is listed. A pattern matches "
-        "the process name as a case-insensitive substring, and also matches a "
-        "PID exactly when it is all digits.\n\n"
         "Only processes your user can see are listed. Run Peekmem elevated to "
         "see (and open) processes belonging to other users."
     ),
     examples=("ps", "ps chrome", "ps --pid-sort --limit 50"),
 )
 def cmd_ps(session: Session, args: List[str]) -> None:
-    parser = CommandParser("ps")
-    parser.add_argument("pattern", nargs="?", default=None)
-    parser.add_argument("--pid-sort", action="store_true", help="sort by PID")
-    parser.add_argument("--case-sensitive", action="store_true")
-    parser.add_argument("--limit", type=int, default=None)
-    options = parser.parse_args(args)
+    options = _ps_parser().parse_args(args)
 
     with Timer() as timer:
         entries = processes.list_processes(
@@ -59,8 +81,56 @@ def cmd_ps(session: Session, args: List[str]) -> None:
     )
 
 
+def _open_parser() -> CommandParser:
+    parser = CommandParser("open")
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        help="the PID (all digits) or the process name to attach to",
+    )
+    parser.add_argument(
+        "--pid",
+        type=int,
+        default=None,
+        metavar="PID",
+        help="attach by PID, when the target could be read either way",
+    )
+    parser.add_argument(
+        "--name",
+        default=None,
+        metavar="NAME",
+        help="attach by process name, when the name is all digits",
+    )
+    parser.add_argument(
+        "-i",
+        "--ignore-case",
+        action="store_true",
+        help="match the name regardless of case",
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="match the name case-sensitively (the default on Linux and macOS)",
+    )
+    parser.add_argument(
+        "--partial",
+        action="store_true",
+        help="match the name as a substring ('chrome' finds 'chrome.exe'); "
+        "fails when more than one process matches, listing the candidates",
+    )
+    parser.add_argument(
+        "--strict-bitness",
+        action="store_true",
+        help="refuse to attach when the target's 32/64-bit width cannot be "
+        "determined, instead of guessing it from this interpreter",
+    )
+    return parser
+
+
 @command(
     "open",
+    parser=_open_parser,
     summary="Attach to a process by PID or name.",
     usage="open <pid|name> [-i] [--partial] [--strict-bitness]",
     group="Process",
@@ -68,28 +138,14 @@ def cmd_ps(session: Session, args: List[str]) -> None:
     details=(
         "An all-digits target is taken as a PID, anything else as a process "
         "name; force either reading with --pid or --name.\n\n"
-        "  -i / --ignore-case  match the name regardless of case.\n"
-        "  --partial           match the name as a substring ('chrome' finds\n"
-        "                      'chrome.exe'). Fails when more than one process\n"
-        "                      matches, listing the candidates.\n"
-        "  --strict-bitness    refuse to attach when the target's 32/64-bit\n"
-        "                      width cannot be determined, instead of guessing\n"
-        "                      it from this interpreter. Worth using before a\n"
-        "                      pointer scan, where a wrong width is silent.\n\n"
+        "--strict-bitness is worth using before a pointer scan, where a wrong "
+        "pointer width is silent rather than loud.\n\n"
         "Attaching replaces any previous target and clears the scan results."
     ),
     examples=("open 4242", "open notepad.exe", "open chrome --partial -i"),
 )
 def cmd_open(session: Session, args: List[str]) -> None:
-    parser = CommandParser("open")
-    parser.add_argument("target", nargs="?", default=None)
-    parser.add_argument("--pid", type=int, default=None)
-    parser.add_argument("--name", default=None)
-    parser.add_argument("-i", "--ignore-case", action="store_true")
-    parser.add_argument("--case-sensitive", action="store_true")
-    parser.add_argument("--partial", action="store_true")
-    parser.add_argument("--strict-bitness", action="store_true")
-    options = parser.parse_args(args)
+    options = _open_parser().parse_args(args)
 
     pid, name = options.pid, options.name
 
@@ -130,35 +186,49 @@ def cmd_open(session: Session, args: List[str]) -> None:
     )
 
 
+def _close_parser() -> CommandParser:
+    return CommandParser("close")
+
+
 @command(
     "close",
+    parser=_close_parser,
     summary="Detach from the current process.",
     usage="close",
     group="Process",
     aliases=("detach",),
     details=(
+        "Takes no arguments.\n\n"
         "Closes the OS handle and drops the scan results, the pointer paths "
         "and the cached memory map. The target itself is untouched — nothing "
         "Peekmem wrote to it is undone."
     ),
 )
 def cmd_close(session: Session, args: List[str]) -> None:
-    CommandParser("close").parse_args(args)
+    _close_parser().parse_args(args)
     if not session.detach():
         raise CommandError("No process attached.")
     session.printer.ok("Detached.")
 
 
+def _status_parser() -> CommandParser:
+    return CommandParser("status")
+
+
 @command(
     "status",
+    parser=_status_parser,
     summary="Show the session state and versions.",
     usage="status",
     group="Process",
     aliases=("\\s",),
-    details="Cheap: reports what the session knows without touching the target.",
+    details=(
+        "Takes no arguments.\n\n"
+        "Cheap: reports what the session knows without touching the target."
+    ),
 )
 def cmd_status(session: Session, args: List[str]) -> None:
-    CommandParser("status").parse_args(args)
+    _status_parser().parse_args(args)
 
     rows = [
         ("Peekmem", __version__),
@@ -187,18 +257,24 @@ def cmd_status(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _info_parser() -> CommandParser:
+    return CommandParser("info")
+
+
 @command(
     "info",
+    parser=_info_parser,
     summary="Describe the attached process in detail.",
     usage="info",
     group="Process",
     details=(
+        "Takes no arguments.\n\n"
         "Enumerates the memory map to report how much of the address space is "
         "mapped, so it costs a little more than 'status'."
     ),
 )
 def cmd_info(session: Session, args: List[str]) -> None:
-    CommandParser("info").parse_args(args)
+    _info_parser().parse_args(args)
     process = session.require_process("info")
 
     with Timer() as timer:

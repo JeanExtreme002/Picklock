@@ -4,15 +4,22 @@
 
 import os
 import platform
-from typing import List
+from typing import List, Tuple
 
 import PyMemoryEditor
 
 from .. import __version__, valuetypes
 from ..errors import CommandError, ExitShell
-from ..output import LEFT, RIGHT, render_table, render_vertical
+from ..output import (
+    LEFT,
+    RIGHT,
+    render_definitions,
+    render_paragraphs,
+    render_table,
+    render_vertical,
+)
 from ..session import SETTINGS, Session
-from . import GROUPS, CommandParser, all_commands, command, lookup
+from . import GROUPS, Command, CommandParser, all_commands, command, describe_action, lookup
 
 _ADDRESS_TOPIC = """\
 Every command that takes an address takes an expression.
@@ -112,10 +119,39 @@ def _print_overview(session: Session) -> None:
             printer.write(f"  {entry.name.ljust(width)}  {entry.summary}")
         printer.write()
 
-    printer.write("Type 'help <command>' for the full description of one command.")
+    printer.write(
+        "Type 'help <command>' — or '<command> --help' — for a command's full\n"
+        "description, including every argument and flag it accepts."
+    )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
     printer.write("End the session with 'exit', Ctrl+D, or \\q.")
     printer.write()
+
+
+def _argument_sections(entry: Command) -> List[Tuple[str, List[Tuple[str, str]]]]:
+    """Split a command's arguments into the sections ``help`` prints.
+
+    Built from the very parser the command parses with, so the two cannot
+    disagree: adding a flag adds it to the help, and changing what a flag is
+    called changes it in both places at once.
+    """
+    positionals: List[Tuple[str, str]] = []
+    options: List[Tuple[str, str]] = []
+
+    for action in entry.arguments():
+        label = describe_action(action)
+        text = action.help or ""
+        if action.option_strings:
+            options.append((label, text))
+        else:
+            positionals.append((label, text))
+
+    sections = []
+    if positionals:
+        sections.append(("Arguments", positionals))
+    if options:
+        sections.append(("Options", options))
+    return sections
 
 
 def _print_command_help(session: Session, name: str) -> None:
@@ -128,8 +164,14 @@ def _print_command_help(session: Session, name: str) -> None:
     if entry.aliases:
         printer.write(f"Aliases: {', '.join(entry.aliases)}")
     printer.write()
+
+    for title, items in _argument_sections(entry):
+        printer.write(f"{title}:")
+        printer.write(render_definitions(items))
+        printer.write()
+
     if entry.details:
-        printer.write(entry.details)
+        printer.write(render_paragraphs(entry.details))
         printer.write()
     if entry.examples:
         printer.write("Examples:")
@@ -138,28 +180,42 @@ def _print_command_help(session: Session, name: str) -> None:
         printer.write()
 
 
+def _help_parser() -> CommandParser:
+    parser = CommandParser("help")
+    parser.add_argument(
+        "topic",
+        nargs="?",
+        default=None,
+        help="a command name, or one of the topics 'types', 'address' and "
+        "'scanning'. Omit it to list every command",
+    )
+    return parser
+
+
 @command(
     "help",
+    parser=_help_parser,
     summary="List the commands, or describe one.",
     usage="help [command|types|address|scanning]",
     group="Session",
     aliases=("?", "\\h"),
     details=(
-        "With no argument, prints every command grouped by what it acts on. "
-        "With a command name, prints that command's usage, options and "
-        "examples. The topics 'types', 'address' and 'scanning' cover the "
-        "parts that several commands share."
+        "With a command name, prints that command's usage, every argument and "
+        "flag it accepts, and examples. Typing '<command> --help' does the "
+        "same thing.\n\n"
+        "The argument list is generated from the command's own parser, so it "
+        "is always what the command actually accepts."
     ),
     examples=("help", "help scan", "help address"),
 )
 def cmd_help(session: Session, args: List[str]) -> None:
-    if not args:
+    options = _help_parser().parse_args(args)
+
+    if options.topic is None:
         _print_overview(session)
         return
-    if len(args) > 1:
-        raise CommandError("help takes one command or topic at a time.")
 
-    topic = args[0].strip().lower()
+    topic = options.topic.strip().lower()
 
     if topic in ("types", "type"):
         _print_types(session)
@@ -176,22 +232,38 @@ def cmd_help(session: Session, args: List[str]) -> None:
     _print_command_help(session, topic)
 
 
+def _set_parser() -> CommandParser:
+    parser = CommandParser("set")
+    parser.add_argument(
+        "assignment",
+        nargs="*",
+        default=[],
+        help="'name value', 'name=value', or a bare 'name' to read one back. "
+        "Omit it to print every setting",
+    )
+    return parser
+
+
 @command(
     "set",
+    parser=_set_parser,
     summary="Show or change a session setting.",
     usage="set [name [value]]",
     group="Session",
     details=(
-        "With no argument, prints every setting and its current value. "
-        "'set name value' and 'set name=value' both assign.\n\n"
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
-        "'set' lines in a script and run it with 'source' to reuse a setup."
+        "'set' lines in a script and run it with 'source' to reuse a setup.\n\n"
+        "Run 'set' with no argument to see every setting, its current value "
+        "and what it does."
     ),
     examples=("set", "set limit 50", "set hex on", "set writable_only=true"),
 )
 def cmd_set(session: Session, args: List[str]) -> None:
-    if not args:
+    options = _set_parser().parse_args(args)
+    assignment = options.assignment
+
+    if not assignment:
         rows = [
             (setting.name, _format_setting(session.option(setting.name)), setting.summary)
             for setting in SETTINGS
@@ -201,12 +273,12 @@ def cmd_set(session: Session, args: List[str]) -> None:
         )
         return
 
-    if len(args) == 1 and "=" in args[0]:
-        name, _, value = args[0].partition("=")
-    elif len(args) == 1:
-        name, value = args[0], None
-    elif len(args) == 2:
-        name, value = args[0], args[1]
+    if len(assignment) == 1 and "=" in assignment[0]:
+        name, _, value = assignment[0].partition("=")
+    elif len(assignment) == 1:
+        name, value = assignment[0], None
+    elif len(assignment) == 2:
+        name, value = assignment[0], assignment[1]
     else:
         raise CommandError("Usage: set [name [value]]")
 
@@ -225,24 +297,32 @@ def cmd_set(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _source_parser() -> CommandParser:
+    parser = CommandParser("source")
+    parser.add_argument(
+        "file",
+        help="a text file of commands, one per line; blank lines and lines "
+        "starting with '#' or '--' are ignored",
+    )
+    return parser
+
+
 @command(
     "source",
+    parser=_source_parser,
     summary="Run the commands in a file.",
     usage="source <file>",
     group="Session",
     aliases=("\\.",),
     details=(
-        "Reads the file and runs each line as if it had been typed. Blank "
-        "lines are skipped, and a line starting with '#' or '--' is a comment.\n\n"
+        "Reads the file and runs each line as if it had been typed.\n\n"
         "A failing line stops the script — a setup that half-ran is worse than "
         "one that says where it stopped."
     ),
     examples=("source setup.peek",),
 )
 def cmd_source(session: Session, args: List[str]) -> None:
-    parser = CommandParser("source")
-    parser.add_argument("file")
-    options = parser.parse_args(args)
+    options = _source_parser().parse_args(args)
 
     if session.shell is None:
         raise CommandError("'source' needs a shell to run the commands in.")
@@ -262,15 +342,24 @@ def cmd_source(session: Session, args: List[str]) -> None:
             raise CommandError(f"{options.file}:{number}: {error}")
 
 
+def _version_parser() -> CommandParser:
+    return CommandParser("version")
+
+
 @command(
     "version",
+    parser=_version_parser,
     summary="Print the Peekmem and PyMemoryEditor versions.",
     usage="version",
     group="Session",
-    details="The two lines to quote in a bug report, plus the platform.",
+    details=(
+        "Takes no arguments.\n\n"
+        "The one line to quote in a bug report: it names Peekmem, "
+        "PyMemoryEditor, Python and the platform."
+    ),
 )
 def cmd_version(session: Session, args: List[str]) -> None:
-    CommandParser("version").parse_args(args)
+    _version_parser().parse_args(args)
     session.printer.write(
         f"Peekmem {__version__} / PyMemoryEditor {PyMemoryEditor.__version__} "
         f"/ Python {platform.python_version()} on {platform.system()} "
@@ -279,16 +368,24 @@ def cmd_version(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
+def _exit_parser() -> CommandParser:
+    return CommandParser("exit")
+
+
 @command(
     "exit",
+    parser=_exit_parser,
     summary="Leave the shell.",
     usage="exit",
     group="Session",
     aliases=("quit", "\\q"),
-    details="Detaches from the target first. Ctrl+D does the same thing.",
+    details=(
+        "Takes no arguments.\n\n"
+        "Detaches from the target first. Ctrl+D does the same thing."
+    ),
 )
 def cmd_exit(session: Session, args: List[str]) -> None:
-    CommandParser("exit").parse_args(args)
+    _exit_parser().parse_args(args)
     raise ExitShell(0)
 
 

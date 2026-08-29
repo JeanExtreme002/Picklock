@@ -135,8 +135,28 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 | **Pointers** | `deref` · `pointer` · `ptrscan` · `paths` · `ptrsave` · `ptrload` · `ptrrescan` · `ptrdiff` |
 | **Session** | `help` · `set` · `source` · `version` · `exit` |
 
-`help <command>` documents each one in full, with examples. `help types`,
-`help address` and `help scanning` cover what several commands share.
+`help <command>` — or `<command> --help` — documents each one in full: every
+argument, every flag, and examples. That list is generated from the command's
+own parser, so it is always exactly what the command accepts:
+
+```console
+peekmem> help dump
+dump — Hex-dump a range of memory.
+
+Usage: dump <address> [length] [--width N]
+Aliases: hexdump, x
+
+Arguments:
+  address   address expression: a literal, module+offset, [pointer] or #N —
+            see 'help address'
+  [length]  number of bytes to read (default 256); hex accepted
+
+Options:
+  --width N  bytes per line, overriding the 'dump_width' setting
+```
+
+`help types`, `help address` and `help scanning` cover what several commands
+share.
 
 Highlights:
 

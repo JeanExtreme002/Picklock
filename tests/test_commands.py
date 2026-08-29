@@ -5,11 +5,13 @@
 import pytest
 
 from peekmem.commands import (
-    GROUPS,
+    NAMESPACES,
     all_commands,
+    children,
     command_words,
     describe_action,
     lookup,
+    namespaces,
 )
 from peekmem.errors import CommandError, NoProcessError
 
@@ -21,7 +23,87 @@ COMMANDS = all_commands()
 def test_every_command_is_documented(entry):
     assert entry.summary and entry.summary[0].isupper() and entry.summary.endswith(".")
     assert entry.usage.startswith(entry.name)
-    assert entry.group in GROUPS
+    assert entry.namespace in dict(NAMESPACES)
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_every_command_lives_in_a_namespace(entry):
+    """A bare name would sit outside the hierarchy the help is built from."""
+    assert ":" in entry.name
+    assert entry.namespace in namespaces()
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_every_command_keeps_a_short_alias(entry):
+    """The hierarchy must cost nothing at the keyboard.
+
+    Every command has to stay reachable by a plain word — 'read', not
+    'memory:read' — or the namespacing would have made the shell worse to use.
+    """
+    assert entry.short, f"{entry.name} has no plain-word alias"
+    assert lookup(entry.short).name == entry.name
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_a_parent_name_is_a_prefix_of_its_children(entry):
+    for child in children(entry.name):
+        assert child.name.startswith(entry.name + ":")
+        assert child.namespace == entry.namespace
+
+
+def test_namespaces_are_listed_in_the_declared_order():
+    order = [name for name, _ in NAMESPACES]
+    seen = [entry.namespace for entry in COMMANDS]
+    positions = [order.index(name) for name in seen]
+    assert positions == sorted(positions)
+
+
+@pytest.mark.parametrize("namespace", [name for name, _ in NAMESPACES])
+def test_every_namespace_has_commands(namespace):
+    assert children(namespace), f"namespace {namespace!r} is empty"
+
+
+def test_typing_a_namespace_lists_it(shell, capture):
+    shell.run_line("memory")
+    assert "Commands under 'memory:'" in capture.out
+    assert "memory:read" in capture.out
+    assert capture.err == ""
+
+
+def test_a_namespace_with_arguments_points_at_the_colon(shell, capture):
+    """'memory read 0x10' is the likely typo; name the fix precisely."""
+    assert shell.run_line("memory read 0x10") is False
+    assert "'memory:read'" in capture.err
+
+
+def test_a_namespace_with_nonsense_arguments_is_still_explained(shell, capture):
+    assert shell.run_line("memory nonsense") is False
+    assert "namespace" in capture.err
+    assert "help memory" in capture.err
+
+
+def test_help_on_a_namespace_lists_it(shell, capture):
+    shell.run_line("help memory")
+    assert "memory:read" in capture.out
+
+
+def test_a_namespace_shadowed_by_an_alias_still_announces_itself(shell, capture):
+    """'pointer' is both an alias and a namespace; the alias wins, loudly."""
+    shell.run_line("help pointer")
+    assert "pointer:read" in capture.out, "the alias resolves to the command"
+    assert "is also a namespace" in capture.out
+
+
+@pytest.mark.parametrize("topic", ["pointer:", "scan:", "memory:"])
+def test_a_trailing_colon_asks_for_the_namespace(shell, capture, topic):
+    shell.run_line(f"help {topic}")
+    assert f"Commands under '{topic.rstrip(':')}:'" in capture.out
+
+
+def test_help_on_a_parent_command_lists_its_subcommands(shell, capture):
+    shell.run_line("help scan:results")
+    assert "Subcommands:" in capture.out
+    assert "scan:results:keep" in capture.out
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)

@@ -81,28 +81,39 @@ Two rules keep the shape:
 
 ## Adding a command
 
-1. Pick the module in `peekmem/commands/` that matches the group.
-2. Register the handler:
+1. Pick the module in `peekmem/commands/` that matches the namespace.
+2. Register the handler. The name is a colon-separated path whose first
+   segment is one of the namespaces in `NAMESPACES`; the group in `help`
+   follows from it, so there is nothing to keep in step. Give it a plain-word
+   alias too — that is what people type, and a test enforces that every
+   command has one:
 
    ```python
+   def _mycommand_parser() -> CommandParser:
+       parser = CommandParser("memory:mycommand")
+       parser.add_argument("address", help="what to act on")
+       return parser
+
+
    @command(
-       "mycommand",
+       "memory:mycommand",
+       parser=_mycommand_parser,
        summary="One line, sentence case, ending in a period.",
-       usage="mycommand <address> [--flag]",
-       group="Memory",
-       aliases=("mycmd",),
-       details="The long help, printed by 'help mycommand'.",
+       usage="memory:mycommand <address> [--flag]",
+       aliases=("mycommand",),
+       details="The long help, printed by 'help memory:mycommand'.",
        examples=("mycommand 0x1000",),
    )
    def cmd_mycommand(session: Session, args: List[str]) -> None:
-       parser = CommandParser("mycommand")
-       parser.add_argument("address")
-       options = parser.parse_args(args)
+       options = _mycommand_parser().parse_args(args)
 
-       process = session.require_process("mycommand")
+       process = session.require_process("memory:mycommand")
        address = parse_address(options.address, session)
        ...
    ```
+
+   A name with a third segment (`scan:results:keep`) is fine and shows up as a
+   **Subcommands** section under its parent's help.
 
 3. Use `CommandParser`, not a bare `ArgumentParser`: it raises instead of
    calling `sys.exit`, which would kill the shell on a typo.

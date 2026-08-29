@@ -21,8 +21,22 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..errors import CommandError
 
-#: Groups in the order ``help`` prints them.
-GROUPS: Tuple[str, ...] = ("Process", "Memory", "Scanning", "Pointers", "Session")
+#: Namespaces in the order ``help`` prints them, with the heading each one
+#: gets. A command's namespace is the part of its name before the first colon,
+#: so the grouping cannot drift from the naming — there is nothing to keep in
+#: step.
+NAMESPACES: Tuple[Tuple[str, str], ...] = (
+    ("process", "Process"),
+    ("memory", "Memory"),
+    ("scan", "Scanning"),
+    ("pointer", "Pointers"),
+    ("session", "Session"),
+)
+
+_NAMESPACE_TITLES: Dict[str, str] = dict(NAMESPACES)
+_NAMESPACE_ORDER: Dict[str, int] = {
+    name: index for index, (name, _) in enumerate(NAMESPACES)
+}
 
 Handler = Callable[..., None]
 
@@ -108,17 +122,47 @@ def _value_placeholder(action: argparse.Action) -> str:
 
 @dataclass(frozen=True)
 class Command:
-    """One registered command."""
+    """One registered command.
+
+    The ``name`` is a colon-separated path — ``memory:read``,
+    ``scan:results:keep`` — so related commands sort and group together and a
+    name says what it acts on. The short spellings people actually type
+    (``read``, ``keep``) are registered as aliases, which is why the hierarchy
+    costs nothing at the keyboard.
+    """
 
     name: str
     handler: Handler
     summary: str
     usage: str
-    group: str
     parser: Optional[ParserFactory] = None
     aliases: Tuple[str, ...] = ()
     details: str = ""
     examples: Tuple[str, ...] = field(default=())
+
+    @property
+    def namespace(self) -> str:
+        """The first segment of the name — the group this command belongs to."""
+        return self.name.split(":", 1)[0]
+
+    @property
+    def group(self) -> str:
+        """The heading ``help`` files this command under."""
+        return _NAMESPACE_TITLES.get(self.namespace, self.namespace.capitalize())
+
+    @property
+    def short(self) -> str:
+        """The alias worth advertising — the first plain-word one.
+
+        First, not shortest: the alias list is written most-natural-first, and
+        the shortest is often the cryptic one (``x`` for ``memory:dump``,
+        ``ptr`` for ``pointer:read``). Backslash aliases like ``\\q`` are
+        skipped; they are shortcuts, not names.
+        """
+        for alias in self.aliases:
+            if alias.isalnum():
+                return alias
+        return ""
 
     def arguments(self) -> List[argparse.Action]:
         """Every argument this command accepts, in declaration order."""
@@ -134,7 +178,6 @@ def command(
     *,
     summary: str,
     usage: str,
-    group: str,
     parser: Optional[ParserFactory] = None,
     aliases: Sequence[str] = (),
     details: str = "",
@@ -154,15 +197,14 @@ def command(
     def decorator(handler: Handler) -> Handler:
         if name in _COMMANDS or name in _ALIASES:
             raise RuntimeError(f"Duplicate command name: {name}")
-        if group not in GROUPS:
-            raise RuntimeError(f"Unknown command group: {group}")
+        if name.split(":", 1)[0] not in _NAMESPACE_TITLES:
+            raise RuntimeError(f"Unknown namespace in command name: {name}")
 
         entry = Command(
             name=name,
             handler=handler,
             summary=summary,
             usage=usage,
-            group=group,
             parser=parser,
             aliases=tuple(aliases),
             details=details,
@@ -194,10 +236,31 @@ def lookup(name: str) -> Command:
 
 
 def all_commands() -> List[Command]:
-    """Every registered command, sorted by group then name."""
+    """Every registered command, in namespace order then alphabetically."""
     return sorted(
-        _COMMANDS.values(), key=lambda entry: (GROUPS.index(entry.group), entry.name)
+        _COMMANDS.values(),
+        key=lambda entry: (_NAMESPACE_ORDER.get(entry.namespace, 99), entry.name),
     )
+
+
+def children(prefix: str) -> List[Command]:
+    """Commands sitting under ``prefix`` in the hierarchy.
+
+    Works for a namespace (``memory`` yields every ``memory:*``) and for a
+    command that has commands beneath it (``scan:results`` yields
+    ``scan:results:keep`` and its siblings), which is the same question in both
+    cases: what can follow this word?
+    """
+    head = prefix.strip().lower().rstrip(":")
+    if not head:
+        return []
+    return [entry for entry in all_commands() if entry.name.startswith(head + ":")]
+
+
+def namespaces() -> List[str]:
+    """Every namespace that has at least one command registered in it."""
+    known = {entry.namespace for entry in _COMMANDS.values()}
+    return [name for name, _ in NAMESPACES if name in known]
 
 
 def command_words() -> List[str]:
@@ -225,11 +288,13 @@ from . import session_commands  # noqa: E402,F401
 __all__ = (
     "Command",
     "CommandParser",
-    "GROUPS",
+    "NAMESPACES",
     "all_commands",
+    "children",
     "command",
     "command_words",
     "describe_action",
     "lookup",
+    "namespaces",
     "option_words",
 )

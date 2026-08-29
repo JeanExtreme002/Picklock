@@ -23,7 +23,7 @@ from typing import List, Optional, Sequence
 import PyMemoryEditor
 
 from . import __version__, dependencies
-from .commands import GROUPS, all_commands
+from .commands import NAMESPACES, all_commands
 from .errors import CommandError, PeekmemError
 from .output import Printer
 from .session import Session
@@ -40,13 +40,17 @@ def _format_commands() -> str:
     commands = all_commands()
     width = max(len(entry.name) for entry in commands)
     lines: List[str] = [_EPILOG_INTRO, ""]
-    for group in GROUPS:
-        in_group = [entry for entry in commands if entry.group == group]
+    for namespace, title in NAMESPACES:
+        in_group = [entry for entry in commands if entry.namespace == namespace]
         if not in_group:
             continue
-        lines.append(f"  {group}")
+        lines.append(f"  {title}")
         for entry in in_group:
-            lines.append(f"    {entry.name.ljust(width)}  {entry.summary}")
+            # Full name, then the alias people actually type, in aligned
+            # columns — the same shape 'help' uses inside the shell.
+            lines.append(
+                f"    {entry.name.ljust(width)}  {entry.short.ljust(9)}  {entry.summary}"
+            )
         lines.append("")
     return "\n".join(lines)
 

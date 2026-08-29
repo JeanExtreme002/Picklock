@@ -127,13 +127,17 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 
 ## What it can do
 
-| Group | Commands |
+Commands are namespaced, and every one has a short alias — `memory:read` and
+`read` are the same command, so the hierarchy costs nothing at the keyboard.
+Type a namespace alone (`memory`, `pointer:`) to list what is in it.
+
+| Namespace | Commands (short alias) |
 | --- | --- |
-| **Process** | `ps` · `open` · `close` · `status` · `info` |
-| **Memory** | `regions` · `modules` · `threads` · `read` · `write` · `dump` · `watch` · `alloc` · `free` |
-| **Scanning** | `scan` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
-| **Pointers** | `deref` · `pointer` · `ptrscan` · `paths` · `ptrsave` · `ptrload` · `ptrrescan` · `ptrdiff` |
-| **Session** | `help` · `set` · `source` · `version` · `exit` |
+| **`process:`** | `list` (ps) · `open` · `close` · `info` |
+| **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
+| **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `results:keep` (keep) · `results:drop` (drop) · `results:clear` (reset) |
+| **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `paths:save` (ptrsave) · `paths:load` (ptrload) · `paths:diff` (ptrdiff) |
+| **`session:`** | `help` · `set` · `source` · `status` · `version` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
 argument, every flag, and examples. That list is generated from the command's

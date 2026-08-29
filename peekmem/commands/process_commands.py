@@ -15,7 +15,7 @@ from . import CommandParser, command
 
 
 def _ps_parser() -> CommandParser:
-    parser = CommandParser("ps")
+    parser = CommandParser("process:list")
     parser.add_argument(
         "pattern",
         nargs="?",
@@ -44,12 +44,11 @@ def _ps_parser() -> CommandParser:
 
 
 @command(
-    "ps",
+    "process:list",
     parser=_ps_parser,
     summary="List the processes visible to you.",
-    usage="ps [pattern] [--pid-sort] [--case-sensitive] [--limit N]",
-    group="Process",
-    aliases=("processes", "list"),
+    usage="process:list [pattern] [--pid-sort] [--case-sensitive] [--limit N]",
+    aliases=("ps", "processes"),
     details=(
         "Only processes your user can see are listed. Run Peekmem elevated to "
         "see (and open) processes belonging to other users."
@@ -82,7 +81,7 @@ def cmd_ps(session: Session, args: List[str]) -> None:
 
 
 def _open_parser() -> CommandParser:
-    parser = CommandParser("open")
+    parser = CommandParser("process:open")
     parser.add_argument(
         "target",
         nargs="?",
@@ -129,12 +128,11 @@ def _open_parser() -> CommandParser:
 
 
 @command(
-    "open",
+    "process:open",
     parser=_open_parser,
     summary="Attach to a process by PID or name.",
-    usage="open <pid|name> [-i] [--partial] [--strict-bitness]",
-    group="Process",
-    aliases=("attach", "use"),
+    usage="process:open <pid|name> [-i] [--partial] [--strict-bitness]",
+    aliases=("open", "attach", "use"),
     details=(
         "An all-digits target is taken as a PID, anything else as a process "
         "name; force either reading with --pid or --name.\n\n"
@@ -187,16 +185,15 @@ def cmd_open(session: Session, args: List[str]) -> None:
 
 
 def _close_parser() -> CommandParser:
-    return CommandParser("close")
+    return CommandParser("process:close")
 
 
 @command(
-    "close",
+    "process:close",
     parser=_close_parser,
     summary="Detach from the current process.",
-    usage="close",
-    group="Process",
-    aliases=("detach",),
+    usage="process:close",
+    aliases=("close", "detach"),
     details=(
         "Takes no arguments.\n\n"
         "Closes the OS handle and drops the scan results, the pointer paths "
@@ -212,16 +209,15 @@ def cmd_close(session: Session, args: List[str]) -> None:
 
 
 def _status_parser() -> CommandParser:
-    return CommandParser("status")
+    return CommandParser("session:status")
 
 
 @command(
-    "status",
+    "session:status",
     parser=_status_parser,
     summary="Show the session state and versions.",
-    usage="status",
-    group="Process",
-    aliases=("\\s",),
+    usage="session:status",
+    aliases=("status", "\\s"),
     details=(
         "Takes no arguments.\n\n"
         "Cheap: reports what the session knows without touching the target."
@@ -258,15 +254,15 @@ def cmd_status(session: Session, args: List[str]) -> None:
 
 
 def _info_parser() -> CommandParser:
-    return CommandParser("info")
+    return CommandParser("process:info")
 
 
 @command(
-    "info",
+    "process:info",
     parser=_info_parser,
     summary="Describe the attached process in detail.",
-    usage="info",
-    group="Process",
+    usage="process:info",
+    aliases=("info",),
     details=(
         "Takes no arguments.\n\n"
         "Enumerates the memory map to report how much of the address space is "
@@ -275,7 +271,7 @@ def _info_parser() -> CommandParser:
 )
 def cmd_info(session: Session, args: List[str]) -> None:
     _info_parser().parse_args(args)
-    process = session.require_process("info")
+    process = session.require_process("process:info")
 
     with Timer() as timer:
         regions = session.regions(refresh=True)

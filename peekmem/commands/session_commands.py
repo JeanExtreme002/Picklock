@@ -19,7 +19,17 @@ from ..output import (
     render_vertical,
 )
 from ..session import SETTINGS, Session
-from . import GROUPS, Command, CommandParser, all_commands, command, describe_action, lookup
+from . import (
+    NAMESPACES,
+    Command,
+    CommandParser,
+    all_commands,
+    children,
+    command,
+    describe_action,
+    lookup,
+    namespaces,
+)
 
 _ADDRESS_TOPIC = """\
 Every command that takes an address takes an expression.
@@ -102,30 +112,78 @@ def _print_types(session: Session) -> None:
     session.printer.write()
 
 
+#: Width of the canonical-name column in a listing, so the alias column lines
+#: up across every section rather than jumping about per namespace.
+_NAME_WIDTH = 18
+
+#: Width of the alias column, padded so every section of the overview lines up
+#: as one grid instead of re-aligning per namespace.
+_ALIAS_WIDTH = 9
+
+
+def _command_rows(commands) -> List[Tuple[str, str]]:
+    """Label/summary pairs for a command listing.
+
+    The label carries both spellings in two aligned columns — the full name
+    says where the command lives, the alias is what anybody actually types.
+    """
+    return [
+        (
+            f"{entry.name.ljust(_NAME_WIDTH)}  {entry.short.ljust(_ALIAS_WIDTH)}",
+            entry.summary,
+        )
+        for entry in commands
+    ]
+
+
 def _print_overview(session: Session) -> None:
     printer = session.printer
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
     commands = all_commands()
-    width = max(len(entry.name) for entry in commands)
 
-    for group in GROUPS:
-        in_group = [entry for entry in commands if entry.group == group]
+    for namespace, title in NAMESPACES:
+        in_group = [entry for entry in commands if entry.namespace == namespace]
         if not in_group:
             continue
-        printer.write(f"{group}")
-        for entry in in_group:
-            printer.write(f"  {entry.name.ljust(width)}  {entry.summary}")
+        printer.write(f"{title} ({namespace}:)")
+        printer.write(render_definitions(_command_rows(in_group), label_width=30))
         printer.write()
 
+    printer.write(
+        "Every command has a full name and a short alias: 'memory:read' and\n"
+        "'read' are the same command. Type either."
+    )
     printer.write(
         "Type 'help <command>' — or '<command> --help' — for a command's full\n"
         "description, including every argument and flag it accepts."
     )
+    printer.write(
+        "Type a namespace alone — 'memory', 'pointer' — to list what is in it."
+    )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
     printer.write("End the session with 'exit', Ctrl+C, Ctrl+D, or \\q.")
     printer.write()
+
+
+def print_namespace(session: Session, prefix: str) -> bool:
+    """List the commands under ``prefix``. False when there are none.
+
+    Used both by ``help memory`` and by typing ``memory`` at the prompt: in a
+    namespaced shell, naming a group and being shown its contents is the
+    obvious thing for that word to do.
+    """
+    entries = children(prefix)
+    if not entries:
+        return False
+
+    head = prefix.strip().lower().rstrip(":")
+    session.printer.write(f"Commands under '{head}:'")
+    session.printer.write()
+    session.printer.write(render_definitions(_command_rows(entries), label_width=30))
+    session.printer.write()
+    return True
 
 
 def _argument_sections(entry: Command) -> List[Tuple[str, List[Tuple[str, str]]]]:
@@ -170,6 +228,12 @@ def _print_command_help(session: Session, name: str) -> None:
         printer.write(render_definitions(items))
         printer.write()
 
+    subcommands = children(entry.name)
+    if subcommands:
+        printer.write("Subcommands:")
+        printer.write(render_definitions(_command_rows(subcommands), label_width=30))
+        printer.write()
+
     if entry.details:
         printer.write(render_paragraphs(entry.details))
         printer.write()
@@ -181,7 +245,7 @@ def _print_command_help(session: Session, name: str) -> None:
 
 
 def _help_parser() -> CommandParser:
-    parser = CommandParser("help")
+    parser = CommandParser("session:help")
     parser.add_argument(
         "topic",
         nargs="?",
@@ -193,12 +257,11 @@ def _help_parser() -> CommandParser:
 
 
 @command(
-    "help",
+    "session:help",
     parser=_help_parser,
     summary="List the commands, or describe one.",
-    usage="help [command|types|address|scanning]",
-    group="Session",
-    aliases=("?", "\\h"),
+    usage="session:help [command|types|address|scanning]",
+    aliases=("help", "?", "\\h"),
     details=(
         "With a command name, prints that command's usage, every argument and "
         "flag it accepts, and examples. Typing '<command> --help' does the "
@@ -217,6 +280,11 @@ def cmd_help(session: Session, args: List[str]) -> None:
 
     topic = options.topic.strip().lower()
 
+    # 'help pointer:' — the trailing colon asks for the namespace explicitly,
+    # which matters for the two namespaces that are also command aliases.
+    if topic.endswith(":") and print_namespace(session, topic):
+        return
+
     if topic in ("types", "type"):
         _print_types(session)
         return
@@ -229,11 +297,34 @@ def cmd_help(session: Session, args: List[str]) -> None:
         session.printer.write()
         return
 
+    # A bare namespace is not a command, so describe what is in it instead of
+    # reporting that it does not exist.
+    if topic in namespaces() and topic not in command_words_set():
+        print_namespace(session, topic)
+        return
+
     _print_command_help(session, topic)
+
+    # 'scan' and 'pointer' are aliases *and* namespaces. The alias wins, so
+    # say out loud that there is more under the same word.
+    if topic in namespaces():
+        count = len(children(topic))
+        session.printer.write(
+            f"'{topic}' is also a namespace holding {count} commands. "
+            f"Type '{topic}:' to list them."
+        )
+        session.printer.write()
+
+
+def command_words_set() -> set:
+    """Every word that resolves to a command, for the namespace check above."""
+    from . import command_words
+
+    return set(command_words())
 
 
 def _set_parser() -> CommandParser:
-    parser = CommandParser("set")
+    parser = CommandParser("session:set")
     parser.add_argument(
         "assignment",
         nargs="*",
@@ -245,11 +336,11 @@ def _set_parser() -> CommandParser:
 
 
 @command(
-    "set",
+    "session:set",
     parser=_set_parser,
     summary="Show or change a session setting.",
-    usage="set [name [value]]",
-    group="Session",
+    usage="session:set [name [value]]",
+    aliases=("set",),
     details=(
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
@@ -298,7 +389,7 @@ def cmd_set(session: Session, args: List[str]) -> None:
 
 
 def _source_parser() -> CommandParser:
-    parser = CommandParser("source")
+    parser = CommandParser("session:source")
     parser.add_argument(
         "file",
         help="a text file of commands, one per line; blank lines and lines "
@@ -308,12 +399,11 @@ def _source_parser() -> CommandParser:
 
 
 @command(
-    "source",
+    "session:source",
     parser=_source_parser,
     summary="Run the commands in a file.",
-    usage="source <file>",
-    group="Session",
-    aliases=("\\.",),
+    usage="session:source <file>",
+    aliases=("source", "\\."),
     details=(
         "Reads the file and runs each line as if it had been typed.\n\n"
         "A failing line stops the script — a setup that half-ran is worse than "
@@ -343,15 +433,15 @@ def cmd_source(session: Session, args: List[str]) -> None:
 
 
 def _version_parser() -> CommandParser:
-    return CommandParser("version")
+    return CommandParser("session:version")
 
 
 @command(
-    "version",
+    "session:version",
     parser=_version_parser,
     summary="Print the Peekmem and PyMemoryEditor versions.",
-    usage="version",
-    group="Session",
+    usage="session:version",
+    aliases=("version",),
     details=(
         "Takes no arguments.\n\n"
         "The one line to quote in a bug report: it names Peekmem, "
@@ -369,16 +459,15 @@ def cmd_version(session: Session, args: List[str]) -> None:
 
 
 def _exit_parser() -> CommandParser:
-    return CommandParser("exit")
+    return CommandParser("session:exit")
 
 
 @command(
-    "exit",
+    "session:exit",
     parser=_exit_parser,
     summary="Leave the shell.",
-    usage="exit",
-    group="Session",
-    aliases=("quit", "\\q"),
+    usage="session:exit",
+    aliases=("exit", "quit", "\\q"),
     details=(
         "Takes no arguments.\n\n"
         "Detaches from the target first. Ctrl+C and Ctrl+D at the prompt do "

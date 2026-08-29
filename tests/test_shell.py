@@ -143,13 +143,12 @@ def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypat
 
     def fake_lookup(name):
         entry = real_lookup(name)
-        if entry.name == "version":
+        if entry.name == "session:version":
             return Command(
                 name=entry.name,
                 handler=interrupted,
                 summary=entry.summary,
                 usage=entry.usage,
-                group=entry.group,
             )
         return entry
 

@@ -268,7 +268,7 @@ def _print_results(
 
 
 def _scan_parser() -> CommandParser:
-    parser = CommandParser("scan")
+    parser = CommandParser("scan:value")
     parser.add_argument("type", help="value type to search for (see 'help types')")
     parser.add_argument(
         "value",
@@ -319,12 +319,11 @@ def _scan_parser() -> CommandParser:
 
 
 @command(
-    "scan",
+    "scan:value",
     parser=_scan_parser,
     summary="Search the whole address space for a value.",
-    usage="scan <type> <value> [--op eq|ne|gt|lt|ge|le] | scan <type> --between A B",
-    group="Scanning",
-    aliases=("find", "search"),
+    usage="scan:value <type> <value> [--op eq|ne|gt|lt|ge|le] | scan:value <type> --between A B",
+    aliases=("scan", "find", "search"),
     details=(
         "The first scan of a cycle. Every matching address is kept as the "
         "result set that 'next', 'results' and the '#N' address form work "
@@ -342,7 +341,7 @@ def _scan_parser() -> CommandParser:
 def cmd_scan(session: Session, args: List[str]) -> None:
     options = _scan_parser().parse_args(args)
 
-    process = session.require_process("scan")
+    process = session.require_process("scan:value")
     value_type = valuetypes.resolve(options.type)
 
     if options.writable and options.all_regions:
@@ -424,7 +423,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
 
 
 def _next_parser() -> CommandParser:
-    parser = CommandParser("next")
+    parser = CommandParser("scan:next")
     parser.add_argument(
         "op",
         nargs="?",
@@ -444,12 +443,12 @@ def _next_parser() -> CommandParser:
 
 
 @command(
-    "next",
+    "scan:next",
     parser=_next_parser,
     summary="Narrow the results with another comparison.",
-    usage="next [op] [value] — op: eq ne gt lt ge le between changed unchanged increased decreased increased-by decreased-by",
-    group="Scanning",
-    aliases=("refine",),
+    usage="scan:next [op] [value]  (op: eq ne gt lt ge le between changed "
+    "unchanged increased decreased increased-by decreased-by)",
+    aliases=("next", "refine"),
     details=(
         "Re-reads every address in the result set and keeps the ones that "
         "still match. Bare 'next 100' means 'next eq 100'.\n\n"
@@ -471,7 +470,7 @@ def cmd_next(session: Session, args: List[str]) -> None:
     options = _next_parser().parse_args(args)
 
     state = session.require_scan()
-    session.require_process("next")
+    session.require_process("scan:next")
 
     operation = _normalize_op(options.op) if options.op else "eq"
     operands = list(options.value)
@@ -567,7 +566,7 @@ def cmd_next(session: Session, args: List[str]) -> None:
 
 
 def _aob_parser() -> CommandParser:
-    parser = CommandParser("aob")
+    parser = CommandParser("scan:aob")
     parser.add_argument(
         "pattern",
         help="IDA-style signature: hex bytes separated by spaces, with '?' or "
@@ -578,12 +577,11 @@ def _aob_parser() -> CommandParser:
 
 
 @command(
-    "aob",
+    "scan:aob",
     parser=_aob_parser,
     summary="Scan for a byte pattern with wildcards (AOB).",
-    usage="aob <pattern> [--max N]",
-    group="Scanning",
-    aliases=("pattern",),
+    usage="scan:aob <pattern> [--max N]",
+    aliases=("aob", "pattern"),
     details=(
         "This is how you find code that moves between builds: the opcodes stay "
         "put while the operands change, so you wildcard the operands. The "
@@ -595,7 +593,7 @@ def _aob_parser() -> CommandParser:
 def cmd_aob(session: Session, args: List[str]) -> None:
     options = _aob_parser().parse_args(args)
 
-    process = session.require_process("aob")
+    process = session.require_process("scan:aob")
 
     from PyMemoryEditor.util.pattern import compile_pattern
 
@@ -631,7 +629,7 @@ def cmd_aob(session: Session, args: List[str]) -> None:
 
 
 def _regex_parser() -> CommandParser:
-    parser = CommandParser("regex")
+    parser = CommandParser("scan:regex")
     parser.add_argument(
         "pattern",
         help="a regular expression, UTF-8 encoded and matched against raw memory",
@@ -649,11 +647,11 @@ def _regex_parser() -> CommandParser:
 
 
 @command(
-    "regex",
+    "scan:regex",
     parser=_regex_parser,
     summary="Scan for text matching a regular expression.",
-    usage="regex <pattern> [--length N] [--max N]",
-    group="Scanning",
+    usage="scan:regex <pattern> [--length N] [--max N]",
+    aliases=("regex",),
     details=(
         "Because the match runs over *bytes*, a metacharacter spans one byte: "
         "'.' matches any single byte and '\\d' is ASCII-only, so quantify with "
@@ -666,7 +664,7 @@ def _regex_parser() -> CommandParser:
 def cmd_regex(session: Session, args: List[str]) -> None:
     options = _regex_parser().parse_args(args)
 
-    process = session.require_process("regex")
+    process = session.require_process("scan:regex")
 
     if options.length < 1:
         raise CommandError("--length must be at least 1 byte.")
@@ -707,7 +705,7 @@ def cmd_regex(session: Session, args: List[str]) -> None:
 
 
 def _results_parser() -> CommandParser:
-    parser = CommandParser("results")
+    parser = CommandParser("scan:results")
     parser.add_argument(
         "--limit",
         type=int,
@@ -729,12 +727,11 @@ def _results_parser() -> CommandParser:
 
 
 @command(
-    "results",
+    "scan:results",
     parser=_results_parser,
     summary="Show the current result set, re-read.",
-    usage="results [--limit N] [--offset N] [--all]",
-    group="Scanning",
-    aliases=("res",),
+    usage="scan:results [--limit N] [--offset N] [--all]",
+    aliases=("results", "res"),
     details=(
         "Reads every address again, so the VALUE column is what the target "
         "holds now, not what it held when the scan ran. The PREVIOUS column "
@@ -749,7 +746,7 @@ def cmd_results(session: Session, args: List[str]) -> None:
     options = _results_parser().parse_args(args)
 
     state = session.require_scan()
-    process = session.require_process("results")
+    process = session.require_process("scan:results")
     hex_output = bool(session.option("hex"))
 
     if options.offset < 0:
@@ -823,17 +820,17 @@ _ROWS_HELP = "row numbers from 'results', singly or as ranges: 1 4 7-9 (a '#' pr
 
 
 def _keep_parser() -> CommandParser:
-    parser = CommandParser("keep")
+    parser = CommandParser("scan:results:keep")
     parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
     return parser
 
 
 @command(
-    "keep",
+    "scan:results:keep",
     parser=_keep_parser,
     summary="Keep only the named result rows.",
-    usage="keep <row> [row ...]",
-    group="Scanning",
+    usage="scan:results:keep <row> [row ...]",
+    aliases=("keep",),
     details=(
         "Use it when you can see which candidates are real and would rather "
         "not invent a comparison that happens to exclude the others."
@@ -843,7 +840,7 @@ def _keep_parser() -> CommandParser:
 def cmd_keep(session: Session, args: List[str]) -> None:
     options = _keep_parser().parse_args(args)
     state = session.require_scan()
-    session.require_process("keep")
+    session.require_process("scan:results:keep")
     indexes = _parse_row_selection(options.rows, len(state.addresses))
     ordered = sorted(set(indexes))
 
@@ -858,24 +855,24 @@ def cmd_keep(session: Session, args: List[str]) -> None:
 
 
 def _drop_parser() -> CommandParser:
-    parser = CommandParser("drop")
+    parser = CommandParser("scan:results:drop")
     parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
     return parser
 
 
 @command(
-    "drop",
+    "scan:results:drop",
     parser=_drop_parser,
     summary="Remove the named result rows.",
-    usage="drop <row> [row ...]",
-    group="Scanning",
+    usage="scan:results:drop <row> [row ...]",
+    aliases=("drop",),
     details="The inverse of 'keep'. Ranges work the same way.",
     examples=("drop 2", "drop 5-12"),
 )
 def cmd_drop(session: Session, args: List[str]) -> None:
     options = _drop_parser().parse_args(args)
     state = session.require_scan()
-    session.require_process("drop")
+    session.require_process("scan:results:drop")
     removed = set(_parse_row_selection(options.rows, len(state.addresses)))
     remaining = [index for index in range(len(state.addresses)) if index not in removed]
 
@@ -890,16 +887,15 @@ def cmd_drop(session: Session, args: List[str]) -> None:
 
 
 def _reset_parser() -> CommandParser:
-    return CommandParser("reset")
+    return CommandParser("scan:results:clear")
 
 
 @command(
-    "reset",
+    "scan:results:clear",
     parser=_reset_parser,
     summary="Discard the current scan results.",
-    usage="reset",
-    group="Scanning",
-    aliases=("unscan",),
+    usage="scan:results:clear",
+    aliases=("reset", "unscan"),
     details=(
         "Takes no arguments.\n\n"
         "Clears the result set so the next 'scan' starts a fresh cycle. The "

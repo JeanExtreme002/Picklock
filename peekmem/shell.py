@@ -23,7 +23,14 @@ from typing import Iterable, List, Optional, Sequence, TextIO, Tuple
 from PyMemoryEditor import PyMemoryEditorError
 
 from . import __version__, valuetypes
-from .commands import all_commands, command_words, lookup, option_words
+from .commands import (
+    all_commands,
+    children,
+    command_words,
+    lookup,
+    namespaces,
+    option_words,
+)
 from .errors import CommandError, ExitShell
 from .output import Printer
 from .session import SETTINGS, Session
@@ -37,6 +44,10 @@ _LEADING_WORD = re.compile(r"\s*(\S+)\s*(.*)", re.DOTALL)
 #: Asking a command for its own help is a reflex worth honouring — nobody
 #: should have to learn that this shell spells it 'help <command>'.
 _HELP_FLAGS = frozenset(("-h", "--help", "-?"))
+
+
+class _Handled(Exception):
+    """Internal: the line was dealt with and needs no further dispatch."""
 
 
 class Shell:
@@ -99,7 +110,7 @@ class Shell:
             if parsed is None:
                 return True
             word, args = parsed
-            entry = lookup(word)
+            entry = self._resolve(word, args)
 
             if any(argument in _HELP_FLAGS for argument in args):
                 lookup("help").handler(self.session, [entry.name])
@@ -110,6 +121,8 @@ class Shell:
 
         except ExitShell:
             raise
+        except _Handled:
+            return True
         except CommandError as error:
             if raise_errors:
                 raise
@@ -129,6 +142,40 @@ class Shell:
                 raise CommandError(str(error))
             self.printer.error(str(error))
             return False
+
+    def _resolve(self, word: str, args: Sequence[str]):
+        """Resolve a command word, treating a bare namespace as a request to list it.
+
+        ``memory`` is not a command, but in a namespaced shell it is an obvious
+        thing to type — so it prints what lives under it rather than a "no such
+        command". With arguments it is a mistake worth naming precisely: the
+        user almost always meant the colon.
+        """
+        try:
+            return lookup(word)
+        except CommandError:
+            head = word.strip().lower()
+            if not children(head):
+                raise
+
+            if not args:
+                from .commands.session_commands import print_namespace
+
+                print_namespace(self.session, head)
+                raise _Handled()
+
+            candidate = f"{head}:{args[0]}"
+            try:
+                lookup(candidate)
+            except CommandError:
+                raise CommandError(
+                    f"{head!r} is a namespace, not a command. "
+                    f"Type 'help {head}' to see what is in it."
+                )
+            raise CommandError(
+                f"{head!r} is a namespace: the command is spelled "
+                f"{candidate!r}, with a colon."
+            )
 
     def run_lines(self, lines: Iterable[str], *, raise_errors: bool = False) -> int:
         """Run a sequence of lines, returning a process exit status."""
@@ -256,7 +303,11 @@ class Shell:
         first_word = not buffer[: len(buffer) - len(text)].strip()
 
         if first_word:
-            candidates: Sequence[str] = command_words()
+            # Namespaces complete too, so tabbing from nothing shows the five
+            # groups before it shows forty commands.
+            candidates: Sequence[str] = command_words() + [
+                name + ":" for name in namespaces()
+            ]
         else:
             head = buffer.strip().split()[0].lower()
             if head == "set":

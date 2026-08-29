@@ -106,15 +106,57 @@ def test_interactive_loop_reads_until_eof(shell, capture, monkeypatch):
     assert "Bye" in capture.out
 
 
-def test_ctrl_c_at_the_prompt_does_not_quit(shell, capture, monkeypatch):
-    answers = iter([KeyboardInterrupt, "exit"])
+def test_ctrl_c_at_the_prompt_quits(shell, capture, monkeypatch):
+    """As in the mysql client: an interrupt at the prompt ends the session."""
 
     def fake_input(prompt=""):
-        value = next(answers)
-        if value is KeyboardInterrupt:
-            raise KeyboardInterrupt
-        return value
+        raise KeyboardInterrupt
 
     monkeypatch.setattr("builtins.input", fake_input)
+    assert shell.interact(banner=False) == 130
+    assert "^C" in capture.out
+    assert "Bye" in capture.out
+
+
+def test_ctrl_d_quits_with_a_zero_status(shell, capture, monkeypatch):
+    def fake_input(prompt=""):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    assert shell.interact(banner=False) == 0
+    assert "Bye" in capture.out
+
+
+def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypatch):
+    """Interrupting a long scan must not also end the session.
+
+    One keystroke abandons the command; a second one, now at the prompt, is
+    what leaves. Losing the shell — and the scan results in it — on the
+    keystroke that stops a scan would make the results unreachable.
+    """
+    from peekmem.commands import Command, lookup
+
+    def interrupted(session, args):
+        raise KeyboardInterrupt
+
+    real_lookup = lookup
+
+    def fake_lookup(name):
+        entry = real_lookup(name)
+        if entry.name == "version":
+            return Command(
+                name=entry.name,
+                handler=interrupted,
+                summary=entry.summary,
+                usage=entry.usage,
+                group=entry.group,
+            )
+        return entry
+
+    monkeypatch.setattr("peekmem.shell.lookup", fake_lookup)
+
+    lines = iter(["version", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
+
     assert shell.interact(banner=False) == 0
     assert "^C" in capture.out

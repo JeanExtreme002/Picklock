@@ -124,7 +124,7 @@ def _print_overview(session: Session) -> None:
         "description, including every argument and flag it accepts."
     )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
-    printer.write("End the session with 'exit', Ctrl+D, or \\q.")
+    printer.write("End the session with 'exit', Ctrl+C, Ctrl+D, or \\q.")
     printer.write()
 
 
@@ -381,7 +381,14 @@ def _exit_parser() -> CommandParser:
     aliases=("quit", "\\q"),
     details=(
         "Takes no arguments.\n\n"
-        "Detaches from the target first. Ctrl+D does the same thing."
+        "Detaches from the target first. Ctrl+C and Ctrl+D at the prompt do "
+        "the same thing, except for the status they exit with: 130 for "
+        "Ctrl+C, the conventional 'interrupted' value, and 0 for the other "
+        "two.\n\n"
+        "Ctrl+C means something different *during* a command — it abandons "
+        "that command and returns to the prompt, keeping whatever a scan had "
+        "already found. So interrupting a scan costs one keystroke and "
+        "leaving costs two."
     ),
 )
 def cmd_exit(session: Session, args: List[str]) -> None:

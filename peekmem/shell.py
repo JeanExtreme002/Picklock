@@ -159,11 +159,16 @@ class Shell:
             f"Welcome to Peekmem {__version__}, a terminal client for "
             f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
             "Commands end with a newline. Type 'help' for the command list, "
-            "'help scanning' for a walkthrough, 'exit' to quit.\n"
+            "'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.\n"
         )
 
     def interact(self, *, banner: bool = True) -> int:
-        """Run the shell until ``exit``, Ctrl+D, or the input runs out."""
+        """Run the shell until ``exit``, Ctrl+C, Ctrl+D, or the input runs out.
+
+        Ctrl+C returns 130 — the conventional "terminated by SIGINT" status —
+        while ``exit`` and Ctrl+D return 0. All three are ordinary ways to
+        leave; only the status distinguishes them.
+        """
         if banner:
             self.printer.write(self.banner())
 
@@ -175,9 +180,14 @@ class Shell:
                 try:
                     line = input(self.prompt())
                 except KeyboardInterrupt:
-                    # Ctrl+C at the prompt abandons the line, as in mysql.
+                    # Ctrl+C at the prompt quits, as it does in the mysql
+                    # client. During a *command* it means something else —
+                    # abandon that command and come back here (see run_line) —
+                    # so interrupting a long scan still costs one keystroke
+                    # and leaving costs two.
                     self.printer.write("^C")
-                    continue
+                    status = 130
+                    break
                 except EOFError:
                     self.printer.write()
                     break

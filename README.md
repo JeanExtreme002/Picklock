@@ -18,6 +18,7 @@ A **terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMem
   <a href="https://pypi.org/project/peekmem/"><img src="https://img.shields.io/pypi/v/peekmem" alt="PyPI" /></a>
   <a href="https://github.com/JeanExtreme002/Peekmem/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/peekmem" alt="License" /></a>
   <a href="https://github.com/JeanExtreme002/Peekmem"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2" alt="Python Version" /></a>
+  <a href="https://codecov.io/gh/JeanExtreme002/Peekmem"><img src="https://codecov.io/gh/JeanExtreme002/Peekmem/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://pypi.org/project/peekmem/"><img src="https://static.pepy.tech/personalized-badge/peekmem?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads" alt="Downloads" /></a>
 </p>
 
@@ -211,18 +212,26 @@ operating systems at once.
 
 ## Contributing
 
-Issues and pull requests are welcome. To work on Peekmem:
+Issues and pull requests are welcome.
 
 ```bash
 git clone https://github.com/JeanExtreme002/Peekmem
 cd Peekmem
-pip install -e ".[dev]"
-pytest
-flake8 peekmem tests
-mypy peekmem
+make install-dev      # pip install -e ".[dev]"
+make pre-commit       # lint + type-check + tests
 ```
 
-The test suite never attaches to another process, so it runs anywhere.
+`make help` lists every target. The test suite never attaches to another
+process, so it runs anywhere — including CI runners that would refuse.
+
+[**CONTRIBUTING.md**](CONTRIBUTING.md) covers the project layout, the two rules
+that keep its shape, and how to add a command (it is one decorator, and `help`
+plus the tests come along for free).
+
+- 🐛 [Report a bug](https://github.com/JeanExtreme002/Peekmem/issues/new?template=bug_report.md)
+- 💡 [Request a feature](https://github.com/JeanExtreme002/Peekmem/issues/new?template=feature_request.md)
+- 🔒 [Security policy](SECURITY.md) — please do **not** open a public issue
+- 🤝 [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
 

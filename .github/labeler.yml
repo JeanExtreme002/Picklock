@@ -1,0 +1,48 @@
+# Path-based labels applied to PRs by .github/workflows/labeler.yml.
+# Uses actions/labeler@v5 match rules.
+
+# The command layer — where a new command or a change to an existing one lands.
+commands:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "peekmem/commands/**"
+
+# The shell itself: line parsing, dispatch, readline, the CLI front end.
+shell:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "peekmem/shell.py"
+          - "peekmem/cli.py"
+
+# Everything that decides how a result looks on screen.
+output:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "peekmem/output.py"
+          - "peekmem/valuetypes.py"
+
+# Any change inside the package.
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "peekmem/**"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "SECURITY.md"
+          - "CODE_OF_CONDUCT.md"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "Makefile"
+          - "codecov.yml"

@@ -71,7 +71,24 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     - name: Run tests
-      run: pytest -q
+      # --cov-fail-under is the real, in-repo coverage gate: deterministic and
+      # independent of any external service. It is a conservative floor — the
+      # suite measures ~60% today, and the gap is almost entirely command
+      # bodies that need a live target the suite deliberately never attaches
+      # to. Ratchet it up as fake-target coverage grows.
+      run: |
+        pytest -q --cov=peekmem --cov-report=term --cov-report=xml --cov-fail-under=55
+    - name: Upload coverage to Codecov
+      # Informational only — see codecov.yml — so a flaky upload never blocks
+      # the merge; the hard gate is --cov-fail-under above. Runs even when the
+      # tests fail so partial coverage stays visible.
+      if: always()
+      uses: codecov/codecov-action@v5
+      with:
+        files: ./coverage.xml
+        flags: ${{ runner.os }}-py${{ matrix.python-version }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
     - name: Check the console script starts
       # The suite calls main() in-process; this proves the installed entry
       # point resolves and that a batch run exits cleanly.

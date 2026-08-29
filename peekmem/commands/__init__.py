@@ -355,7 +355,11 @@ def top_level() -> List[Command]:
 
 
 def top_level_listing() -> List[Tuple[str, str]]:
-    """Every word you can type first, as ``(signature, summary)`` pairs.
+    """Every word you can type first, as ``(name, summary)`` pairs.
+
+    Names only — no arguments, no flags. This listing answers "what is there?",
+    and an answer to that question is not improved by also answering "and what
+    does each one take?", which is what ``<command>:help`` is for.
 
     The distinction the code keeps — a namespace is a prefix, a command is a
     thing that runs — is not one the reader has to carry. To them ``ps`` and
@@ -363,7 +367,7 @@ def top_level_listing() -> List[Tuple[str, str]]:
     either one is how you find out that the first has more underneath.
     """
     rows = [(name, namespace_summary(name)) for name in namespaces()]
-    rows += [(entry.usage, entry.summary) for entry in top_level()]
+    rows += [(entry.name, entry.summary) for entry in top_level()]
     return sorted(rows)
 
 

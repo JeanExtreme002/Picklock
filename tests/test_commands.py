@@ -154,6 +154,22 @@ def test_the_overview_shows_layers_not_every_command(shell, capture):
         assert word in out
 
 
+def test_the_overview_lists_names_only(shell, capture):
+    """It answers "what is there?" — arguments are what <command>:help is for."""
+    shell.run_line("help")
+    listing = [
+        line
+        for line in capture.out.splitlines()
+        if line.startswith("    ") and not line.startswith("        ")
+    ]
+    assert listing, "the command listing went missing"
+    for line in listing:
+        label = line.strip().split("  ")[0]
+        assert not any(
+            mark in label for mark in ("[", "<", "--")
+        ), f"the overview shows arguments: {label!r}"
+
+
 @pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
 def test_namespace_help_lists_that_layer(shell, capture, namespace):
     shell.run_line(f"{namespace}:help")

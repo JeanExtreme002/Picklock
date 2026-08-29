@@ -190,7 +190,7 @@ def _print_overview(session: Session) -> None:
         render_definitions(
             top_level_listing(),
             indent=4,
-            label_width=24,
+            label_width=12,
             total_width=_LISTING_WIDTH,
         )
     )

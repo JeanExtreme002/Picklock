@@ -1,23 +1,83 @@
-# Python
+# Byte-compiled / cached
 __pycache__/
 *.py[cod]
-*.egg-info/
-.eggs/
+*$py.class
+
+# Build / packaging
 build/
+.build/
 dist/
-.venv/
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+*.tar.gz
+pip-log.txt
+pip-delete-this-directory.txt
+MANIFEST
+
+# Virtual environments
 venv/
+.venv/
+env/
+ENV/
 
-# Tooling
+# Testing & coverage
 .pytest_cache/
-.mypy_cache/
+*.pytest_cache
 .coverage
-coverage.xml
+.coverage.*
 htmlcov/
+coverage.xml
+*.cover
+.tox/
+.nox/
+.hypothesis/
 
-# OS
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# IDEs / editors
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-*
+.spyderproject
+.spyproject
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# OS-specific cruft
 .DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+.directory
 
-# Peekmem
-.peekmem_history
-*.peek.json
+# Toolchain / version pinning state
+.tool-versions
+.python-version
+
+# Local environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs / temporary
+*.log
+*.tmp
+
+# Sphinx / docs build output
+docs/_build/
+
+# Project-local
+.claude/

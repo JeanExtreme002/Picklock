@@ -28,9 +28,8 @@ from . import (
     describe_action,
     lookup,
     namespace,
-    namespace_summary,
     namespaces,
-    top_level,
+    top_level_listing,
 )
 
 _ADDRESS_TOPIC = """\
@@ -171,11 +170,12 @@ def _print_example(session: Session, example: str, *, indent: int = 0) -> None:
 
 
 def _print_overview(session: Session) -> None:
-    """The top layer: the four subjects, and the words that drive the shell.
+    """The top layer: every word you can type first, and nothing below it.
 
-    Deliberately not a list of every command. Thirty-five lines is a wall to
-    read past, not an answer; four namespaces and seven commands is something
-    you can take in, with one obvious move to get deeper.
+    Deliberately not a list of all thirty-odd commands. A wall is not an
+    answer; ten lines is something you can take in, with one obvious move to
+    get deeper — and a command that takes a subcommand says so in its
+    signature rather than in a paragraph about namespaces.
     """
     printer = session.printer
 
@@ -184,38 +184,26 @@ def _print_overview(session: Session) -> None:
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    printer.write("peekmem namespaces: (get help with <namespace>:help)")
+    printer.write("peekmem commands: (get help with <command>:help)")
     printer.write()
     printer.write(
         render_definitions(
-            [(name, namespace_summary(name)) for name in namespaces()],
+            top_level_listing(),
             indent=4,
-            label_width=12,
+            label_width=24,
             total_width=_LISTING_WIDTH,
         )
     )
     printer.write()
 
-    # The example belongs *inside* the namespaces block: it is what typing one
-    # of those namespaced commands looks like, not a preamble to the page.
+    # The example sits inside the listing: it is what typing one of these
+    # looks like, not a preamble to the page.
     _print_example(
         session,
         "peekmem> ps:open 4242\n"
         "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)",
         indent=4,
     )
-
-    printer.write("peekmem commands: (get help with help COMMAND)")
-    printer.write()
-    printer.write(
-        render_definitions(
-            [(entry.name, entry.summary) for entry in top_level()],
-            indent=4,
-            label_width=12,
-            total_width=_LISTING_WIDTH,
-        )
-    )
-    printer.write()
 
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
     printer.write()
@@ -244,7 +232,7 @@ def print_namespace(session: Session, prefix: str) -> bool:
         printer.write()
         _print_example(session, declared.example)
 
-    printer.write(f"{head} commands: (get help with {head}:help SUBCOMMAND)")
+    printer.write(f"{head} commands: (get help with {head}:COMMAND:help)")
     printer.write()
     printer.write(
         render_definitions(

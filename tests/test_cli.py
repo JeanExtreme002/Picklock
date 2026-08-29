@@ -117,11 +117,12 @@ def test_version_flag():
 
 
 def test_help_lists_the_layers_not_every_command(capsys):
-    """--help mirrors the shell's own overview: namespaces, then shell commands."""
+    """--help mirrors the shell's own overview: one list of first words."""
     text = build_parser().format_help()
-    for namespace in ("process", "memory", "scan", "pointer"):
-        assert namespace in text
-    for name in ("help", "set", "version", "exit"):
+    for signature in ("ps:COMMAND", "memory:COMMAND", "scan:COMMAND", "pointer:COMMAND"):
+        assert signature in text
+    for name in ("help", "config", "version", "exit"):
         assert name in text
-    assert "<name>:help" in text
-    assert "ptrscan" not in text, "the deeper layers are reached, not dumped"
+    assert "<command>:help" in text
+    assert "memory:read" not in text, "the deeper layer is reached, not dumped"
+    assert "namespace" not in text.lower()

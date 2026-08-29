@@ -127,10 +127,11 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 
 ## What it can do
 
-The help is layered. `help` shows four namespaces and the handful of commands
-that drive the shell — not a wall of forty. Each namespace then documents
-itself: a usage line, a worked example, and its commands with the arguments
-they take.
+The help is layered. `help` shows the words you can type first — ten lines,
+not a wall of forty — and `<command>:help` opens any of them. A command that
+takes a subcommand says so in its signature (`scan:COMMAND`) and documents
+itself with a usage line, a worked example, and its commands with the
+arguments they take.
 
 ```console
 peekmem> scan:help
@@ -151,7 +152,7 @@ Example:
     +-----+--------------------+-------+
     1 row in set (0.02 sec)
 
-scan commands: (get help with scan:help SUBCOMMAND)
+scan commands: (get help with scan:COMMAND:help)
 
     scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
     scan:drop <row> [row ...]                    Remove the named result rows.
@@ -163,14 +164,15 @@ scan commands: (get help with scan:help SUBCOMMAND)
     scan:value <type> [value] [--op OP]...       Search the whole address space for a value.
 ```
 
-`scan:help aob` describes one command. Names go two levels at most, so there
-is never a third listing to walk.
+Every command answers `:help`, at any depth — `scan:help`, `scan:aob:help`,
+`clear:help` — so there is one rule and nothing to learn about which words are
+which. Names go two levels at most, so there is never a third listing to walk.
 
-A namespace is never a command: typing `scan` prints its page and runs
-nothing, whichever way you ask — `scan`, `scan --help`, `scan:help` and
-`help scan` all produce the same output.
+A command that takes a subcommand never runs anything itself: typing `scan`
+prints its page, whichever way you ask — `scan`, `scan --help`, `scan:help`
+and `help scan` all produce the same output.
 
-| Namespace | Commands |
+| Command | Subcommands |
 | --- | --- |
 | **`ps:`** | `list` · `open` · `close` · `info` |
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |

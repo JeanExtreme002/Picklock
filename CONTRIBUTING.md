@@ -83,10 +83,14 @@ Two rules keep the shape:
 
 1. Pick the module in `peekmem/commands/` that matches the namespace.
 2. Register the handler. The name is a colon-separated path whose first
-   segment is one of the namespaces in `NAMESPACES`; the group in `help`
-   follows from it, so there is nothing to keep in step. Do **not** give it a
-   plain-word alias: two namespaces could each want `read`, and a test enforces
+   segment is one of the groups in `NAMESPACES`; the heading in `help` follows
+   from it, so there is nothing to keep in step. Do **not** give it a
+   plain-word alias: two groups could each want `read`, and a test enforces
    that namespaced commands have none.
+
+   Note the word *namespace* is internal. To the reader there are only
+   commands, some of which take a subcommand — a test sweeps every help page,
+   topic and error to keep the word out of what they see.
 
    A name with no colon is a **top-level** command, reserved for the shell's
    own vocabulary (`help`, `set`, `exit`). Anything that touches the target
@@ -143,9 +147,10 @@ Two rules keep the shape:
    buys tidiness at the cost of a listing that has to be walked twice to be
    read once.
 
-   `<namespace>:help` is a dispatcher convention rather than a registered
-   command, so it works for every namespace without one `help` command per
-   namespace cluttering the listings it exists to print.
+   `<command>:help` is a dispatcher convention rather than a registered
+   command, so it answers for every command at every depth — `memory:help`,
+   `memory:read:help`, `clear:help` — without one `help` command per group
+   cluttering the listings it exists to print.
 
 3. Use `CommandParser`, not a bare `ArgumentParser`: it raises instead of
    calling `sys.exit`, which would kill the shell on a typo.

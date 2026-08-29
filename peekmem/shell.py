@@ -143,51 +143,70 @@ class Shell:
             return False
 
     def _resolve(self, word: str, args: Sequence[str]):
-        """Resolve a command word, answering every namespace question the same way.
+        """Resolve a command word, answering ``:help`` for anything at all.
 
-        A namespace is not a command and never runs anything. Naming one —
-        ``scan``, ``scan --help``, ``scan:help``, or ``help scan`` — prints its
-        page, all four spellings producing the same output, because a reader
-        who tries one of them has already told you what they want.
+        Every command answers ``<command>:help`` — ``memory:help`` lists what
+        ``memory`` takes, ``memory:read:help`` describes that one, ``clear:help``
+        describes ``clear``. One rule, no exceptions to learn, and no need for
+        the reader to know that some of those words are prefixes rather than
+        actions.
 
-        With arguments that are not a help flag it is a mistake worth naming
-        precisely: the user almost always meant the colon.
+        A word that only takes a subcommand prints its listing when typed alone
+        (``memory``, ``memory --help``) and never runs anything. With other
+        arguments it is a mistake worth naming precisely: the colon was meant.
         """
         head = word.strip().lower()
         wants_help = bool(args) and all(item in _HELP_FLAGS for item in args)
 
-        # '<namespace>:help [command]' — the form the listings advertise.
-        if head.endswith(":help") and head[: -len(":help")] in namespaces():
-            prefix = head[: -len(":help")]
-            if args and not wants_help:
-                # 'scan:help aob' describes one command; it must not run it.
-                target = lookup(f"{prefix}:{args[0]}")
-                lookup("help").handler(self.session, [target.name])
+        if head.endswith(":help"):
+            subject = head[: -len(":help")]
+
+            if subject in namespaces():
+                # 'memory:help read' describes one of them, as the listing says.
+                if args and not wants_help:
+                    self._show_help(lookup(f"{subject}:{args[0]}"))
+                    raise _Handled()
+                self._show_listing(subject)
                 raise _Handled()
-            head, args = prefix, ()
+
+            try:
+                target = lookup(subject)
+            except CommandError:
+                pass
+            else:
+                self._show_help(target)
+                raise _Handled()
 
         if head.rstrip(":") in namespaces():
-            namespace_name = head.rstrip(":")
+            parent = head.rstrip(":")
             if not args or wants_help:
-                from .commands.session_commands import print_namespace
-
-                print_namespace(self.session, namespace_name)
+                self._show_listing(parent)
                 raise _Handled()
 
-            candidate = f"{namespace_name}:{args[0]}"
+            candidate = f"{parent}:{args[0]}"
             try:
                 lookup(candidate)
             except CommandError:
                 raise CommandError(
-                    f"{namespace_name!r} is a namespace, not a command. "
-                    f"Type '{namespace_name}:help' to see what is in it."
+                    f"{parent!r} takes a subcommand. "
+                    f"Type '{parent}:help' to see them."
                 )
             raise CommandError(
-                f"{namespace_name!r} is a namespace: the command is spelled "
+                f"{parent!r} takes a subcommand: the command is spelled "
                 f"{candidate!r}, with a colon."
             )
 
         return lookup(word)
+
+    def _show_help(self, entry) -> None:
+        """Print one command's help page."""
+        lookup("help").handler(self.session, [entry.name])
+
+    def _show_listing(self, prefix: str) -> None:
+        """Print the commands a prefix takes."""
+        from .commands.session_commands import print_namespace
+
+        print_namespace(self.session, prefix)
 
     def run_lines(self, lines: Iterable[str], *, raise_errors: bool = False) -> int:
         """Run a sequence of lines, returning a process exit status."""

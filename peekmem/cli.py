@@ -23,7 +23,7 @@ from typing import List, Optional, Sequence
 import PyMemoryEditor
 
 from . import __version__, dependencies
-from .commands import namespace_summary, namespaces, top_level
+from .commands import top_level_listing
 from .errors import CommandError, PeekmemError
 from .output import Printer
 from .session import Session
@@ -33,23 +33,17 @@ from .shell import Shell
 def _format_commands() -> str:
     """The same layered summary the shell's own ``help`` prints.
 
-    Namespaces and the shell's own commands, with one move to go deeper —
-    rather than every command at once, which is a wall rather than an answer.
+    Every word you can type first, and nothing below it — rather than all
+    thirty-odd commands at once, which is a wall rather than an answer.
     """
-    lines: List[str] = [
-        "Namespaces — run 'peekmem <name>:help' to list what is in one:",
-        "",
-    ]
-    for name in namespaces():
-        lines.append(f"  {name.ljust(10)}  {namespace_summary(name)}")
+    rows = top_level_listing()
+    width = max(len(signature) for signature, _ in rows)
 
-    lines += ["", "Commands:", ""]
-    for entry in top_level():
-        lines.append(f"  {entry.name.ljust(10)}  {entry.summary}")
-
+    lines: List[str] = ["peekmem commands:", ""]
+    lines += [f"  {signature.ljust(width)}  {summary}" for signature, summary in rows]
     lines += [
         "",
-        "Run 'peekmem <command> --help' for one command's arguments, or",
+        "Run 'peekmem <command>:help' for what a command takes, or",
         "'peekmem help' for the topics ('types', 'address', 'scanning').",
     ]
     return "\n".join(lines)

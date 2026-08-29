@@ -354,6 +354,19 @@ def top_level() -> List[Command]:
     return [entry for entry in all_commands() if entry.is_top_level]
 
 
+def top_level_listing() -> List[Tuple[str, str]]:
+    """Every word you can type first, as ``(signature, summary)`` pairs.
+
+    The distinction the code keeps — a namespace is a prefix, a command is a
+    thing that runs — is not one the reader has to carry. To them ``ps`` and
+    ``clear`` are both commands; one happens to take a subcommand, which the
+    ``ps:COMMAND`` signature says without naming a concept.
+    """
+    rows = [(f"{name}:COMMAND", namespace_summary(name)) for name in namespaces()]
+    rows += [(entry.usage, entry.summary) for entry in top_level()]
+    return sorted(rows)
+
+
 def namespace(name: str) -> Optional[Namespace]:
     """The declared namespace called ``name``, if there is one."""
     return _NAMESPACES_BY_NAME.get(name.strip().lower().rstrip(":"))
@@ -492,4 +505,5 @@ __all__ = (
     "paginate",
     "usage_token",
     "top_level",
+    "top_level_listing",
 )

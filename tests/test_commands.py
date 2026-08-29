@@ -58,11 +58,11 @@ def test_a_bare_namespace_lists_it(shell, capture, namespace):
 
 
 @pytest.mark.parametrize("line", ["scan int32 100", "pointer 0x10"])
-def test_a_namespace_never_runs_anything(shell, line):
-    """A namespace names a subject, not an action — with or without arguments."""
+def test_a_parent_command_never_runs_anything(shell, line):
+    """A word that takes a subcommand is not itself an action."""
     with pytest.raises(CommandError) as error:
         shell.run_line(line, raise_errors=True)
-    assert "is a namespace" in str(error.value)
+    assert "takes a subcommand" in str(error.value)
 
 
 def test_clear_leaves_the_session_alone(shell, capture):
@@ -148,7 +148,10 @@ def test_the_overview_shows_layers_not_every_command(shell, capture):
     # names ones that do not.
     for hidden in ("memory:regions", "scan:keep", "pointer:save"):
         assert hidden not in out
-    assert "<namespace>:help" in out
+    assert "<command>:help" in out
+    # Parents and leaves sit in one list; only the signature tells them apart.
+    assert "memory:COMMAND" in out
+    assert "clear" in out
 
 
 @pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
@@ -186,9 +189,9 @@ def test_a_namespace_with_arguments_points_at_the_colon(shell, capture):
     assert "'memory:read'" in capture.err
 
 
-def test_a_namespace_with_nonsense_arguments_is_still_explained(shell, capture):
+def test_a_parent_with_nonsense_arguments_is_still_explained(shell, capture):
     assert shell.run_line("memory nonsense") is False
-    assert "namespace" in capture.err
+    assert "takes a subcommand" in capture.err
     assert "memory:help" in capture.err
 
 
@@ -518,3 +521,48 @@ def test_a_scan_preview_pages_through_scan_results(session, capture):
 
     assert "Showing 2 of 3 rows" in capture.out
     assert "Next page: scan:results --offset 2" in capture.out
+
+
+def test_the_word_namespace_never_reaches_the_reader(shell, capture):
+    """It is an implementation detail, not something to teach.
+
+    Everything the shell prints — the overview, the topics, every command's
+    page, the errors — talks about commands and subcommands only. Swept over
+    all of it rather than a sample, because the word leaks back one string at
+    a time.
+    """
+    lines = ["help", "help types", "help address", "help scanning"]
+    lines += [f"{name}:help" for name in namespaces()]
+    lines += [f"{entry.name}:help" for entry in COMMANDS]
+    lines += ["memory nonsense", "memory read 0x10"]
+
+    for line in lines:
+        capture.reset()
+        shell.run_line(line)
+        combined = (capture.out + capture.err).lower()
+        assert "namespace" not in combined, f"{line!r} says 'namespace'"
+
+
+@pytest.mark.parametrize(
+    "line,expected",
+    [
+        ("memory:help", "usage: memory[:COMMAND]"),
+        ("memory:read:help", "memory:read — Read a typed value"),
+        ("scan:results:help", "scan:results — Show the current result set"),
+        ("clear:help", "clear — Clear the terminal"),
+        ("version:help", "version — Print the Peekmem"),
+        ("help:help", "help — List the commands"),
+    ],
+)
+def test_every_command_answers_colon_help(shell, capture, line, expected):
+    """One rule for asking about anything, with no exceptions to learn."""
+    shell.run_line(line)
+    assert capture.out.startswith(expected)
+    assert capture.err == ""
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_colon_help_works_for_every_registered_command(entry, shell, capture):
+    shell.run_line(f"{entry.name}:help")
+    assert entry.summary in capture.out
+    assert capture.err == ""

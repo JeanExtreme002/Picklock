@@ -93,14 +93,13 @@ def _deref_parser() -> CommandParser:
     parser=_deref_parser,
     summary="Walk a pointer chain and print the address it lands on.",
     usage="pointer:deref <base> [offset ...]",
-    aliases=("deref", "resolve"),
     details=(
         "Reads the pointer at BASE, adds the first offset, reads the pointer "
         "there, and so on; the last offset is added without a final read — the "
         "Cheat Engine convention, so a chain copied from a cheat table works "
         "unchanged."
     ),
-    examples=("deref game.exe+0x1a2b3c 0x10 0x8", "deref 0x7ffee3a01000 0x18"),
+    examples=("pointer:deref game.exe+0x1a2b3c 0x10 0x8", "pointer:deref 0x7ffee3a01000 0x18"),
 )
 def cmd_deref(session: Session, args: List[str]) -> None:
     options = _deref_parser().parse_args(args)
@@ -161,16 +160,15 @@ def _pointer_parser() -> CommandParser:
     parser=_pointer_parser,
     summary="Read or write the value at the end of a pointer chain.",
     usage="pointer:read <base> [offset ...] [--type T] [--length N] [--write VALUE]",
-    aliases=("pointer", "ptr"),
     details=(
-        "The one-line form of 'deref' followed by 'read'.\n\n"
+        "The one-line form of 'pointer:deref' followed by 'memory:read'.\n\n"
         "The chain is re-walked on every call, which is the point: it keeps "
         "working after the target reallocates whatever the last link pointed "
         "at."
     ),
     examples=(
-        "pointer game.exe+0x1a2b3c 0x10 0x8 --type int32",
-        "pointer game.exe+0x1a2b3c 0x10 --write 999",
+        "pointer:read game.exe+0x1a2b3c 0x10 0x8 --type int32",
+        "pointer:read game.exe+0x1a2b3c 0x10 --write 999",
     ),
 )
 def cmd_pointer(session: Session, args: List[str]) -> None:
@@ -277,19 +275,18 @@ def _ptrscan_parser() -> CommandParser:
     parser=_ptrscan_parser,
     summary="Find static pointer paths that reach an address.",
     usage="pointer:scan <address> [--depth N] [--max-offset N] [--max N] [--unaligned] [--all-regions]",
-    aliases=("ptrscan", "pointerscan"),
     details=(
         "Builds a map of every pointer in the target and walks it backwards "
         "from ADDRESS until it reaches a static base inside a module. The "
-        "paths found replace whatever 'paths' was showing.\n\n"
+        "paths found replace whatever 'pointer:paths' was showing.\n\n"
         "This is the expensive command in Peekmem: minutes and hundreds of "
         "megabytes on a large target. Ctrl+C stops it and keeps the paths "
         "found so far.\n\n"
         "A path is only worth trusting once it has survived a restart: save "
         "the paths, restart the target, find the address again, and run "
-        "'ptrrescan' — see 'help ptrrescan'."
+        "'pointer:rescan' — see 'help pointer:rescan'."
     ),
-    examples=("ptrscan #1", "ptrscan 0x7ffee3a01000 --depth 4 --max 200"),
+    examples=("pointer:scan #1", "pointer:scan 0x7ffee3a01000 --depth 4 --max 200"),
 )
 def cmd_ptrscan(session: Session, args: List[str]) -> None:
     options = _ptrscan_parser().parse_args(args)
@@ -362,10 +359,10 @@ def _paths_parser() -> CommandParser:
     parser=_paths_parser,
     summary="Show the pointer paths currently held.",
     usage="pointer:paths [--limit N] [--all]",
-    aliases=("paths",),
     details=(
-        "Lists the paths from the last 'ptrscan', 'ptrload', 'ptrrescan' or "
-        "'ptrdiff'. TARGET is where each one resolves right now, so a path "
+        "Lists the paths from the last 'pointer:scan', 'pointer:load', "
+        "'pointer:rescan' or 'pointer:diff'. TARGET is where each one resolves "
+        "right now, so a path "
         "that has gone stale shows as '(unresolved)'."
     ),
 )
@@ -374,7 +371,7 @@ def cmd_paths(session: Session, args: List[str]) -> None:
 
     session.require_process("pointer:paths")
     if not session.pointer_paths:
-        raise CommandError('No pointer paths. Run "ptrscan <address>" first.')
+        raise CommandError('No pointer paths. Run "pointer:scan <address>" first.')
 
     limit = None if options.all else session.display_limit(options.limit)
     _print_paths(session, session.pointer_paths, limit=limit)
@@ -391,13 +388,12 @@ def _ptrsave_parser() -> CommandParser:
     parser=_ptrsave_parser,
     summary="Save the current pointer paths to a file.",
     usage="pointer:save <file>",
-    aliases=("ptrsave",),
     details=(
         "Writes the paths as JSON, keeping the module name and module-relative "
         "offset of each base so the file survives ASLR and can be re-used "
         "after the target restarts."
     ),
-    examples=("ptrsave health.json",),
+    examples=("pointer:save health.json",),
 )
 def cmd_ptrsave(session: Session, args: List[str]) -> None:
     options = _ptrsave_parser().parse_args(args)
@@ -421,7 +417,7 @@ def cmd_ptrsave(session: Session, args: List[str]) -> None:
 
 def _ptrload_parser() -> CommandParser:
     parser = CommandParser("pointer:load")
-    parser.add_argument("file", help="path of a JSON file written by 'ptrsave'")
+    parser.add_argument("file", help="path of a JSON file written by 'pointer:save'")
     return parser
 
 
@@ -430,13 +426,12 @@ def _ptrload_parser() -> CommandParser:
     parser=_ptrload_parser,
     summary="Load pointer paths from a file.",
     usage="pointer:load <file>",
-    aliases=("ptrload",),
     details=(
         "Replaces the paths currently held. Each base is rebased onto the "
         "module addresses of the *running* target, so a file saved before a "
         "restart resolves correctly after it."
     ),
-    examples=("ptrload health.json",),
+    examples=("pointer:load health.json",),
 )
 def cmd_ptrload(session: Session, args: List[str]) -> None:
     options = _ptrload_parser().parse_args(args)
@@ -490,14 +485,13 @@ def _ptrrescan_parser() -> CommandParser:
     parser=_ptrrescan_parser,
     summary="Keep only the paths that still reach an address.",
     usage="pointer:rescan <address> [file]",
-    aliases=("ptrrescan",),
     details=(
         "The step that separates a real pointer path from a coincidence. "
         "Restart the target, find the value's new address, then rescan the "
         "saved paths against it: the ones that still land on the address are "
         "the ones that describe the structure rather than that one run."
     ),
-    examples=("ptrrescan #1", "ptrrescan 0x7ffee3a01000 health.json"),
+    examples=("pointer:rescan #1", "pointer:rescan 0x7ffee3a01000 health.json"),
 )
 def cmd_ptrrescan(session: Session, args: List[str]) -> None:
     options = _ptrrescan_parser().parse_args(args)
@@ -508,7 +502,9 @@ def cmd_ptrrescan(session: Session, args: List[str]) -> None:
     source: Any = options.file
     if source is None:
         if not session.pointer_paths:
-            raise CommandError("No pointer paths to rescan. Give a file, or run 'ptrscan'.")
+            raise CommandError(
+                "No pointer paths to rescan. Give a file, or run 'pointer:scan'."
+            )
         source = session.pointer_paths
     elif not os.path.exists(source):
         raise CommandError(f"No such file: {source}")
@@ -538,7 +534,7 @@ def _ptrdiff_parser() -> CommandParser:
     parser.add_argument(
         "files",
         nargs="*",
-        help="two or more JSON files written by 'ptrsave', one per run of the "
+        help="two or more JSON files written by 'pointer:save', one per run of the "
         "target",
     )
     return parser
@@ -549,16 +545,15 @@ def _ptrdiff_parser() -> CommandParser:
     parser=_ptrdiff_parser,
     summary="Intersect pointer-path files from several runs.",
     usage="pointer:diff <file> <file> [file ...]",
-    aliases=("ptrdiff",),
     details=(
         "Keeps only the paths present in *every* file, compared by their "
         "portable recipe (module, module offset, offsets) rather than by "
         "absolute address. Two or three runs of the same target usually leave "
         "a handful of paths standing, and those are the reliable ones.\n\n"
-        "The result replaces the paths currently held, so 'ptrsave' can write "
+        "The result replaces the paths currently held, so 'pointer:save' can write "
         "it straight back out."
     ),
-    examples=("ptrdiff run1.json run2.json", "ptrdiff run1.json run2.json run3.json"),
+    examples=("pointer:diff run1.json run2.json", "pointer:diff run1.json run2.json run3.json"),
 )
 def cmd_ptrdiff(session: Session, args: List[str]) -> None:
     options = _ptrdiff_parser().parse_args(args)

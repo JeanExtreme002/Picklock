@@ -11,11 +11,14 @@ from peekmem.shell import Shell
 @pytest.mark.parametrize(
     "line,expected",
     [
-        ("ps", ("ps", [])),
-        ("  ps  chrome ", ("ps", ["chrome"])),
-        ("ps chrome;", ("ps", ["chrome"])),
-        ("ps chrome ;;", ("ps", ["chrome"])),
-        ("write 0x10 bytes 'DE AD'", ("write", ["0x10", "bytes", "DE AD"])),
+        ("process:list", ("process:list", [])),
+        ("  process:list  chrome ", ("process:list", ["chrome"])),
+        ("process:list chrome;", ("process:list", ["chrome"])),
+        ("process:list chrome ;;", ("process:list", ["chrome"])),
+        (
+            "memory:write 0x10 bytes 'DE AD'",
+            ("memory:write", ["0x10", "bytes", "DE AD"]),
+        ),
         ("\\q", ("\\q", [])),
         ("source \\.", ("source", ["."])),
     ],
@@ -31,23 +34,23 @@ def test_blank_and_comment_lines_are_skipped(line):
 
 def test_unbalanced_quotes_are_reported():
     with pytest.raises(CommandError):
-        Shell.split("scan string 'unclosed")
+        Shell.split("scan:value string 'unclosed")
 
 
 def test_unknown_command_suggests_a_near_miss(shell, capture):
-    assert shell.run_line("scna int32 1") is False
-    assert "Did you mean 'scan'" in capture.err
+    assert shell.run_line("memory:raed 0x10") is False
+    assert "Did you mean 'memory:read'" in capture.err
 
 
 def test_a_failing_command_does_not_end_the_session(shell, capture):
-    assert shell.run_line("read 0x10") is False
+    assert shell.run_line("memory:read 0x10") is False
     assert shell.run_line("version") is True
     assert "Peekmem" in capture.out
 
 
 def test_errors_can_be_raised_instead_of_printed(shell):
     with pytest.raises(CommandError):
-        shell.run_line("read 0x10", raise_errors=True)
+        shell.run_line("memory:read 0x10", raise_errors=True)
 
 
 def test_exit_unwinds_the_loop(shell):

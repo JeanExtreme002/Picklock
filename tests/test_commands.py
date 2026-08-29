@@ -59,10 +59,11 @@ def test_a_bare_namespace_lists_it(shell, capture, namespace):
 
 
 @pytest.mark.parametrize("line", ["scan int32 100", "pointer 0x10"])
-def test_an_alias_that_shadows_a_namespace_still_runs_with_arguments(shell, line):
-    """The listing rule applies to the bare word only; the command is intact."""
-    with pytest.raises(NoProcessError):
+def test_a_namespace_never_runs_anything(shell, line):
+    """A namespace names a subject, not an action — with or without arguments."""
+    with pytest.raises(CommandError) as error:
         shell.run_line(line, raise_errors=True)
+    assert "is a namespace" in str(error.value)
 
 
 def test_clear_leaves_the_session_alone(shell, capture):
@@ -76,14 +77,15 @@ def test_clear_leaves_the_session_alone(shell, capture):
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
-def test_every_command_keeps_a_short_alias(entry):
-    """The hierarchy must cost nothing at the keyboard.
+def test_a_namespaced_command_has_no_plain_word_alias(entry):
+    """One namespace's 'read' must not claim the word from another's.
 
-    Every command has to stay reachable by a plain word — 'read', not
-    'memory:read' — or the namespacing would have made the shell worse to use.
+    Only the shell's own top-level commands keep short spellings, and those are
+    shortcuts (\\q, cls) rather than second names for a namespaced command.
     """
-    assert entry.short, f"{entry.name} has no plain-word alias"
-    assert lookup(entry.short).name == entry.name
+    if entry.is_top_level:
+        return
+    assert entry.aliases == (), f"{entry.name} still answers to {entry.aliases}"
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
@@ -189,7 +191,7 @@ def test_a_namespace_with_arguments_points_at_the_colon(shell, capture):
 def test_a_namespace_with_nonsense_arguments_is_still_explained(shell, capture):
     assert shell.run_line("memory nonsense") is False
     assert "namespace" in capture.err
-    assert "help memory" in capture.err
+    assert "memory:help" in capture.err
 
 
 def test_help_on_a_namespace_lists_it(shell, capture):
@@ -237,11 +239,15 @@ def test_namespace_help_with_a_bad_subcommand_is_reported(shell, capture):
     assert "Unknown command" in capture.err
 
 
-def test_a_namespace_shadowed_by_an_alias_still_announces_itself(shell, capture):
-    """'pointer' is both an alias and a namespace; the alias wins, loudly."""
-    shell.run_line("help pointer")
-    assert "pointer:read" in capture.out, "the alias resolves to the command"
-    assert "is also a namespace" in capture.out
+@pytest.mark.parametrize(
+    "line", ["scan", "scan --help", "scan -h", "scan:help", "help scan"]
+)
+def test_every_way_of_asking_about_a_namespace_agrees(shell, capture, line):
+    """Five spellings, one page — whichever a reader reaches for."""
+    shell.run_line(line)
+    assert capture.out.startswith("usage: scan[:COMMAND]")
+    assert "scan commands:" in capture.out
+    assert capture.err == ""
 
 
 @pytest.mark.parametrize("topic", ["pointer:", "scan:", "memory:"])
@@ -303,23 +309,24 @@ def test_usage_line_advertises_only_real_flags(entry):
 
 @pytest.mark.parametrize("flag", ["--help", "-h"])
 def test_a_command_can_be_asked_for_its_own_help(shell, capture, flag):
-    shell.run_line(f"scan {flag}")
+    shell.run_line(f"scan:value {flag}")
     assert "Search the whole address space" in capture.out
     assert "--between A B" in capture.out
 
 
 def test_help_flag_wins_over_a_bad_argument(shell, capture):
-    """'scan --help' must explain, not complain about the missing value."""
-    assert shell.run_line("scan --help") is True
+    """'scan:value --help' must explain, not complain about the missing value."""
+    assert shell.run_line("scan:value --help") is True
     assert capture.err == ""
 
 
 def test_option_words_come_from_the_parser():
     from peekmem.commands import option_words
 
-    assert "--writable" in option_words("scan")
-    assert "--between" in option_words("find")  # an alias resolves too
+    assert "--writable" in option_words("scan:value")
+    assert "--between" in option_words("scan:value")
     assert option_words("nosuchcommand") == []
+    assert option_words("scan") == [], "a namespace has no options of its own"
 
 
 def test_command_words_are_unique():
@@ -339,22 +346,22 @@ def test_examples_parse_as_commands(entry, shell):
 @pytest.mark.parametrize(
     "line",
     [
-        "read 0x10",
-        "write 0x10 int32 1",
-        "dump 0x10",
-        "regions",
-        "modules",
-        "threads",
-        "scan int32 1",
-        "aob 'DE AD'",
-        "regex abc",
-        "deref 0x10",
-        "pointer 0x10",
-        "ptrscan 0x10",
-        "alloc 16",
-        "free 0x10",
-        "watch 0x10",
-        "info",
+        "memory:read 0x10",
+        "memory:write 0x10 int32 1",
+        "memory:dump 0x10",
+        "memory:regions",
+        "memory:modules",
+        "memory:threads",
+        "scan:value int32 1",
+        "scan:aob 'DE AD'",
+        "scan:regex abc",
+        "pointer:deref 0x10",
+        "pointer:read 0x10",
+        "pointer:scan 0x10",
+        "memory:alloc 16",
+        "memory:free 0x10",
+        "memory:watch 0x10",
+        "process:info",
     ],
 )
 def test_commands_needing_a_target_refuse_without_one(shell, line):
@@ -364,7 +371,14 @@ def test_commands_needing_a_target_refuse_without_one(shell, line):
 
 @pytest.mark.parametrize(
     "line",
-    ["next 1", "results", "keep 1", "drop 1", "paths", "ptrsave out.json"],
+    [
+        "scan:next 1",
+        "scan:results",
+        "scan:keep 1",
+        "scan:drop 1",
+        "pointer:paths",
+        "pointer:save out.json",
+    ],
 )
 def test_commands_needing_results_refuse_without_them(shell, line):
     with pytest.raises(CommandError):
@@ -373,7 +387,7 @@ def test_commands_needing_results_refuse_without_them(shell, line):
 
 def test_close_without_a_target_is_an_error(shell):
     with pytest.raises(CommandError):
-        shell.run_line("close", raise_errors=True)
+        shell.run_line("process:close", raise_errors=True)
 
 
 def test_status_works_with_no_target(shell, capture):
@@ -386,7 +400,7 @@ def test_ps_lists_this_process(shell, capture):
     import os
 
     shell.run_line("set limit 0")
-    shell.run_line("ps")
+    shell.run_line("process:list")
     assert str(os.getpid()) in capture.out
 
 
@@ -405,13 +419,13 @@ def test_set_accepts_the_equals_form(shell):
 
 def test_unknown_option_is_reported_not_swallowed(shell):
     with pytest.raises(CommandError):
-        shell.run_line("ps --nosuchflag", raise_errors=True)
+        shell.run_line("process:list --nosuchflag", raise_errors=True)
 
 
 def test_reset_reports_what_it_discarded(shell, capture):
     from peekmem import valuetypes
 
     shell.session.store_scan(valuetypes.resolve("int32"), 4, [1, 2], [0, 0], "t")
-    shell.run_line("reset")
+    shell.run_line("scan:reset")
     assert "Discarded 2 result(s)." in capture.out
     assert shell.session.scan is None

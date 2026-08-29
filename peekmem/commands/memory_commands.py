@@ -88,14 +88,13 @@ def _regions_parser() -> CommandParser:
     parser=_regions_parser,
     summary="List the target's mapped memory regions.",
     usage="memory:regions [--writable] [--executable] [--path TEXT] [--at ADDRESS] [--limit N]",
-    aliases=("regions", "maps"),
     details=(
         "The memory map is re-read on every call, so it reflects allocations "
         "the target made since the last look.\n\n"
         "The PERMS column reads like /proc/<pid>/maps: rwx plus 's' for a "
         "shared/file-backed mapping or 'p' for a private one."
     ),
-    examples=("regions --writable", "regions --at 0x7ffee3a01000", "regions --path libc"),
+    examples=("memory:regions --writable", "memory:regions --at 0x7ffee3a01000", "memory:regions --path libc"),
 )
 def cmd_regions(session: Session, args: List[str]) -> None:
     options = _regions_parser().parse_args(args)
@@ -166,7 +165,6 @@ def _modules_parser() -> CommandParser:
     parser=_modules_parser,
     summary="List the modules loaded in the target.",
     usage="memory:modules [pattern] [--limit N]",
-    aliases=("modules",),
     details=(
         "A module is the main executable or a shared library (.dll / .so / "
         ".dylib). Its BASE moves on every launch under ASLR, which is why an "
@@ -174,7 +172,7 @@ def _modules_parser() -> CommandParser:
         "Running this command refreshes the module table the address parser "
         "uses, so run it after the target loads a library."
     ),
-    examples=("modules", "modules libc"),
+    examples=("memory:modules", "memory:modules libc"),
 )
 def cmd_modules(session: Session, args: List[str]) -> None:
     options = _modules_parser().parse_args(args)
@@ -232,7 +230,6 @@ def _threads_parser() -> CommandParser:
     parser=_threads_parser,
     summary="List the target's threads.",
     usage="memory:threads [--limit N]",
-    aliases=("threads",),
     details=(
         "STATE and PRIORITY are filled in only where the platform exposes them "
         "cheaply (Linux does; Windows and macOS leave them empty). The meaning "
@@ -290,7 +287,6 @@ def _read_parser() -> CommandParser:
     parser=_read_parser,
     summary="Read a typed value from an address.",
     usage="memory:read <address> [type] [length] [--count N] [--hex]",
-    aliases=("read", "peek"),
     details=(
         "The type defaults to int32. 'string' and 'bytes' need a length in "
         "bytes; the fixed-width types ignore one.\n\n"
@@ -298,11 +294,11 @@ def _read_parser() -> CommandParser:
         "chain can be read in one go."
     ),
     examples=(
-        "read 0x7ffee3a01000",
-        "read game.exe+0x1234 int32",
-        "read [game.exe+0x1a2b3c]+0x18 float",
-        "read 0x7ffee3a01000 string 32",
-        "read #1 int32 --count 8",
+        "memory:read 0x7ffee3a01000",
+        "memory:read game.exe+0x1234 int32",
+        "memory:read [game.exe+0x1a2b3c]+0x18 float",
+        "memory:read 0x7ffee3a01000 string 32",
+        "memory:read #1 int32 --count 8",
     ),
 )
 def cmd_read(session: Session, args: List[str]) -> None:
@@ -375,16 +371,15 @@ def _write_parser() -> CommandParser:
     parser=_write_parser,
     summary="Write a typed value to an address.",
     usage="memory:write <address> <type> <value> [--length N] [--null-terminated]",
-    aliases=("write", "poke"),
     details=(
         "There is no confirmation and no undo. Writing into a live process can "
         "crash it — read the address first if you are not sure of it."
     ),
     examples=(
-        "write 0x7ffee3a01000 int32 100",
-        "write game.exe+0x1234 float 99.5",
-        "write #2 bytes 'DE AD BE EF'",
-        "write 0x7ffee3a01000 string Peekmem --null-terminated",
+        "memory:write 0x7ffee3a01000 int32 100",
+        "memory:write game.exe+0x1234 float 99.5",
+        "memory:write #2 bytes 'DE AD BE EF'",
+        "memory:write 0x7ffee3a01000 string Peekmem --null-terminated",
     ),
 )
 def cmd_write(session: Session, args: List[str]) -> None:
@@ -441,14 +436,13 @@ def _dump_parser() -> CommandParser:
     parser=_dump_parser,
     summary="Hex-dump a range of memory.",
     usage="memory:dump <address> [length] [--width N]",
-    aliases=("dump", "hexdump", "x"),
     details=(
         "Prints the classic three-column layout: absolute address, hex bytes, "
         "printable ASCII.\n\n"
         "The read is a single call, so a range that crosses into an unmapped "
         "page fails as a whole rather than returning half the bytes."
     ),
-    examples=("dump 0x7ffee3a01000", "dump game.exe+0x1000 512", "dump #1 64 --width 8"),
+    examples=("memory:dump 0x7ffee3a01000", "memory:dump game.exe+0x1000 512", "memory:dump #1 64 --width 8"),
 )
 def cmd_dump(session: Session, args: List[str]) -> None:
     options = _dump_parser().parse_args(args)
@@ -509,7 +503,6 @@ def _watch_parser() -> CommandParser:
     parser=_watch_parser,
     summary="Poll an address and print it as it changes.",
     usage="memory:watch <address> [type] [length] [--interval S] [--count N] [--all]",
-    aliases=("watch",),
     details=(
         "Reads the address on a timer and prints a line per sample. By default "
         "only samples whose value differs from the previous one are printed, "
@@ -518,9 +511,9 @@ def _watch_parser() -> CommandParser:
         "window while the target does its thing."
     ),
     examples=(
-        "watch game.exe+0x1234 int32",
-        "watch [base+0x10]+0x8 float --interval 0.1",
-        "watch #1 int32 --count 20 --all",
+        "memory:watch game.exe+0x1234 int32",
+        "memory:watch [base+0x10]+0x8 float --interval 0.1",
+        "memory:watch #1 int32 --count 20 --all",
     ),
 )
 def cmd_watch(session: Session, args: List[str]) -> None:
@@ -599,13 +592,13 @@ def _alloc_parser() -> CommandParser:
     parser=_alloc_parser,
     summary="Allocate memory inside the target.",
     usage="memory:alloc <size> [--permission N]",
-    aliases=("alloc",),
     details=(
         "Reserves and commits SIZE bytes in the target's address space and "
-        "prints the base address. The region stays until 'free' releases it.\n\n"
+        "prints the base address. The region stays until 'memory:free' releases "
+        "it.\n\n"
         "Not available on Linux, which has no cross-process allocation syscall."
     ),
-    examples=("alloc 4096", "alloc 0x1000"),
+    examples=("memory:alloc 4096", "memory:alloc 0x1000"),
 )
 def cmd_alloc(session: Session, args: List[str]) -> None:
     options = _alloc_parser().parse_args(args)
@@ -643,7 +636,7 @@ def cmd_alloc(session: Session, args: List[str]) -> None:
 
 def _free_parser() -> CommandParser:
     parser = CommandParser("memory:free")
-    parser.add_argument("address", help="base address returned by 'alloc'")
+    parser.add_argument("address", help="base address returned by 'memory:alloc'")
     parser.add_argument(
         "size",
         nargs="?",
@@ -657,11 +650,10 @@ def _free_parser() -> CommandParser:
 @command(
     "memory:free",
     parser=_free_parser,
-    summary="Release memory allocated with 'alloc'.",
+    summary="Release memory allocated with 'memory:alloc'.",
     usage="memory:free <address> [size]",
-    aliases=("free",),
-    details="Not available on Linux, for the same reason as 'alloc'.",
-    examples=("free 0x7ffee3a01000", "free 0x7ffee3a01000 4096"),
+    details="Not available on Linux, for the same reason as 'memory:alloc'.",
+    examples=("memory:free 0x7ffee3a01000", "memory:free 0x7ffee3a01000 4096"),
 )
 def cmd_free(session: Session, args: List[str]) -> None:
     options = _free_parser().parse_args(args)

@@ -323,19 +323,19 @@ def _scan_parser() -> CommandParser:
     parser=_scan_parser,
     summary="Search the whole address space for a value.",
     usage="scan:value <type> [value] [--op OP] [--between A B] [--writable] [--max N]",
-    aliases=("scan", "find", "search"),
     details=(
         "The first scan of a cycle. Every matching address is kept as the "
-        "result set that 'next', 'results' and the '#N' address form work "
+        "result set that 'scan:next', 'scan:results' and the '#N' address form "
+        "work "
         "on.\n\n"
         "Ctrl+C stops a scan and keeps what it had already found."
     ),
     examples=(
-        "scan int32 100",
-        "scan float 99.5 --writable",
-        "scan int32 --between 100 200",
-        "scan string Peekmem",
-        "scan int32 1000 --op gt",
+        "scan:value int32 100",
+        "scan:value float 99.5 --writable",
+        "scan:value int32 --between 100 200",
+        "scan:value string Peekmem",
+        "scan:value int32 1000 --op gt",
     ),
 )
 def cmd_scan(session: Session, args: List[str]) -> None:
@@ -447,10 +447,9 @@ def _next_parser() -> CommandParser:
     parser=_next_parser,
     summary="Narrow the results with another comparison.",
     usage="scan:next [op] [value]",
-    aliases=("next", "refine"),
     details=(
         "Re-reads every address in the result set and keeps the ones that "
-        "still match. Bare 'next 100' means 'next eq 100'.\n\n"
+        "still match. Bare 'scan:next 100' means 'scan:next eq 100'.\n\n"
         "Comparisons against a value you supply:\n\n"
         "  eq ne gt lt ge le VALUE      the usual six\n"
         "  between A B                  inside the range, inclusive\n"
@@ -463,7 +462,7 @@ def _next_parser() -> CommandParser:
         "Addresses that have become unreadable (the target freed them) are "
         "dropped."
     ),
-    examples=("next 95", "next changed", "next decreased", "next gt 50", "next between 10 20"),
+    examples=("scan:next 95", "scan:next changed", "scan:next decreased", "scan:next gt 50", "scan:next between 10 20"),
 )
 def cmd_next(session: Session, args: List[str]) -> None:
     options = _next_parser().parse_args(args)
@@ -491,15 +490,17 @@ def cmd_next(session: Session, args: List[str]) -> None:
 
     if operation == "between":
         if len(operands) != 2:
-            raise CommandError("'next between' takes two values: next between A B.")
+            raise CommandError(
+                "'scan:next between' takes two values: scan:next between A B."
+            )
         low = value_type.parse(operands[0])
         high = value_type.parse(operands[1])
     elif needs_value:
         if len(operands) != 1:
-            raise CommandError(f"'next {operation}' takes exactly one value.")
+            raise CommandError(f"'scan:next {operation}' takes exactly one value.")
         target = value_type.parse(operands[0])
     elif operands:
-        raise CommandError(f"'next {operation}' takes no value.")
+        raise CommandError(f"'scan:next {operation}' takes no value.")
 
     with Timer() as timer:
         current = _read_values(session, value_type, state.width, state.addresses)
@@ -580,14 +581,13 @@ def _aob_parser() -> CommandParser:
     parser=_aob_parser,
     summary="Scan for a byte pattern with wildcards (AOB).",
     usage="scan:aob <pattern> [--max N]",
-    aliases=("aob", "pattern"),
     details=(
         "This is how you find code that moves between builds: the opcodes stay "
         "put while the operands change, so you wildcard the operands. The "
         "result set holds the address of each match and can be refined with "
-        "'next' or read with 'read #1'."
+        "'scan:next' or read with 'memory:read #1'."
     ),
-    examples=('aob "48 8B ? ? 00 00"', 'aob "DE AD BE EF"'),
+    examples=('scan:aob "48 8B ? ? 00 00"', 'scan:aob "DE AD BE EF"'),
 )
 def cmd_aob(session: Session, args: List[str]) -> None:
     options = _aob_parser().parse_args(args)
@@ -650,7 +650,6 @@ def _regex_parser() -> CommandParser:
     parser=_regex_parser,
     summary="Scan for text matching a regular expression.",
     usage="scan:regex <pattern> [--length N] [--max N]",
-    aliases=("regex",),
     details=(
         "Because the match runs over *bytes*, a metacharacter spans one byte: "
         "'.' matches any single byte and '\\d' is ASCII-only, so quantify with "
@@ -658,7 +657,10 @@ def _regex_parser() -> CommandParser:
         "A regex has no fixed width, which is why --length matters: it is what "
         "lets a match straddling an internal chunk boundary still be found."
     ),
-    examples=('regex "Player[0-9]+"', 'regex "https?://[a-z.]+" --length 128'),
+    examples=(
+        'scan:regex "Player[0-9]+"',
+        'scan:regex "https?://[a-z.]+" --length 128',
+    ),
 )
 def cmd_regex(session: Session, args: List[str]) -> None:
     options = _regex_parser().parse_args(args)
@@ -730,16 +732,15 @@ def _results_parser() -> CommandParser:
     parser=_results_parser,
     summary="Show the current result set, re-read.",
     usage="scan:results [--limit N] [--offset N] [--all]",
-    aliases=("results", "res"),
     details=(
         "Reads every address again, so the VALUE column is what the target "
         "holds now, not what it held when the scan ran. The PREVIOUS column "
-        "shows the value the last scan recorded — the one 'next changed' and "
+        "shows the value the last scan recorded — the one 'scan:next changed' and "
         "friends compare against — and is filled in only where the two "
         "differ.\n\n"
         "Row numbers are what '#N' refers to in an address."
     ),
-    examples=("results", "results --all", "results --offset 20 --limit 10"),
+    examples=("scan:results", "scan:results --all", "scan:results --offset 20 --limit 10"),
 )
 def cmd_results(session: Session, args: List[str]) -> None:
     options = _results_parser().parse_args(args)
@@ -811,7 +812,7 @@ def _parse_row_selection(tokens: Sequence[str], count: int) -> List[int]:
             selected.append(number - 1)
 
     if not selected:
-        raise CommandError("Name at least one row, e.g. 'keep 1 3-5'.")
+        raise CommandError("Name at least one row, e.g. 'scan:keep 1 3-5'.")
     return selected
 
 
@@ -829,12 +830,11 @@ def _keep_parser() -> CommandParser:
     parser=_keep_parser,
     summary="Keep only the named result rows.",
     usage="scan:keep <row> [row ...]",
-    aliases=("keep",),
     details=(
         "Use it when you can see which candidates are real and would rather "
         "not invent a comparison that happens to exclude the others."
     ),
-    examples=("keep 1", "keep 1 3 7-9"),
+    examples=("scan:keep 1", "scan:keep 1 3 7-9"),
 )
 def cmd_keep(session: Session, args: List[str]) -> None:
     options = _keep_parser().parse_args(args)
@@ -864,9 +864,8 @@ def _drop_parser() -> CommandParser:
     parser=_drop_parser,
     summary="Remove the named result rows.",
     usage="scan:drop <row> [row ...]",
-    aliases=("drop",),
     details="The inverse of 'keep'. Ranges work the same way.",
-    examples=("drop 2", "drop 5-12"),
+    examples=("scan:drop 2", "scan:drop 5-12"),
 )
 def cmd_drop(session: Session, args: List[str]) -> None:
     options = _drop_parser().parse_args(args)
@@ -894,7 +893,6 @@ def _reset_parser() -> CommandParser:
     parser=_reset_parser,
     summary="Discard the current scan results.",
     usage="scan:reset",
-    aliases=("reset", "unscan"),
     details=(
         "Takes no arguments.\n\n"
         "Clears the result set so the next 'scan' starts a fresh cycle. The "

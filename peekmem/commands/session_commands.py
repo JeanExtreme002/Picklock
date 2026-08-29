@@ -43,8 +43,8 @@ Every command that takes an address takes an expression.
   #3                    the address on row 3 of the last scan
 
 Module names are matched case-insensitively, and an unambiguous prefix is
-enough: 'game' finds 'game.exe'. Run 'modules' to list them, and to refresh
-the table after the target loads a library.
+enough: 'game' finds 'game.exe'. Run 'memory:modules' to list them, and to
+refresh the table after the target loads a library.
 
 'module+offset' is the form worth writing down: a module's base moves on every
 launch under ASLR, but the offset inside it does not, so the expression keeps
@@ -54,24 +54,26 @@ working across restarts where a bare address does not.\
 _SCANNING_TOPIC = """\
 The scan / refine cycle, when you do not know the address:
 
-  1. scan int32 100        every address holding 100 right now
+  1. scan:value int32 100    every address holding 100 right now
   2. (make the value change in the target)
-  3. next 95               of those, the ones now holding 95
+  3. scan:next 95            of those, the ones now holding 95
 
 Repeat step 3 until a handful of rows remain. When you cannot see the value —
 a health bar with no number — compare against the previous reading instead:
 
-  next changed / next unchanged / next increased / next decreased
+  scan:next changed / scan:next unchanged
+  scan:next increased / scan:next decreased
 
 Then read, write or watch a surviving row by number:
 
-  read #1 int32
-  write #1 int32 999
-  watch #1 int32
+  memory:read #1 int32
+  memory:write #1 int32 999
+  memory:watch #1 int32
 
 An address found this way is good for this run only. To keep it, find the
-pointer path that reaches it: 'ptrscan #1', then 'ptrsave', restart the
-target, and 'ptrrescan' against the value's new address. See 'help ptrscan'.\
+pointer path that reaches it: 'pointer:scan #1', then 'pointer:save', restart
+the target, and 'pointer:rescan' against the value's new address. See
+'help pointer:scan'.\
 """
 
 _TOPICS = {
@@ -151,14 +153,18 @@ def _command_rows(commands) -> List[Tuple[str, str]]:
     return [(_signature(entry), entry.summary) for entry in commands]
 
 
-def _print_example(session: Session, example: str) -> None:
-    """Print an indented ``Example:`` block, verbatim."""
+def _print_example(session: Session, example: str, *, indent: int = 0) -> None:
+    """Print an indented ``Example:`` block, verbatim.
+
+    ``indent`` nests the whole block, which is how the top-level help tucks its
+    example inside the namespaces section rather than floating it above.
+    """
     if not example:
         return
-    session.printer.write("Example:")
-    session.printer.write()
+    pad = " " * indent
+    session.printer.write(f"{pad}Example:")
     for line in example.splitlines():
-        session.printer.write(f"    {line}" if line else "")
+        session.printer.write(f"{pad}    {line}" if line else "")
     session.printer.write()
 
 
@@ -176,14 +182,6 @@ def _print_overview(session: Session) -> None:
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    _print_example(
-        session,
-        "peekmem> process:open 4242\n"
-        "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)\n"
-        "\n"
-        "peekmem> memory:read game.exe+0x1234 int32",
-    )
-
     printer.write("peekmem namespaces: (get help with <namespace>:help)")
     printer.write()
     printer.write(
@@ -195,6 +193,15 @@ def _print_overview(session: Session) -> None:
         )
     )
     printer.write()
+
+    # The example belongs *inside* the namespaces block: it is what typing one
+    # of those namespaced commands looks like, not a preamble to the page.
+    _print_example(
+        session,
+        "peekmem> process:open 4242\n"
+        "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)",
+        indent=4,
+    )
 
     printer.write("peekmem commands: (get help with help COMMAND)")
     printer.write()
@@ -208,12 +215,7 @@ def _print_overview(session: Session) -> None:
     )
     printer.write()
 
-    printer.write(
-        "Every command in a namespace also has a short alias: 'memory:read' "
-        "and 'read'\nare the same command."
-    )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
-    printer.write("End the session with 'exit', Ctrl+C, Ctrl+D, or \\q.")
     printer.write()
 
 

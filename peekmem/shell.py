@@ -25,7 +25,6 @@ from PyMemoryEditor import PyMemoryEditorError
 from . import __version__, valuetypes
 from .commands import (
     all_commands,
-    children,
     command_words,
     lookup,
     namespaces,
@@ -144,71 +143,51 @@ class Shell:
             return False
 
     def _resolve(self, word: str, args: Sequence[str]):
-        """Resolve a command word, treating a bare namespace as a request to list it.
+        """Resolve a command word, answering every namespace question the same way.
 
-        ``memory`` is not a command, but in a namespaced shell it is an obvious
-        thing to type — so it prints what lives under it rather than a "no such
-        command", exactly as ``memory:help`` does. With arguments it is a
-        mistake worth naming precisely: the user almost always meant the colon.
+        A namespace is not a command and never runs anything. Naming one —
+        ``scan``, ``scan --help``, ``scan:help``, or ``help scan`` — prints its
+        page, all four spellings producing the same output, because a reader
+        who tries one of them has already told you what they want.
+
+        With arguments that are not a help flag it is a mistake worth naming
+        precisely: the user almost always meant the colon.
         """
         head = word.strip().lower()
+        wants_help = bool(args) and all(item in _HELP_FLAGS for item in args)
 
-        # A bare namespace lists what is in it even when the word is *also* a
-        # command alias, which 'scan' and 'pointer' are. Nothing is lost: both
-        # of those commands require arguments, so a bare 'scan' could only ever
-        # have produced "the following arguments are required". With arguments
-        # the alias still wins, so 'scan int32 100' is untouched.
-        if not args and head in namespaces():
-            from .commands.session_commands import print_namespace
+        # '<namespace>:help [command]' — the form the listings advertise.
+        if head.endswith(":help") and head[: -len(":help")] in namespaces():
+            prefix = head[: -len(":help")]
+            if args and not wants_help:
+                # 'scan:help aob' describes one command; it must not run it.
+                target = lookup(f"{prefix}:{args[0]}")
+                lookup("help").handler(self.session, [target.name])
+                raise _Handled()
+            head, args = prefix, ()
 
-            print_namespace(self.session, head)
-            raise _Handled()
-
-        try:
-            return lookup(word)
-        except CommandError:
-
-            # '<prefix>:help' — the layered way down. It is a convention rather
-            # than a registered command so it works at every depth, present and
-            # future, without one 'help' command per namespace cluttering the
-            # very listings it exists to print.
-            if head.endswith(":help"):
-                prefix = head[: -len(":help")]
-
-                # 'scan:help aob' — describe one command in the namespace,
-                # which is what the listing header tells the reader to type.
-                # It prints help; it must not run the command it names.
-                if args:
-                    target = lookup(f"{prefix}:{args[0]}")
-                    lookup("help").handler(self.session, [target.name])
-                    raise _Handled()
-
+        if head.rstrip(":") in namespaces():
+            namespace_name = head.rstrip(":")
+            if not args or wants_help:
                 from .commands.session_commands import print_namespace
 
-                if print_namespace(self.session, prefix):
-                    raise _Handled()
-
-            if not children(head):
-                raise
-
-            if not args:
-                from .commands.session_commands import print_namespace
-
-                print_namespace(self.session, head)
+                print_namespace(self.session, namespace_name)
                 raise _Handled()
 
-            candidate = f"{head}:{args[0]}"
+            candidate = f"{namespace_name}:{args[0]}"
             try:
                 lookup(candidate)
             except CommandError:
                 raise CommandError(
-                    f"{head!r} is a namespace, not a command. "
-                    f"Type 'help {head}' to see what is in it."
+                    f"{namespace_name!r} is a namespace, not a command. "
+                    f"Type '{namespace_name}:help' to see what is in it."
                 )
             raise CommandError(
-                f"{head!r} is a namespace: the command is spelled "
+                f"{namespace_name!r} is a namespace: the command is spelled "
                 f"{candidate!r}, with a colon."
             )
+
+        return lookup(word)
 
     def run_lines(self, lines: Iterable[str], *, raise_errors: bool = False) -> int:
         """Run a sequence of lines, returning a process exit status."""

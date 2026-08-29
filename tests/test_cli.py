@@ -40,13 +40,13 @@ def test_execute_flags_run_in_order():
 
 
 def test_a_trailing_command_works_like_execute():
-    status, out, _ = run(["ps", "--limit", "1"])
+    status, out, _ = run(["process:list", "--limit", "1"])
     assert status == 0
     assert "PID" in out
 
 
 def test_a_failing_command_exits_non_zero():
-    status, _, err = run(["-e", "read 0x10"])
+    status, _, err = run(["-e", "memory:read 0x10"])
     assert status == 1
     assert "No process attached" in err
 
@@ -76,7 +76,7 @@ def test_a_bad_pid_stops_before_the_commands():
 
 
 def test_limit_flag_reaches_the_session():
-    status, out, _ = run(["--limit", "1", "-e", "ps"])
+    status, out, _ = run(["--limit", "1", "-e", "process:list"])
     assert status == 0
     assert "Showing 1 of" in out
 

@@ -48,12 +48,11 @@ def _ps_parser() -> CommandParser:
     parser=_ps_parser,
     summary="List the processes visible to you.",
     usage="process:list [pattern] [--pid-sort] [--case-sensitive] [--limit N]",
-    aliases=("ps", "processes"),
     details=(
         "Only processes your user can see are listed. Run Peekmem elevated to "
         "see (and open) processes belonging to other users."
     ),
-    examples=("ps", "ps chrome", "ps --pid-sort --limit 50"),
+    examples=("process:list", "process:list chrome", "process:list --pid-sort --limit 50"),
 )
 def cmd_ps(session: Session, args: List[str]) -> None:
     options = _ps_parser().parse_args(args)
@@ -132,7 +131,6 @@ def _open_parser() -> CommandParser:
     parser=_open_parser,
     summary="Attach to a process by PID or name.",
     usage="process:open <pid|name> [-i] [--partial] [--strict-bitness]",
-    aliases=("open", "attach", "use"),
     details=(
         "An all-digits target is taken as a PID, anything else as a process "
         "name; force either reading with --pid or --name.\n\n"
@@ -140,7 +138,7 @@ def _open_parser() -> CommandParser:
         "pointer width is silent rather than loud.\n\n"
         "Attaching replaces any previous target and clears the scan results."
     ),
-    examples=("open 4242", "open notepad.exe", "open chrome --partial -i"),
+    examples=("process:open 4242", "process:open notepad.exe", "process:open chrome --partial -i"),
 )
 def cmd_open(session: Session, args: List[str]) -> None:
     options = _open_parser().parse_args(args)
@@ -193,7 +191,6 @@ def _close_parser() -> CommandParser:
     parser=_close_parser,
     summary="Detach from the current process.",
     usage="process:close",
-    aliases=("close", "detach"),
     details=(
         "Takes no arguments.\n\n"
         "Closes the OS handle and drops the scan results, the pointer paths "
@@ -262,7 +259,6 @@ def _info_parser() -> CommandParser:
     parser=_info_parser,
     summary="Describe the attached process in detail.",
     usage="process:info",
-    aliases=("info",),
     details=(
         "Takes no arguments.\n\n"
         "Enumerates the memory map to report how much of the address space is "

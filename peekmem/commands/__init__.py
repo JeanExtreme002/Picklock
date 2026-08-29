@@ -224,23 +224,6 @@ class Command:
             return "Commands"
         return _NAMESPACE_TITLES.get(self.namespace, self.namespace.capitalize())
 
-    @property
-    def short(self) -> str:
-        """The spelling worth advertising — the first plain-word alias.
-
-        First, not shortest: the alias list is written most-natural-first, and
-        the shortest is often the cryptic one (``x`` for ``memory:dump``,
-        ``ptr`` for ``pointer:read``). Backslash aliases like ``\\q`` are
-        skipped; they are shortcuts, not names. A top-level command is already
-        the short spelling of itself.
-        """
-        if self.is_top_level:
-            return self.name
-        for alias in self.aliases:
-            if alias.isalnum():
-                return alias
-        return ""
-
     def arguments(self) -> List[argparse.Action]:
         """Every argument this command accepts, in declaration order."""
         return list(self.parser().arguments) if self.parser is not None else []

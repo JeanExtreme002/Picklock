@@ -54,8 +54,8 @@ SETTINGS: Tuple[Setting, ...] = (
     Setting("timing", True, bool, "Print the elapsed time after each command."),
     Setting("progress", True, bool, "Show a progress line while scanning."),
     Setting("writable_only", False, bool, "Scan only writable regions (faster)."),
-    Setting("dump_width", 16, int, "Bytes per line in 'dump' output."),
-    Setting("watch_interval", 0.5, float, "Seconds between 'watch' samples."),
+    Setting("dump_width", 16, int, "Bytes per line in 'memory:dump' output."),
+    Setting("watch_interval", 0.5, float, "Seconds between 'memory:watch' samples."),
 )
 
 _SETTINGS_BY_NAME = {setting.name: setting for setting in SETTINGS}
@@ -301,7 +301,7 @@ class Session:
             raise CommandError(f"Module {name!r} is ambiguous: {listed}.")
 
         raise CommandError(
-            f"No loaded module matches {name!r}. Use 'modules' to list them."
+            f"No loaded module matches {name!r}. Use 'memory:modules' to list them."
         )
 
     def read_pointer(self, address: int) -> int:
@@ -320,7 +320,7 @@ class Session:
         """The address on row ``index`` (1-based) of the last scan."""
         if self.scan is None or not self.scan.addresses:
             raise CommandError(
-                "No scan results to refer to. Run 'scan' first, or give an "
+                "No scan results to refer to. Run 'scan:value' first, or give an "
                 "address instead of a '#' reference."
             )
         if not 1 <= index <= len(self.scan.addresses):
@@ -356,7 +356,7 @@ class Session:
     def require_scan(self) -> ScanState:
         """Return the current result set or explain that there is not one."""
         if self.scan is None or not self.scan.addresses:
-            raise CommandError('No scan results. Run "scan <type> <value>" first.')
+            raise CommandError('No scan results. Run "scan:value <type> <value>" first.')
         return self.scan
 
     def close(self) -> None:

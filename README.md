@@ -49,7 +49,7 @@ $ peekmem
 Welcome to Peekmem 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
 Commands end with a newline. Type 'help' for the command list, 'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.
 
-peekmem> ps game
+peekmem> process:list game
 +-------+----------+
 | PID   | NAME     |
 +-------+----------+
@@ -57,13 +57,13 @@ peekmem> ps game
 +-------+----------+
 1 row in set (0.01 sec)
 
-peekmem> open 41902
+peekmem> process:open 41902
 Attached to game.exe (PID 41902, 64-bit). (0.00 sec)
 
-peekmem [game.exe:41902]> scan int32 100 --writable
+peekmem [game.exe:41902]> scan:value int32 100 --writable
 Showing 20 of 3184 rows (1.42 sec)
 
-peekmem [game.exe:41902]> next 95
+peekmem [game.exe:41902]> scan:next 95
 +-----+--------------------+-------+
 | ROW | ADDRESS            | VALUE |
 +-----+--------------------+-------+
@@ -72,7 +72,7 @@ peekmem [game.exe:41902]> next 95
 +-----+--------------------+-------+
 2 rows in set (0.02 sec)
 
-peekmem [game.exe:41902]> next decreased
+peekmem [game.exe:41902]> scan:next decreased
 +-----+--------------------+-------+
 | ROW | ADDRESS            | VALUE |
 +-----+--------------------+-------+
@@ -80,7 +80,7 @@ peekmem [game.exe:41902]> next decreased
 +-----+--------------------+-------+
 1 row in set (0.01 sec)
 
-peekmem [game.exe:41902]> write #1 int32 9999
+peekmem [game.exe:41902]> memory:write #1 int32 9999
 Wrote 4 byte(s) to 0x00000201A4C0F118. (0.00 sec)
 ```
 
@@ -88,7 +88,7 @@ Found the address, but it moves every launch? Find the pointer path to it, and
 keep it:
 
 ```console
-peekmem [game.exe:41902]> ptrscan #1 --depth 3 --max 100
+peekmem [game.exe:41902]> pointer:scan #1 --depth 3 --max 100
 +-----+------------------+-------------+--------------------+
 | ROW | BASE             | OFFSETS     | TARGET             |
 +-----+------------------+-------------+--------------------+
@@ -97,14 +97,14 @@ peekmem [game.exe:41902]> ptrscan #1 --depth 3 --max 100
 +-----+------------------+-------------+--------------------+
 2 rows in set (6.18 sec)
 
-peekmem [game.exe:41902]> ptrsave health.json
+peekmem [game.exe:41902]> pointer:save health.json
 Saved 2 path(s) to health.json.
 
 # ... restart the target, find the value again, then:
-peekmem [game.exe:52771]> ptrrescan #1 health.json
+peekmem [game.exe:52771]> pointer:rescan #1 health.json
 1 path(s) still reach 0x000001F73C20E118. (0.03 sec)
 
-peekmem [game.exe:52771]> pointer game.exe+0x3BA228 0x3E8 --write 9999
+peekmem [game.exe:52771]> pointer:read game.exe+0x3BA228 0x3E8 --write 9999
 Wrote 4 byte(s) to 0x000001F73C20E118. (0.00 sec)
 ```
 
@@ -114,11 +114,11 @@ The same vocabulary works non-interactively, which is the point of a CLI on a
 server:
 
 ```bash
-peekmem ps chrome                                   # one command, then exit
-peekmem -p 4242 -e "read game.exe+0x1234 int32"     # attach, read, exit
-peekmem -p 4242 -e "scan int32 100" -e "results"    # several, in order
+peekmem process:list chrome                          # one command, then exit
+peekmem -p 4242 -e "memory:read game.exe+0x1234"     # attach, read, exit
+peekmem -p 4242 -e "scan:value int32 100" -e "scan:results"  # several, in order
 peekmem -f setup.peek                               # a file of commands
-echo "ps" | peekmem                                 # a pipe
+echo "process:list" | peekmem                        # a pipe
 ```
 
 Results go to stdout and errors to stderr, tables are plain ASCII, colour is
@@ -163,19 +163,19 @@ scan commands: (get help with scan:help SUBCOMMAND)
     scan:value <type> [value] [--op OP]...       Search the whole address space for a value.
 ```
 
-`scan:help aob` describes one command. Typing the namespace alone — `scan` —
-does the same as `scan:help`. Names go two levels at most, so there is never a
-third listing to walk.
+`scan:help aob` describes one command. Names go two levels at most, so there
+is never a third listing to walk.
 
-Every namespaced command also has a short alias — `memory:read` and `read` are
-the same command, so the hierarchy costs nothing at the keyboard.
+A namespace is never a command: typing `scan` prints its page and runs
+nothing, whichever way you ask — `scan`, `scan --help`, `scan:help` and
+`help scan` all produce the same output.
 
-| Namespace | Commands (short alias) |
+| Namespace | Commands |
 | --- | --- |
-| **`process:`** | `list` (ps) · `open` · `close` · `info` |
+| **`process:`** | `list` · `open` · `close` · `info` |
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
-| **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
-| **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `save` (ptrsave) · `load` (ptrload) · `diff` (ptrdiff) |
+| **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
+| **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
 | Top level | `help` · `set` · `source` · `status` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
@@ -205,17 +205,18 @@ Highlights:
 
 - **Every scan comparison PyMemoryEditor exposes** — exact, not-equal, greater,
   smaller, and ranges — plus the refine-only ones that need no value at all:
-  `next changed`, `next unchanged`, `next increased`, `next decreased`,
-  `next increased-by N`.
-- **AOB and regex scans.** `aob "48 8B ? ? 00"` finds a signature with
-  wildcards; `regex "Player[0-9]+"` finds text.
+  `scan:next changed`, `scan:next unchanged`, `scan:next increased`,
+  `scan:next decreased`, `scan:next increased-by N`.
+- **AOB and regex scans.** `scan:aob "48 8B ? ? 00"` finds a signature
+  with wildcards; `scan:regex "Player[0-9]+"` finds text.
 - **Thirteen value types** — `int8` … `int64`, `uint8` … `uint64`, `float`,
   `double`, `bool`, `string`, `bytes` — with the aliases you would expect
   (`dword`, `qword`, `short`, `f32`).
 - **Pointer scanning and the full rescan workflow**, so an address survives a
   restart.
-- **`watch`**, which turns a terminal into a live cheat table:
-  `watch game.exe+0x1234 int32` prints a line every time the value changes.
+- **`memory:watch`**, which turns a terminal into a live cheat table:
+  `memory:watch game.exe+0x1234 int32` prints a line every time the value
+  changes.
 - **Progress you can trust.** Long scans report a percentage that advances
   whether or not anything is being found, and Ctrl+C stops a scan while keeping
   what it already found.
@@ -236,7 +237,8 @@ game.exe+0x1234         a module base plus a static offset — survives ASLR
 #3                      the address on row 3 of the last scan
 ```
 
-So the whole chain fits on one line: `read [[game.exe+0x1a2b3c]+0x10]+0x8 float`.
+So the whole chain fits on one line:
+`memory:read [[game.exe+0x1a2b3c]+0x10]+0x8 float`.
 
 ## Permissions
 

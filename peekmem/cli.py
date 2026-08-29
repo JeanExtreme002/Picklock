@@ -9,10 +9,10 @@ exits with a status, so the same vocabulary works inside a script, an SSH
 session or a CI job:
 
     peekmem                                  # the shell
-    peekmem ps chrome                        # one command, then exit
-    peekmem -p 4242 -e "read game.exe+0x10"  # attach, read, exit
-    peekmem -f setup.peek                    # a file of commands
-    echo "ps" | peekmem                      # a pipe
+    peekmem process:list chrome                      # one command, then exit
+    peekmem -p 4242 -e "memory:read game.exe+0x10"   # attach, read, exit
+    peekmem -f setup.peek                            # a file of commands
+    echo "process:list" | peekmem                    # a pipe
 """
 
 import argparse
@@ -123,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs=argparse.REMAINDER,
-        help="a single command to run, e.g. 'peekmem ps chrome'",
+        help="a single command to run, e.g. 'peekmem process:list chrome'",
     )
     return parser
 

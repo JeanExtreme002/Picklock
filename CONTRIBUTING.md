@@ -84,9 +84,9 @@ Two rules keep the shape:
 1. Pick the module in `peekmem/commands/` that matches the namespace.
 2. Register the handler. The name is a colon-separated path whose first
    segment is one of the namespaces in `NAMESPACES`; the group in `help`
-   follows from it, so there is nothing to keep in step. Give it a plain-word
-   alias too — that is what people type, and a test enforces that every
-   command has one.
+   follows from it, so there is nothing to keep in step. Do **not** give it a
+   plain-word alias: two namespaces could each want `read`, and a test enforces
+   that namespaced commands have none.
 
    A name with no colon is a **top-level** command, reserved for the shell's
    own vocabulary (`help`, `set`, `exit`). Anything that touches the target
@@ -104,9 +104,8 @@ Two rules keep the shape:
        parser=_mycommand_parser,
        summary="One line, sentence case, ending in a period.",
        usage="memory:mycommand <address> [--flag]",
-       aliases=("mycommand",),
        details="The long help, printed by 'help memory:mycommand'.",
-       examples=("mycommand 0x1000",),
+       examples=("memory:mycommand 0x1000",),
    )
    def cmd_mycommand(session: Session, args: List[str]) -> None:
        options = _mycommand_parser().parse_args(args)

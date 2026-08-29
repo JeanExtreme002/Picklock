@@ -129,9 +129,8 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 
 The help is layered. `help` shows the words you can type first — ten lines,
 not a wall of forty — and `<command>:help` opens any of them. A command that
-takes a subcommand says so in its signature (`scan:COMMAND`) and documents
-itself with a usage line, a worked example, and its commands with the
-arguments they take.
+takes a subcommand documents itself with a usage line, a worked example, and
+its commands with the arguments they take.
 
 ```console
 peekmem> scan:help

@@ -119,8 +119,8 @@ def test_version_flag():
 def test_help_lists_the_layers_not_every_command(capsys):
     """--help mirrors the shell's own overview: one list of first words."""
     text = build_parser().format_help()
-    for signature in ("ps:COMMAND", "memory:COMMAND", "scan:COMMAND", "pointer:COMMAND"):
-        assert signature in text
+    for name in ("ps", "memory", "scan", "pointer"):
+        assert name in text
     for name in ("help", "config", "version", "exit"):
         assert name in text
     assert "<command>:help" in text

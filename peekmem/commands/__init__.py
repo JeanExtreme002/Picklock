@@ -359,10 +359,10 @@ def top_level_listing() -> List[Tuple[str, str]]:
 
     The distinction the code keeps — a namespace is a prefix, a command is a
     thing that runs — is not one the reader has to carry. To them ``ps`` and
-    ``clear`` are both commands; one happens to take a subcommand, which the
-    ``ps:COMMAND`` signature says without naming a concept.
+    ``clear`` are both commands, listed side by side under one heading; typing
+    either one is how you find out that the first has more underneath.
     """
-    rows = [(f"{name}:COMMAND", namespace_summary(name)) for name in namespaces()]
+    rows = [(name, namespace_summary(name)) for name in namespaces()]
     rows += [(entry.usage, entry.summary) for entry in top_level()]
     return sorted(rows)
 

@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
-"""Finding a target and attaching to it: ``ps``, ``open``, ``close``, ``info``."""
+"""The ``ps:`` namespace — finding a target process and attaching to it."""
 
-import platform
 from typing import List
 
-import PyMemoryEditor
-
-from .. import __version__, processes
+from .. import processes
 from ..errors import CommandError
 from ..output import LEFT, RIGHT, Timer, format_size, render_vertical
 from ..session import Session
@@ -15,7 +12,7 @@ from . import CommandParser, add_paging_arguments, command, paginate
 
 
 def _ps_parser() -> CommandParser:
-    parser = CommandParser("process:list")
+    parser = CommandParser("ps:list")
     parser.add_argument(
         "pattern",
         nargs="?",
@@ -37,14 +34,14 @@ def _ps_parser() -> CommandParser:
 
 
 @command(
-    "process:list",
+    "ps:list",
     parser=_ps_parser,
     summary="List the processes visible to you.",
     details=(
         "Only processes your user can see are listed. Run Peekmem elevated to "
         "see (and open) processes belonging to other users."
     ),
-    examples=("process:list", "process:list chrome", "process:list --pid-sort --limit 50"),
+    examples=("ps:list", "ps:list chrome", "ps:list --pid-sort --limit 50"),
 )
 def cmd_ps(session: Session, args: List[str]) -> None:
     options = _ps_parser().parse_args(args)
@@ -59,7 +56,7 @@ def cmd_ps(session: Session, args: List[str]) -> None:
     page = paginate(
         session,
         entries,
-        command="process:list",
+        command="ps:list",
         limit=options.limit,
         offset=options.offset,
         show_all=options.all,
@@ -79,7 +76,7 @@ def cmd_ps(session: Session, args: List[str]) -> None:
 
 
 def _open_parser() -> CommandParser:
-    parser = CommandParser("process:open")
+    parser = CommandParser("ps:open")
     parser.add_argument(
         "target",
         nargs="?",
@@ -127,7 +124,7 @@ def _open_parser() -> CommandParser:
 
 
 @command(
-    "process:open",
+    "ps:open",
     parser=_open_parser,
     summary="Attach to a process by PID or name.",
     details=(
@@ -137,7 +134,7 @@ def _open_parser() -> CommandParser:
         "pointer width is silent rather than loud.\n\n"
         "Attaching replaces any previous target and clears the scan results."
     ),
-    examples=("process:open 4242", "process:open notepad.exe", "process:open chrome --partial -i"),
+    examples=("ps:open 4242", "ps:open notepad.exe", "ps:open chrome --partial -i"),
 )
 def cmd_open(session: Session, args: List[str]) -> None:
     options = _open_parser().parse_args(args)
@@ -182,11 +179,11 @@ def cmd_open(session: Session, args: List[str]) -> None:
 
 
 def _close_parser() -> CommandParser:
-    return CommandParser("process:close")
+    return CommandParser("ps:close")
 
 
 @command(
-    "process:close",
+    "ps:close",
     parser=_close_parser,
     summary="Detach from the current process.",
     details=(
@@ -203,67 +200,23 @@ def cmd_close(session: Session, args: List[str]) -> None:
     session.printer.ok("Detached.")
 
 
-def _status_parser() -> CommandParser:
-    return CommandParser("status")
-
-
-@command(
-    "status",
-    parser=_status_parser,
-    summary="Show the session state and versions.",
-    aliases=("\\s",),
-    details=(
-        "Takes no arguments.\n\n"
-        "Cheap: reports what the session knows without touching the target."
-    ),
-)
-def cmd_status(session: Session, args: List[str]) -> None:
-    _status_parser().parse_args(args)
-
-    rows = [
-        ("Peekmem", __version__),
-        ("PyMemoryEditor", PyMemoryEditor.__version__),
-        ("Python", platform.python_version()),
-        ("Platform", f"{platform.system()} {platform.release()} ({platform.machine()})"),
-    ]
-
-    if session.process is None:
-        rows.append(("Process", "(none attached)"))
-    else:
-        rows.append(("Process", f"{session.process_name or '?'} (PID {session.process.pid})"))
-        rows.append(("Architecture", "64-bit" if session.process.is_64bit else "32-bit"))
-
-    if session.scan is not None:
-        rows.append(
-            (
-                "Scan results",
-                f"{len(session.scan)} address(es) — {session.scan.description}",
-            )
-        )
-    if session.pointer_paths:
-        rows.append(("Pointer paths", str(len(session.pointer_paths))))
-
-    session.printer.write(render_vertical(rows))
-    session.printer.write()
-
-
 def _info_parser() -> CommandParser:
-    return CommandParser("process:info")
+    return CommandParser("ps:info")
 
 
 @command(
-    "process:info",
+    "ps:info",
     parser=_info_parser,
     summary="Describe the attached process in detail.",
     details=(
         "Takes no arguments.\n\n"
         "Enumerates the memory map to report how much of the address space is "
-        "mapped, so it costs a little more than 'status'."
+        "mapped, so it is the slower of the two ways to look at a target."
     ),
 )
 def cmd_info(session: Session, args: List[str]) -> None:
     _info_parser().parse_args(args)
-    process = session.require_process("process:info")
+    process = session.require_process("ps:info")
 
     with Timer() as timer:
         regions = session.regions(refresh=True)

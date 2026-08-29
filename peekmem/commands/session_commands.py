@@ -164,6 +164,7 @@ def _print_example(session: Session, example: str, *, indent: int = 0) -> None:
         return
     pad = " " * indent
     session.printer.write(f"{pad}Example:")
+    session.printer.write()
     for line in example.splitlines():
         session.printer.write(f"{pad}    {line}" if line else "")
     session.printer.write()
@@ -199,7 +200,7 @@ def _print_overview(session: Session) -> None:
     # of those namespaced commands looks like, not a preamble to the page.
     _print_example(
         session,
-        "peekmem> process:open 4242\n"
+        "peekmem> ps:open 4242\n"
         "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)",
         indent=4,
     )
@@ -398,8 +399,8 @@ def command_words_set() -> set:
     return set(command_words())
 
 
-def _set_parser() -> CommandParser:
-    parser = CommandParser("set")
+def _config_parser() -> CommandParser:
+    parser = CommandParser("config")
     parser.add_argument(
         "assignment",
         nargs="*",
@@ -411,20 +412,26 @@ def _set_parser() -> CommandParser:
 
 
 @command(
-    "set",
-    parser=_set_parser,
+    "config",
+    parser=_config_parser,
     summary="Show or change a session setting.",
     details=(
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
-        "'set' lines in a script and run it with 'source' to reuse a setup.\n\n"
-        "Run 'set' with no argument to see every setting, its current value "
+        "'config' lines in a script and run it with 'source' to reuse a "
+        "setup.\n\n"
+        "Run 'config' with no argument to see every setting, its current value "
         "and what it does."
     ),
-    examples=("set", "set limit 50", "set hex on", "set writable_only=true"),
+    examples=(
+        "config",
+        "config limit 50",
+        "config hex on",
+        "config writable_only=true",
+    ),
 )
-def cmd_set(session: Session, args: List[str]) -> None:
-    options = _set_parser().parse_args(args)
+def cmd_config(session: Session, args: List[str]) -> None:
+    options = _config_parser().parse_args(args)
     assignment = options.assignment
 
     if not assignment:
@@ -444,7 +451,7 @@ def cmd_set(session: Session, args: List[str]) -> None:
     elif len(assignment) == 2:
         name, value = assignment[0], assignment[1]
     else:
-        raise CommandError("Usage: set [name [value]]")
+        raise CommandError("Usage: config [name [value]]")
 
     if value is None:
         setting = {item.name: item for item in SETTINGS}.get(name.lower())
@@ -536,19 +543,29 @@ def _version_parser() -> CommandParser:
 @command(
     "version",
     parser=_version_parser,
-    summary="Print the Peekmem and PyMemoryEditor versions.",
+    summary="Print the Peekmem, PyMemoryEditor, Python and platform versions.",
     details=(
         "Takes no arguments.\n\n"
-        "The one line to quote in a bug report: it names Peekmem, "
-        "PyMemoryEditor, Python and the platform."
+        "The four lines to quote in a bug report. Peekmem is a client, so which "
+        "PyMemoryEditor is underneath matters as much as which Peekmem is on "
+        "top — the two move independently."
     ),
 )
 def cmd_version(session: Session, args: List[str]) -> None:
     _version_parser().parse_args(args)
     session.printer.write(
-        f"Peekmem {__version__} / PyMemoryEditor {PyMemoryEditor.__version__} "
-        f"/ Python {platform.python_version()} on {platform.system()} "
-        f"({platform.machine()})"
+        render_vertical(
+            [
+                ("Peekmem", __version__),
+                ("PyMemoryEditor", PyMemoryEditor.__version__),
+                ("Python", platform.python_version()),
+                (
+                    "Platform",
+                    f"{platform.system()} {platform.release()} "
+                    f"({platform.machine()})",
+                ),
+            ]
+        )
     )
     session.printer.write()
 
@@ -561,7 +578,7 @@ def _exit_parser() -> CommandParser:
     "exit",
     parser=_exit_parser,
     summary="Leave the shell.",
-    aliases=("quit", "\\q"),
+    aliases=("quit",),
     details=(
         "Takes no arguments.\n\n"
         "Detaches from the target first. Ctrl+C and Ctrl+D at the prompt do "

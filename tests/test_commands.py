@@ -40,11 +40,10 @@ def test_only_shell_commands_are_top_level():
     """Anything that touches the target belongs to a subject namespace."""
     assert sorted(entry.name for entry in top_level()) == [
         "clear",
+        "config",
         "exit",
         "help",
-        "set",
         "source",
-        "status",
         "version",
     ]
 
@@ -207,9 +206,9 @@ def test_a_namespace_listing_shows_argument_signatures(shell, capture):
 
 
 def test_a_namespace_listing_carries_a_worked_example(shell, capture):
-    shell.run_line("process:help")
+    shell.run_line("ps:help")
     assert "Example:" in capture.out
-    assert "peekmem> process:list chrome" in capture.out
+    assert "peekmem> ps:list chrome" in capture.out
 
 
 def test_a_long_signature_is_cut_at_a_token_boundary(shell, capture):
@@ -337,6 +336,13 @@ def test_option_words_come_from_the_parser():
     assert option_words("scan") == [], "a namespace has no options of its own"
 
 
+@pytest.mark.parametrize("word", ["status", "\\q", "\\s", "set", "process:list"])
+def test_retired_spellings_stay_retired(word):
+    """Names that were removed must not quietly come back as an alias."""
+    with pytest.raises(CommandError):
+        lookup(word)
+
+
 def test_command_words_are_unique():
     words = command_words()
     assert len(words) == len(set(words))
@@ -369,7 +375,7 @@ def test_examples_parse_as_commands(entry, shell):
         "memory:alloc 16",
         "memory:free 0x10",
         "memory:watch 0x10",
-        "process:info",
+        "ps:info",
     ],
 )
 def test_commands_needing_a_target_refuse_without_one(shell, line):
@@ -395,39 +401,41 @@ def test_commands_needing_results_refuse_without_them(shell, line):
 
 def test_close_without_a_target_is_an_error(shell):
     with pytest.raises(CommandError):
-        shell.run_line("process:close", raise_errors=True)
+        shell.run_line("ps:close", raise_errors=True)
 
 
-def test_status_works_with_no_target(shell, capture):
-    shell.run_line("status")
-    assert "(none attached)" in capture.out
+def test_version_reports_both_halves(shell, capture):
+    """Peekmem is a client: which PyMemoryEditor is underneath is half the answer."""
+    shell.run_line("version")
+    for label in ("Peekmem", "PyMemoryEditor", "Python", "Platform"):
+        assert f"{label}:" in capture.out
 
 
 def test_ps_lists_this_process(shell, capture):
     """The one command that talks to the OS without attaching to anything."""
     import os
 
-    shell.run_line("set limit 0")
-    shell.run_line("process:list")
+    shell.run_line("config limit 0")
+    shell.run_line("ps:list")
     assert str(os.getpid()) in capture.out
 
 
-def test_set_prints_booleans_the_way_they_are_typed(shell, capture):
-    shell.run_line("set")
+def test_config_prints_booleans_the_way_they_are_typed(shell, capture):
+    shell.run_line("config")
     assert "| off" in capture.out or "off " in capture.out
     capture.reset()
-    shell.run_line("set hex on")
+    shell.run_line("config hex on")
     assert "hex = on" in capture.out
 
 
-def test_set_accepts_the_equals_form(shell):
-    shell.run_line("set limit=42")
+def test_config_accepts_the_equals_form(shell):
+    shell.run_line("config limit=42")
     assert shell.session.option("limit") == 42
 
 
 def test_unknown_option_is_reported_not_swallowed(shell):
     with pytest.raises(CommandError):
-        shell.run_line("process:list --nosuchflag", raise_errors=True)
+        shell.run_line("ps:list --nosuchflag", raise_errors=True)
 
 
 def test_reset_reports_what_it_discarded(shell, capture):
@@ -442,7 +450,7 @@ def test_reset_reports_what_it_discarded(shell, capture):
 #: Every command that reports "Showing n of m rows" must offer a way to see
 #: the rest. Kept as a list so a new listing command has to join it.
 PAGED = [
-    "process:list",
+    "ps:list",
     "memory:regions",
     "memory:modules",
     "memory:threads",
@@ -477,19 +485,19 @@ def test_paging_flags_are_documented_identically(name):
 
 
 def test_a_truncated_listing_names_the_next_page(shell, capture):
-    shell.run_line("process:list --limit 2")
+    shell.run_line("ps:list --limit 2")
     assert "Showing 2 of" in capture.out
-    assert "Next page: process:list --offset 2 --limit 2" in capture.out
+    assert "Next page: ps:list --offset 2 --limit 2" in capture.out
 
 
 def test_the_last_page_offers_no_next(shell, capture):
-    shell.run_line("process:list --all")
+    shell.run_line("ps:list --all")
     assert "Next page:" not in capture.out
 
 
 def test_offset_cannot_be_negative(shell):
     with pytest.raises(CommandError, match="offset"):
-        shell.run_line("process:list --offset -1", raise_errors=True)
+        shell.run_line("ps:list --offset -1", raise_errors=True)
 
 
 def test_a_scan_preview_pages_through_scan_results(session, capture):

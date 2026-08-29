@@ -31,7 +31,7 @@ class NoProcessError(CommandError):
     def __init__(self, command: str = ""):
         detail = f" Command {command!r} needs a target." if command else ""
         super().__init__(
-            "No process attached." + detail + ' Use "process:open <pid|name>" first.'
+            "No process attached." + detail + ' Use "ps:open <pid|name>" first.'
         )
 
 

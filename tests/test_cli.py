@@ -34,13 +34,13 @@ def test_execute_runs_a_command_and_exits():
 
 
 def test_execute_flags_run_in_order():
-    status, out, _ = run(["-e", "set limit 3", "-e", "set"])
+    status, out, _ = run(["-e", "config limit 3", "-e", "config"])
     assert status == 0
     assert out.index("limit = 3") < out.index("SETTING")
 
 
 def test_a_trailing_command_works_like_execute():
-    status, out, _ = run(["process:list", "--limit", "1"])
+    status, out, _ = run(["ps:list", "--limit", "1"])
     assert status == 0
     assert "PID" in out
 
@@ -73,10 +73,27 @@ def test_a_bad_pid_stops_before_the_commands():
     status, out, err = run(["-p", "2147483646", "-e", "version"])
     assert status == 1
     assert "Peekmem" not in out
+    # Specifically the PID's fault. Asserting only on the status let a real
+    # bug hide here once: --pid built a command that no longer existed, so the
+    # run failed for the right code and entirely the wrong reason.
+    assert "2147483646" in err
+
+
+def test_the_target_flags_build_a_real_command():
+    """--pid and --name are spelled as a command line; it has to be one."""
+    from peekmem.cli import _startup_lines
+    from peekmem.commands import lookup
+
+    for argv in (["-p", "42"], ["-n", "game.exe", "-i", "--partial"]):
+        options = build_parser().parse_args(argv + ["-e", "version"])
+        for line in _startup_lines(options):
+            word, _, rest = line.partition(" ")
+            entry = lookup(word)  # raises if the command does not exist
+            entry.parser().parse_args(rest.split())
 
 
 def test_limit_flag_reaches_the_session():
-    status, out, _ = run(["--limit", "1", "-e", "process:list"])
+    status, out, _ = run(["--limit", "1", "-e", "ps:list"])
     assert status == 0
     assert "Showing 1 of" in out
 

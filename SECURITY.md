@@ -15,7 +15,7 @@ prepared before details become public.
 When reporting, please include:
 
 - Affected version(s) — the output of `peekmem -e "version"` covers Peekmem,
-  PyMemoryEditor, Python and the platform in one line.
+  PyMemoryEditor, Python and the platform.
 - The exact command line or shell session that triggers it.
 - A minimal reproducer, and the impact you observed.
 - Any prerequisites (privileges, `ptrace_scope`, target process attributes).

@@ -45,10 +45,10 @@ class Namespace:
 #: level down would cost more than the tidiness is worth.
 NAMESPACES: Tuple[Namespace, ...] = (
     Namespace(
-        "process",
+        "ps",
         "Process",
         "Find a target process and attach to it.",
-        "peekmem> process:list chrome\n"
+        "peekmem> ps:list chrome\n"
         "\n"
         "+-------+------------+\n"
         "| PID   | NAME       |\n"
@@ -468,7 +468,7 @@ def paginate(
 
 from . import memory_commands  # noqa: E402,F401  (registration side effect)
 from . import pointer_commands  # noqa: E402,F401
-from . import process_commands  # noqa: E402,F401
+from . import ps_commands  # noqa: E402,F401
 from . import scan_commands  # noqa: E402,F401
 from . import session_commands  # noqa: E402,F401
 

@@ -9,10 +9,10 @@ exits with a status, so the same vocabulary works inside a script, an SSH
 session or a CI job:
 
     peekmem                                  # the shell
-    peekmem process:list chrome                      # one command, then exit
+    peekmem ps:list chrome                           # one command, then exit
     peekmem -p 4242 -e "memory:read game.exe+0x10"   # attach, read, exit
     peekmem -f setup.peek                            # a file of commands
-    echo "process:list" | peekmem                    # a pipe
+    echo "ps:list" | peekmem                         # a pipe
 """
 
 import argparse
@@ -123,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs=argparse.REMAINDER,
-        help="a single command to run, e.g. 'peekmem process:list chrome'",
+        help="a single command to run, e.g. 'peekmem ps:list chrome'",
     )
     return parser
 
@@ -135,7 +135,7 @@ def _startup_lines(options: argparse.Namespace) -> List[str]:
     if options.pid is not None and options.name is not None:
         raise CommandError("Give --pid or --name, not both.")
 
-    parts = ["open"]
+    parts = ["ps:open"]
     if options.pid is not None:
         parts += ["--pid", str(options.pid)]
     else:

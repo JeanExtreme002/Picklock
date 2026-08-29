@@ -179,7 +179,7 @@ the moment it is registered.
 Please include:
 
 - The output of `peekmem -e "version"` — it names Peekmem, PyMemoryEditor,
-  Python and the platform in one line.
+  Python and the platform.
 - The exact command you typed and the exact output you got.
 - Whether you were running elevated (`sudo` / Administrator).
 - For Linux: whether `/proc/sys/kernel/yama/ptrace_scope` is `0` or `1`.

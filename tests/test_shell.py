@@ -11,15 +11,15 @@ from peekmem.shell import Shell
 @pytest.mark.parametrize(
     "line,expected",
     [
-        ("process:list", ("process:list", [])),
-        ("  process:list  chrome ", ("process:list", ["chrome"])),
-        ("process:list chrome;", ("process:list", ["chrome"])),
-        ("process:list chrome ;;", ("process:list", ["chrome"])),
+        ("ps:list", ("ps:list", [])),
+        ("  ps:list  chrome ", ("ps:list", ["chrome"])),
+        ("ps:list chrome;", ("ps:list", ["chrome"])),
+        ("ps:list chrome ;;", ("ps:list", ["chrome"])),
         (
             "memory:write 0x10 bytes 'DE AD'",
             ("memory:write", ["0x10", "bytes", "DE AD"]),
         ),
-        ("\\q", ("\\q", [])),
+        ("\\h", ("\\h", [])),
         ("source \\.", ("source", ["."])),
     ],
 )
@@ -88,7 +88,7 @@ def test_help_topics_are_reachable(shell, capture):
 
 def test_source_runs_a_file(shell, capture, tmp_path):
     script = tmp_path / "setup.peek"
-    script.write_text("# a comment\nset limit 7\n\nset hex on\n")
+    script.write_text("# a comment\nconfig limit 7\n\nconfig hex on\n")
     shell.run_line(f"source {script}")
     assert shell.session.option("limit") == 7
     assert shell.session.option("hex") is True
@@ -96,7 +96,7 @@ def test_source_runs_a_file(shell, capture, tmp_path):
 
 def test_source_stops_at_the_failing_line(shell, capture, tmp_path):
     script = tmp_path / "bad.peek"
-    script.write_text("set limit 7\nnosuchcommand\nset limit 9\n")
+    script.write_text("config limit 7\nnosuchcommand\nconfig limit 9\n")
     shell.run_line(f"source {script}")
     assert "bad.peek:2" in capture.err
     assert shell.session.option("limit") == 7
@@ -106,7 +106,7 @@ def test_interactive_loop_reads_until_eof(shell, capture, monkeypatch):
     lines = iter(["version", "exit"])
     monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
     assert shell.interact(banner=False) == 0
-    assert "Bye" in capture.out
+    assert capture.err == ""
 
 
 def test_ctrl_c_at_the_prompt_quits(shell, capture, monkeypatch):
@@ -118,7 +118,7 @@ def test_ctrl_c_at_the_prompt_quits(shell, capture, monkeypatch):
     monkeypatch.setattr("builtins.input", fake_input)
     assert shell.interact(banner=False) == 130
     assert "^C" in capture.out
-    assert "Bye" in capture.out
+    assert capture.err == ""
 
 
 def test_ctrl_d_quits_with_a_zero_status(shell, capture, monkeypatch):
@@ -127,7 +127,7 @@ def test_ctrl_d_quits_with_a_zero_status(shell, capture, monkeypatch):
 
     monkeypatch.setattr("builtins.input", fake_input)
     assert shell.interact(banner=False) == 0
-    assert "Bye" in capture.out
+    assert capture.err == ""
 
 
 def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypatch):

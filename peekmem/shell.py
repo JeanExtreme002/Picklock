@@ -73,7 +73,7 @@ class Shell:
         """Split a line into ``(command, args)``, or ``None`` when it is blank.
 
         The command word is taken verbatim rather than through ``shlex`` so
-        the backslash aliases (``\\q``, ``\\s``, ``\\.``) survive: POSIX
+        the backslash aliases (``\\h``, ``\\.``) survive: POSIX
         quoting would eat the backslash and leave a command nobody registered.
         """
         stripped = line.strip()
@@ -260,7 +260,6 @@ class Shell:
             self._save_history()
             self.session.close()
 
-        self.printer.write("Bye")
         return status
 
     # -- readline ----------------------------------------------------------
@@ -322,7 +321,7 @@ class Shell:
             ]
         else:
             head = buffer.strip().split()[0].lower()
-            if head == "set":
+            if head == "config":
                 candidates = [setting.name for setting in SETTINGS]
             elif head == "help":
                 candidates = command_words() + ["types", "address", "scanning"]

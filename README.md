@@ -49,7 +49,7 @@ $ peekmem
 Welcome to Peekmem 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
 Type 'help' for the command list, 'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.
 
-peekmem> process:list game
+peekmem> ps:list game
 +-------+----------+
 | PID   | NAME     |
 +-------+----------+
@@ -57,7 +57,7 @@ peekmem> process:list game
 +-------+----------+
 1 row in set (0.01 sec)
 
-peekmem> process:open 41902
+peekmem> ps:open 41902
 Attached to game.exe (PID 41902, 64-bit). (0.00 sec)
 
 peekmem [game.exe:41902]> scan:value int32 100 --writable
@@ -114,11 +114,11 @@ The same vocabulary works non-interactively, which is the point of a CLI on a
 server:
 
 ```bash
-peekmem process:list chrome                          # one command, then exit
+peekmem ps:list chrome                               # one command, then exit
 peekmem -p 4242 -e "memory:read game.exe+0x1234"     # attach, read, exit
 peekmem -p 4242 -e "scan:value int32 100" -e "scan:results"  # several, in order
 peekmem -f setup.peek                               # a file of commands
-echo "process:list" | peekmem                        # a pipe
+echo "ps:list" | peekmem                             # a pipe
 ```
 
 Results go to stdout and errors to stderr, tables are plain ASCII, colour is
@@ -156,7 +156,7 @@ scan commands: (get help with scan:help SUBCOMMAND)
     scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
     scan:drop <row> [row ...]                    Remove the named result rows.
     scan:keep <row> [row ...]                    Keep only the named result rows.
-    scan:next [op] [value]                       Narrow the results with another comparison.
+    scan:next [op] [value ...]                   Narrow the results with another comparison.
     scan:regex <pattern> [--length N] [--max N]  Scan for text matching a regular expression.
     scan:reset                                   Discard the current scan results.
     scan:results [--limit N] [--offset N]...     Show the current result set, re-read.
@@ -172,11 +172,11 @@ nothing, whichever way you ask — `scan`, `scan --help`, `scan:help` and
 
 | Namespace | Commands |
 | --- | --- |
-| **`process:`** | `list` · `open` · `close` · `info` |
+| **`ps:`** | `list` · `open` · `close` · `info` |
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
 | **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
-| Top level | `help` · `set` · `source` · `status` · `version` · `clear` · `exit` |
+| Top level | `help` · `config` · `source` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
 argument, every flag, and examples. That list is generated from the command's

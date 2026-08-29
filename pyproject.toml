@@ -1,0 +1,122 @@
+[project]
+name = "peekmem"
+dynamic = ["version"]
+description = "A terminal client for PyMemoryEditor — read, write and scan process memory from any shell on Windows, Linux and macOS."
+authors = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+maintainers = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+license = "MIT"
+license-files = ["LICENSE*"]
+readme = "README.md"
+keywords = [
+    "cli",
+    "shell",
+    "repl",
+    "terminal",
+    "memory-scanner",
+    "memory-editor",
+    "process-memory",
+    "cheat-engine",
+    "pointer-scan",
+    "aob-scan",
+    "game-hacking",
+    "reverse-engineering",
+    "debugging",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+
+# Peekmem is a client, not a reimplementation: every memory operation is
+# PyMemoryEditor's. The floor is 2.2.0 because Peekmem uses the region
+# snapshot, the module/thread descriptors and the pointer-scan file format
+# introduced up to that release.
+#
+# Nothing else is needed. The shell is stdlib only (argparse, shlex, readline
+# where the platform has it), which is what lets `pip install peekmem` work on
+# a bare server with no compiler and no wheels to build.
+dependencies = [
+    "PyMemoryEditor>=2.2.0",
+]
+
+[project.optional-dependencies]
+# Vectorised scan acceleration. NumPy lights up the fast path inside
+# PyMemoryEditor automatically — Peekmem needs no code change and behaves
+# identically without it, only slower on large regions.
+speed = [
+    "PyMemoryEditor[speed]>=2.2.0",
+]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "flake8",
+    "mypy",
+    "build",
+    "twine",
+]
+
+[project.scripts]
+peekmem = "peekmem.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/JeanExtreme002/Peekmem"
+Repository = "https://github.com/JeanExtreme002/Peekmem"
+Issues = "https://github.com/JeanExtreme002/Peekmem/issues"
+Changelog = "https://github.com/JeanExtreme002/Peekmem/releases"
+"PyMemoryEditor" = "https://github.com/JeanExtreme002/PyMemoryEditor"
+Funding = "https://github.com/sponsors/JeanExtreme002"
+
+[tool.hatch.version]
+path = "peekmem/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["peekmem"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"peekmem/py.typed" = "peekmem/py.typed"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github"]
+
+[tool.mypy]
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["peekmem"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+# hatchling>=1.27 understands the PEP 639 `license = "MIT"` expression and the
+# `license-files` glob above; older versions fail with a confusing error.
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"

@@ -1,0 +1,259 @@
+# -*- coding: utf-8 -*-
+
+"""
+The read-eval-print loop.
+
+The shell is deliberately thin: it turns a line of text into a command word
+plus arguments, hands them to the registry, and makes sure nothing a command
+raises can end the session by accident. Everything else — what the commands
+are, what they print — lives elsewhere.
+
+Line syntax is one command per line, arguments split with shell quoting rules,
+and a trailing ``;`` politely ignored for the muscle memory of anyone arriving
+from ``mysql``. Blank lines and lines starting with ``#`` or ``--`` are
+comments, which is what makes a file of commands runnable with ``source``.
+"""
+
+import os
+import re
+import shlex
+import sys
+from typing import Iterable, List, Optional, Sequence, TextIO, Tuple
+
+from PyMemoryEditor import PyMemoryEditorError
+
+from . import __version__, valuetypes
+from .commands import all_commands, command_words, lookup
+from .errors import CommandError, ExitShell
+from .output import Printer
+from .session import SETTINGS, Session
+
+#: Where the interactive shell remembers what you typed.
+HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".peekmem_history")
+HISTORY_LENGTH = 1000
+
+_LEADING_WORD = re.compile(r"\s*(\S+)\s*(.*)", re.DOTALL)
+
+
+class Shell:
+    """Dispatches command lines against a :class:`~peekmem.session.Session`."""
+
+    def __init__(
+        self,
+        session: Optional[Session] = None,
+        *,
+        printer: Optional[Printer] = None,
+        stdin: Optional[TextIO] = None,
+    ):
+        self.printer = printer if printer is not None else Printer()
+        self.session = session if session is not None else Session(self.printer)
+        self.session.printer = self.printer
+        self.session.shell = self
+        self.stdin = stdin if stdin is not None else sys.stdin
+        self._history_loaded = False
+
+    # -- parsing and dispatch ---------------------------------------------
+
+    @staticmethod
+    def split(line: str) -> Optional[Tuple[str, List[str]]]:
+        """Split a line into ``(command, args)``, or ``None`` when it is blank.
+
+        The command word is taken verbatim rather than through ``shlex`` so
+        the backslash aliases (``\\q``, ``\\s``, ``\\.``) survive: POSIX
+        quoting would eat the backslash and leave a command nobody registered.
+        """
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("--"):
+            return None
+
+        # A trailing ';' is habit, not syntax. Accept it and move on.
+        while stripped.endswith(";"):
+            stripped = stripped[:-1].rstrip()
+        if not stripped:
+            return None
+
+        match = _LEADING_WORD.match(stripped)
+        if match is None:  # pragma: no cover - a non-blank line always matches
+            return None
+
+        word, remainder = match.group(1), match.group(2)
+        try:
+            args = shlex.split(remainder)
+        except ValueError as error:
+            raise CommandError(f"Cannot parse the arguments: {error}.")
+        return word, args
+
+    def run_line(self, line: str, *, raise_errors: bool = False) -> bool:
+        """Run one line. Returns True when it succeeded.
+
+        :param raise_errors: re-raise :class:`CommandError` instead of printing
+            it — used by ``source`` so a script stops at the failing line, and
+            by ``--execute`` so the process can exit non-zero.
+        """
+        try:
+            parsed = self.split(line)
+            if parsed is None:
+                return True
+            word, args = parsed
+            entry = lookup(word)
+            entry.handler(self.session, args)
+            return True
+
+        except ExitShell:
+            raise
+        except CommandError as error:
+            if raise_errors:
+                raise
+            self.printer.error(str(error))
+            return False
+        except KeyboardInterrupt:
+            # A command that does not handle Ctrl+C itself: abandon it, keep
+            # the session.
+            self.printer.clear_progress()
+            self.printer.write("^C")
+            return False
+        except (PyMemoryEditorError, OSError, ValueError) as error:
+            # The target died, a page went away, a value did not fit. All of
+            # these are the day-to-day weather of poking at another process,
+            # and none of them should end the session.
+            if raise_errors:
+                raise CommandError(str(error))
+            self.printer.error(str(error))
+            return False
+
+    def run_lines(self, lines: Iterable[str], *, raise_errors: bool = False) -> int:
+        """Run a sequence of lines, returning a process exit status."""
+        for line in lines:
+            try:
+                if not self.run_line(line, raise_errors=raise_errors):
+                    return 1
+            except ExitShell as exit_request:
+                return exit_request.status
+            except CommandError as error:
+                self.printer.error(str(error))
+                return 1
+        return 0
+
+    # -- the interactive loop ---------------------------------------------
+
+    def prompt(self) -> str:
+        """The prompt, naming the target so you cannot write to the wrong one."""
+        if self.session.process is None:
+            return "peekmem> "
+        name = self.session.process_name or "?"
+        return f"peekmem [{name}:{self.session.process.pid}]> "
+
+    def banner(self) -> str:
+        import PyMemoryEditor
+
+        return (
+            f"Welcome to Peekmem {__version__}, a terminal client for "
+            f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
+            "Commands end with a newline. Type 'help' for the command list, "
+            "'help scanning' for a walkthrough, 'exit' to quit.\n"
+        )
+
+    def interact(self, *, banner: bool = True) -> int:
+        """Run the shell until ``exit``, Ctrl+D, or the input runs out."""
+        if banner:
+            self.printer.write(self.banner())
+
+        self._setup_readline()
+        status = 0
+
+        try:
+            while True:
+                try:
+                    line = input(self.prompt())
+                except KeyboardInterrupt:
+                    # Ctrl+C at the prompt abandons the line, as in mysql.
+                    self.printer.write("^C")
+                    continue
+                except EOFError:
+                    self.printer.write()
+                    break
+
+                try:
+                    self.run_line(line)
+                except ExitShell as exit_request:
+                    status = exit_request.status
+                    break
+        finally:
+            self._save_history()
+            self.session.close()
+
+        self.printer.write("Bye")
+        return status
+
+    # -- readline ----------------------------------------------------------
+
+    def _setup_readline(self) -> None:
+        """Wire up history and tab completion when readline is available.
+
+        readline is in the standard library on Linux and macOS but not on
+        Windows, where its absence simply means no history and no completion —
+        never a failure to start.
+        """
+        try:
+            import readline
+        except ImportError:  # pragma: no cover - Windows without pyreadline3
+            return
+
+        try:
+            readline.read_history_file(HISTORY_FILE)
+        except (OSError, ValueError):
+            pass  # No history yet, or an unreadable one. Neither is fatal.
+        readline.set_history_length(HISTORY_LENGTH)
+        self._history_loaded = True
+
+        readline.set_completer(self._complete)
+        readline.set_completer_delims(" \t\n")
+        # libedit (the readline stand-in shipped on macOS) spells the binding
+        # differently, and binding the wrong one is a silent no-op.
+        if "libedit" in (getattr(readline, "__doc__", "") or ""):
+            readline.parse_and_bind("bind ^I rl_complete")
+        else:
+            readline.parse_and_bind("tab: complete")
+
+    def _save_history(self) -> None:
+        if not self._history_loaded:
+            return
+        try:
+            import readline
+
+            readline.write_history_file(HISTORY_FILE)
+        except (ImportError, OSError):  # pragma: no cover - read-only home
+            pass
+
+    def _complete(self, text: str, state: int) -> Optional[str]:
+        """Tab completion over command words, type names and setting names."""
+        try:
+            import readline
+
+            buffer = readline.get_line_buffer()[: readline.get_endidx()]
+        except (ImportError, AttributeError):  # pragma: no cover
+            buffer = text
+
+        first_word = not buffer[: len(buffer) - len(text)].strip()
+
+        if first_word:
+            candidates: Sequence[str] = command_words()
+        else:
+            head = buffer.strip().split()[0].lower()
+            if head == "set":
+                candidates = [setting.name for setting in SETTINGS]
+            elif head == "help":
+                candidates = command_words() + ["types", "address", "scanning"]
+            else:
+                candidates = valuetypes.type_names()
+
+        matches = [item for item in candidates if item.startswith(text)]
+        return matches[state] if state < len(matches) else None
+
+
+def command_summaries() -> List[Tuple[str, str]]:
+    """``(name, summary)`` for every command — used by the ``--help`` output."""
+    return [(entry.name, entry.summary) for entry in all_commands()]
+
+
+__all__ = ("HISTORY_FILE", "Shell", "command_summaries")

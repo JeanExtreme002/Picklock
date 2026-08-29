@@ -99,7 +99,12 @@ def test_version_flag():
     assert exit_info.value.code == 0
 
 
-def test_help_lists_the_commands(capsys):
-    parser = build_parser()
-    text = parser.format_help()
-    assert "scan" in text and "ptrscan" in text and "Pointers" in text
+def test_help_lists_the_layers_not_every_command(capsys):
+    """--help mirrors the shell's own overview: namespaces, then shell commands."""
+    text = build_parser().format_help()
+    for namespace in ("process", "memory", "scan", "pointer"):
+        assert namespace in text
+    for name in ("help", "set", "version", "exit"):
+        assert name in text
+    assert "<name>:help" in text
+    assert "ptrscan" not in text, "the deeper layers are reached, not dumped"

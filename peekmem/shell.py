@@ -148,13 +148,24 @@ class Shell:
 
         ``memory`` is not a command, but in a namespaced shell it is an obvious
         thing to type — so it prints what lives under it rather than a "no such
-        command". With arguments it is a mistake worth naming precisely: the
-        user almost always meant the colon.
+        command", exactly as ``memory:help`` does. With arguments it is a
+        mistake worth naming precisely: the user almost always meant the colon.
         """
         try:
             return lookup(word)
         except CommandError:
             head = word.strip().lower()
+
+            # '<prefix>:help' — the layered way down. It is a convention rather
+            # than a registered command so it works at every depth, present and
+            # future, without one 'help' command per namespace cluttering the
+            # very listings it exists to print.
+            if head.endswith(":help"):
+                from .commands.session_commands import print_namespace
+
+                if print_namespace(self.session, head[: -len(":help")]):
+                    raise _Handled()
+
             if not children(head):
                 raise
 

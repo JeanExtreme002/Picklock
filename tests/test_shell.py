@@ -69,10 +69,10 @@ def test_prompt_names_the_target(shell):
     assert shell.prompt() == "peekmem> "
 
 
-def test_help_lists_every_group(shell, capture):
+def test_help_lists_every_namespace(shell, capture):
     shell.run_line("help")
-    for group in ("Process", "Memory", "Scanning", "Pointers", "Session"):
-        assert group in capture.out
+    for namespace in ("process", "memory", "scan", "pointer"):
+        assert namespace in capture.out
 
 
 def test_help_topics_are_reachable(shell, capture):
@@ -143,7 +143,7 @@ def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypat
 
     def fake_lookup(name):
         entry = real_lookup(name)
-        if entry.name == "session:version":
+        if entry.name == "version":
             return Command(
                 name=entry.name,
                 handler=interrupted,

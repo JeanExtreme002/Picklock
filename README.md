@@ -127,9 +127,32 @@ non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave
 
 ## What it can do
 
-Commands are namespaced, and every one has a short alias — `memory:read` and
-`read` are the same command, so the hierarchy costs nothing at the keyboard.
-Type a namespace alone (`memory`, `pointer:`) to list what is in it.
+The help is layered. `help` shows four namespaces and the handful of commands
+that drive the shell — not a wall of forty:
+
+```console
+peekmem> help
+Namespaces — type '<name>:help' to list what is in one:
+  process  Find a target process and attach to it.
+  memory   Read, write and inspect the target's memory.
+  scan     Search memory for a value, then narrow what you found.
+  pointer  Follow pointer chains, and find ones that survive a restart.
+
+Commands:
+  exit     Leave the shell.
+  help     List the commands, or describe one.
+  set      Show or change a session setting.
+  source   Run the commands in a file.
+  status   Show the session state and versions.
+  version  Print the Peekmem and PyMemoryEditor versions.
+```
+
+`scan:help` opens the next layer, `scan:results:help` the one below that. Each
+listing shows one level and points at the next, so you never read past what you
+came for.
+
+Every namespaced command also has a short alias — `memory:read` and `read` are
+the same command, so the hierarchy costs nothing at the keyboard.
 
 | Namespace | Commands (short alias) |
 | --- | --- |
@@ -137,7 +160,7 @@ Type a namespace alone (`memory`, `pointer:`) to list what is in it.
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` (scan) · `next` · `aob` · `regex` · `results` · `results:keep` (keep) · `results:drop` (drop) · `results:clear` (reset) |
 | **`pointer:`** | `deref` · `read` (pointer) · `scan` (ptrscan) · `rescan` (ptrrescan) · `paths` · `paths:save` (ptrsave) · `paths:load` (ptrload) · `paths:diff` (ptrdiff) |
-| **`session:`** | `help` · `set` · `source` · `status` · `version` · `exit` |
+| Top level | `help` · `set` · `source` · `status` · `version` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
 argument, every flag, and examples. That list is generated from the command's

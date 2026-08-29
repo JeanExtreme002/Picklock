@@ -20,15 +20,15 @@ from ..output import (
 )
 from ..session import SETTINGS, Session
 from . import (
-    NAMESPACES,
     Command,
     CommandParser,
-    all_commands,
     children,
     command,
     describe_action,
     lookup,
+    namespace_summary,
     namespaces,
+    top_level,
 )
 
 _ADDRESS_TOPIC = """\
@@ -137,30 +137,40 @@ def _command_rows(commands) -> List[Tuple[str, str]]:
 
 
 def _print_overview(session: Session) -> None:
+    """The top layer: the four subjects, and the words that drive the shell.
+
+    Deliberately not a list of every command. Thirty-four lines is a wall to
+    read past, not an answer; four namespaces and six commands is something you
+    can take in, with one obvious move to get deeper.
+    """
     printer = session.printer
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    commands = all_commands()
+    printer.write("Namespaces — type '<name>:help' to list what is in one:")
+    printer.write(
+        render_definitions(
+            [(name, namespace_summary(name)) for name in namespaces()],
+            label_width=10,
+        )
+    )
+    printer.write()
 
-    for namespace, title in NAMESPACES:
-        in_group = [entry for entry in commands if entry.namespace == namespace]
-        if not in_group:
-            continue
-        printer.write(f"{title} ({namespace}:)")
-        printer.write(render_definitions(_command_rows(in_group), label_width=30))
-        printer.write()
+    printer.write("Commands:")
+    printer.write(
+        render_definitions(
+            [(entry.name, entry.summary) for entry in top_level()], label_width=10
+        )
+    )
+    printer.write()
 
     printer.write(
-        "Every command has a full name and a short alias: 'memory:read' and\n"
-        "'read' are the same command. Type either."
+        "Every command in a namespace also has a short alias: 'memory:read' "
+        "and 'read'\nare the same command."
     )
     printer.write(
-        "Type 'help <command>' — or '<command> --help' — for a command's full\n"
-        "description, including every argument and flag it accepts."
-    )
-    printer.write(
-        "Type a namespace alone — 'memory', 'pointer' — to list what is in it."
+        "Type 'help <command>' — or '<command> --help' — for a command's "
+        "arguments."
     )
     printer.write("Topics: 'help types', 'help address', 'help scanning'.")
     printer.write("End the session with 'exit', Ctrl+C, Ctrl+D, or \\q.")
@@ -183,6 +193,16 @@ def print_namespace(session: Session, prefix: str) -> bool:
     session.printer.write()
     session.printer.write(render_definitions(_command_rows(entries), label_width=30))
     session.printer.write()
+
+    # Point at the next layer down rather than printing it here.
+    for entry in entries:
+        deeper = children(entry.name)
+        if deeper:
+            session.printer.write(
+                f"'{entry.name}' has {len(deeper)} subcommands of its own — "
+                f"type '{entry.name}:help'."
+            )
+            session.printer.write()
     return True
 
 
@@ -245,7 +265,7 @@ def _print_command_help(session: Session, name: str) -> None:
 
 
 def _help_parser() -> CommandParser:
-    parser = CommandParser("session:help")
+    parser = CommandParser("help")
     parser.add_argument(
         "topic",
         nargs="?",
@@ -257,11 +277,11 @@ def _help_parser() -> CommandParser:
 
 
 @command(
-    "session:help",
+    "help",
     parser=_help_parser,
     summary="List the commands, or describe one.",
-    usage="session:help [command|types|address|scanning]",
-    aliases=("help", "?", "\\h"),
+    usage="help [command|types|address|scanning]",
+    aliases=("?", "\\h"),
     details=(
         "With a command name, prints that command's usage, every argument and "
         "flag it accepts, and examples. Typing '<command> --help' does the "
@@ -324,7 +344,7 @@ def command_words_set() -> set:
 
 
 def _set_parser() -> CommandParser:
-    parser = CommandParser("session:set")
+    parser = CommandParser("set")
     parser.add_argument(
         "assignment",
         nargs="*",
@@ -336,11 +356,10 @@ def _set_parser() -> CommandParser:
 
 
 @command(
-    "session:set",
+    "set",
     parser=_set_parser,
     summary="Show or change a session setting.",
-    usage="session:set [name [value]]",
-    aliases=("set",),
+    usage="set [name [value]]",
     details=(
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
@@ -389,7 +408,7 @@ def cmd_set(session: Session, args: List[str]) -> None:
 
 
 def _source_parser() -> CommandParser:
-    parser = CommandParser("session:source")
+    parser = CommandParser("source")
     parser.add_argument(
         "file",
         help="a text file of commands, one per line; blank lines and lines "
@@ -399,11 +418,11 @@ def _source_parser() -> CommandParser:
 
 
 @command(
-    "session:source",
+    "source",
     parser=_source_parser,
     summary="Run the commands in a file.",
-    usage="session:source <file>",
-    aliases=("source", "\\."),
+    usage="source <file>",
+    aliases=("\\.",),
     details=(
         "Reads the file and runs each line as if it had been typed.\n\n"
         "A failing line stops the script — a setup that half-ran is worse than "
@@ -433,15 +452,14 @@ def cmd_source(session: Session, args: List[str]) -> None:
 
 
 def _version_parser() -> CommandParser:
-    return CommandParser("session:version")
+    return CommandParser("version")
 
 
 @command(
-    "session:version",
+    "version",
     parser=_version_parser,
     summary="Print the Peekmem and PyMemoryEditor versions.",
-    usage="session:version",
-    aliases=("version",),
+    usage="version",
     details=(
         "Takes no arguments.\n\n"
         "The one line to quote in a bug report: it names Peekmem, "
@@ -459,15 +477,15 @@ def cmd_version(session: Session, args: List[str]) -> None:
 
 
 def _exit_parser() -> CommandParser:
-    return CommandParser("session:exit")
+    return CommandParser("exit")
 
 
 @command(
-    "session:exit",
+    "exit",
     parser=_exit_parser,
     summary="Leave the shell.",
-    usage="session:exit",
-    aliases=("exit", "quit", "\\q"),
+    usage="exit",
+    aliases=("quit", "\\q"),
     details=(
         "Takes no arguments.\n\n"
         "Detaches from the target first. Ctrl+C and Ctrl+D at the prompt do "

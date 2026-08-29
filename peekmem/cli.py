@@ -23,35 +23,35 @@ from typing import List, Optional, Sequence
 import PyMemoryEditor
 
 from . import __version__, dependencies
-from .commands import NAMESPACES, all_commands
+from .commands import namespace_summary, namespaces, top_level
 from .errors import CommandError, PeekmemError
 from .output import Printer
 from .session import Session
 from .shell import Shell
 
-_EPILOG_INTRO = (
-    "Commands — run 'peekmem <command> --help' for one command's arguments,\n"
-    "or 'peekmem help' for the topics:"
-)
-
 
 def _format_commands() -> str:
-    """A compact command list for ``--help``, grouped like ``help`` is."""
-    commands = all_commands()
-    width = max(len(entry.name) for entry in commands)
-    lines: List[str] = [_EPILOG_INTRO, ""]
-    for namespace, title in NAMESPACES:
-        in_group = [entry for entry in commands if entry.namespace == namespace]
-        if not in_group:
-            continue
-        lines.append(f"  {title}")
-        for entry in in_group:
-            # Full name, then the alias people actually type, in aligned
-            # columns — the same shape 'help' uses inside the shell.
-            lines.append(
-                f"    {entry.name.ljust(width)}  {entry.short.ljust(9)}  {entry.summary}"
-            )
-        lines.append("")
+    """The same layered summary the shell's own ``help`` prints.
+
+    Namespaces and the shell's own commands, with one move to go deeper —
+    rather than every command at once, which is a wall rather than an answer.
+    """
+    lines: List[str] = [
+        "Namespaces — run 'peekmem <name>:help' to list what is in one:",
+        "",
+    ]
+    for name in namespaces():
+        lines.append(f"  {name.ljust(10)}  {namespace_summary(name)}")
+
+    lines += ["", "Commands:", ""]
+    for entry in top_level():
+        lines.append(f"  {entry.name.ljust(10)}  {entry.summary}")
+
+    lines += [
+        "",
+        "Run 'peekmem <command> --help' for one command's arguments, or",
+        "'peekmem help' for the topics ('types', 'address', 'scanning').",
+    ]
     return "\n".join(lines)
 
 

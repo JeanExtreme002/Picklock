@@ -209,15 +209,15 @@ def cmd_close(session: Session, args: List[str]) -> None:
 
 
 def _status_parser() -> CommandParser:
-    return CommandParser("session:status")
+    return CommandParser("status")
 
 
 @command(
-    "session:status",
+    "status",
     parser=_status_parser,
     summary="Show the session state and versions.",
-    usage="session:status",
-    aliases=("status", "\\s"),
+    usage="status",
+    aliases=("\\s",),
     details=(
         "Takes no arguments.\n\n"
         "Cheap: reports what the session knows without touching the target."

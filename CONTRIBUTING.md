@@ -86,7 +86,11 @@ Two rules keep the shape:
    segment is one of the namespaces in `NAMESPACES`; the group in `help`
    follows from it, so there is nothing to keep in step. Give it a plain-word
    alias too — that is what people type, and a test enforces that every
-   command has one:
+   command has one.
+
+   A name with no colon is a **top-level** command, reserved for the shell's
+   own vocabulary (`help`, `set`, `exit`). Anything that touches the target
+   belongs in a namespace, and a test enforces that too.
 
    ```python
    def _mycommand_parser() -> CommandParser:
@@ -112,8 +116,11 @@ Two rules keep the shape:
        ...
    ```
 
-   A name with a third segment (`scan:results:keep`) is fine and shows up as a
-   **Subcommands** section under its parent's help.
+   A name with a third segment (`scan:results:keep`) is fine: it shows up as a
+   **Subcommands** section under its parent's help, and `scan:results:help`
+   lists that layer. The `<prefix>:help` form is a dispatcher convention rather
+   than a registered command, so it works at any depth without one `help`
+   command per namespace cluttering the listings it exists to print.
 
 3. Use `CommandParser`, not a bare `ArgumentParser`: it raises instead of
    calling `sys.exit`, which would kill the shell on a typo.

@@ -12,6 +12,7 @@ from peekmem.commands import (
     describe_action,
     lookup,
     namespaces,
+    top_level,
 )
 from peekmem.errors import CommandError, NoProcessError
 
@@ -23,14 +24,28 @@ COMMANDS = all_commands()
 def test_every_command_is_documented(entry):
     assert entry.summary and entry.summary[0].isupper() and entry.summary.endswith(".")
     assert entry.usage.startswith(entry.name)
-    assert entry.namespace in dict(NAMESPACES)
+    assert entry.is_top_level or entry.namespace in namespaces()
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
-def test_every_command_lives_in_a_namespace(entry):
-    """A bare name would sit outside the hierarchy the help is built from."""
-    assert ":" in entry.name
-    assert entry.namespace in namespaces()
+def test_every_command_is_placed(entry):
+    """Either in a declared namespace, or deliberately top-level."""
+    if entry.is_top_level:
+        assert ":" not in entry.name
+    else:
+        assert entry.namespace in namespaces()
+
+
+def test_only_shell_commands_are_top_level():
+    """Anything that touches the target belongs to a subject namespace."""
+    assert sorted(entry.name for entry in top_level()) == [
+        "exit",
+        "help",
+        "set",
+        "source",
+        "status",
+        "version",
+    ]
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
@@ -52,13 +67,68 @@ def test_a_parent_name_is_a_prefix_of_its_children(entry):
 
 
 def test_namespaces_are_listed_in_the_declared_order():
-    order = [name for name, _ in NAMESPACES]
-    seen = [entry.namespace for entry in COMMANDS]
+    order = [name for name, _, _ in NAMESPACES]
+    seen = [entry.namespace for entry in COMMANDS if not entry.is_top_level]
     positions = [order.index(name) for name in seen]
     assert positions == sorted(positions)
 
 
-@pytest.mark.parametrize("namespace", [name for name, _ in NAMESPACES])
+def test_top_level_commands_sort_last():
+    """help prints the subjects first, then the words that drive the shell."""
+    names = [entry.is_top_level for entry in all_commands()]
+    assert names == sorted(names), "a namespaced command came after a top-level one"
+
+
+def test_children_are_one_level_deep():
+    """The layering depends on this: a listing shows a screen, not a tree."""
+    names = [entry.name for entry in children("scan")]
+    assert "scan:results" in names
+    assert "scan:results:keep" not in names
+    assert [entry.name for entry in children("scan:results")] == [
+        "scan:results:clear",
+        "scan:results:drop",
+        "scan:results:keep",
+    ]
+
+
+def test_the_overview_shows_layers_not_every_command(shell, capture):
+    shell.run_line("help")
+    out = capture.out
+    for namespace in namespaces():
+        assert namespace in out
+    for entry in top_level():
+        assert entry.name in out
+    # The point of the layering: the forty-odd namespaced commands are not
+    # listed here, only pointed at. Checked line-first, because the prose does
+    # name one of them as an example of the alias rule.
+    listed = {line.strip().split()[0] for line in out.splitlines() if line.startswith("  ")}
+    assert not any(":" in item for item in listed), f"a namespaced command is listed: {listed}"
+    assert "<name>:help" in out
+
+
+@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
+def test_namespace_help_lists_that_layer(shell, capture, namespace):
+    shell.run_line(f"{namespace}:help")
+    assert f"Commands under '{namespace}:'" in capture.out
+    for entry in children(namespace):
+        assert entry.name in capture.out
+    assert capture.err == ""
+
+
+def test_a_deeper_help_lists_the_third_layer(shell, capture):
+    shell.run_line("scan:results:help")
+    assert "Commands under 'scan:results:'" in capture.out
+    assert "scan:results:keep" in capture.out
+
+
+def test_a_listing_points_at_the_layer_below_it(shell, capture):
+    shell.run_line("scan:help")
+    assert "scan:results" in capture.out
+    assert "scan:results:keep" not in capture.out, "that is the next layer down"
+    assert "type 'scan:results:help'" in capture.out
+
+
+@pytest.mark.parametrize("namespace", [name for name, _, _ in NAMESPACES])
 def test_every_namespace_has_commands(namespace):
     assert children(namespace), f"namespace {namespace!r} is empty"
 

@@ -21,21 +21,32 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..errors import CommandError
 
-#: Namespaces in the order ``help`` prints them, with the heading each one
-#: gets. A command's namespace is the part of its name before the first colon,
-#: so the grouping cannot drift from the naming — there is nothing to keep in
-#: step.
-NAMESPACES: Tuple[Tuple[str, str], ...] = (
-    ("process", "Process"),
-    ("memory", "Memory"),
-    ("scan", "Scanning"),
-    ("pointer", "Pointers"),
-    ("session", "Session"),
+#: Namespaces in the order ``help`` prints them, each with the heading it gets
+#: and the one line that says what it is for. A command's namespace is the part
+#: of its name before the first colon, so the grouping cannot drift from the
+#: naming — there is nothing to keep in step.
+#:
+#: Commands about the shell itself (``help``, ``set``, ``exit`` …) deliberately
+#: have no namespace. They are not a subject you go looking through; they are
+#: the handful of words you type between doing real work, and burying them one
+#: level down would cost more than the tidiness is worth.
+NAMESPACES: Tuple[Tuple[str, str, str], ...] = (
+    ("process", "Process", "Find a target process and attach to it."),
+    ("memory", "Memory", "Read, write and inspect the target's memory."),
+    ("scan", "Scanning", "Search memory for a value, then narrow what you found."),
+    (
+        "pointer",
+        "Pointers",
+        "Follow pointer chains, and find ones that survive a restart.",
+    ),
 )
 
-_NAMESPACE_TITLES: Dict[str, str] = dict(NAMESPACES)
+_NAMESPACE_TITLES: Dict[str, str] = {name: title for name, title, _ in NAMESPACES}
+_NAMESPACE_SUMMARIES: Dict[str, str] = {
+    name: summary for name, _, summary in NAMESPACES
+}
 _NAMESPACE_ORDER: Dict[str, int] = {
-    name: index for index, (name, _) in enumerate(NAMESPACES)
+    name: index for index, (name, _, _) in enumerate(NAMESPACES)
 }
 
 Handler = Callable[..., None]
@@ -142,23 +153,33 @@ class Command:
 
     @property
     def namespace(self) -> str:
-        """The first segment of the name — the group this command belongs to."""
-        return self.name.split(":", 1)[0]
+        """The first segment of the name, or ``""`` for a top-level command."""
+        return self.name.split(":", 1)[0] if ":" in self.name else ""
+
+    @property
+    def is_top_level(self) -> bool:
+        """True for the shell's own commands, which live outside any namespace."""
+        return ":" not in self.name
 
     @property
     def group(self) -> str:
         """The heading ``help`` files this command under."""
+        if self.is_top_level:
+            return "Commands"
         return _NAMESPACE_TITLES.get(self.namespace, self.namespace.capitalize())
 
     @property
     def short(self) -> str:
-        """The alias worth advertising — the first plain-word one.
+        """The spelling worth advertising — the first plain-word alias.
 
         First, not shortest: the alias list is written most-natural-first, and
         the shortest is often the cryptic one (``x`` for ``memory:dump``,
         ``ptr`` for ``pointer:read``). Backslash aliases like ``\\q`` are
-        skipped; they are shortcuts, not names.
+        skipped; they are shortcuts, not names. A top-level command is already
+        the short spelling of itself.
         """
+        if self.is_top_level:
+            return self.name
         for alias in self.aliases:
             if alias.isalnum():
                 return alias
@@ -197,7 +218,7 @@ def command(
     def decorator(handler: Handler) -> Handler:
         if name in _COMMANDS or name in _ALIASES:
             raise RuntimeError(f"Duplicate command name: {name}")
-        if name.split(":", 1)[0] not in _NAMESPACE_TITLES:
+        if ":" in name and name.split(":", 1)[0] not in _NAMESPACE_TITLES:
             raise RuntimeError(f"Unknown namespace in command name: {name}")
 
         entry = Command(
@@ -236,31 +257,54 @@ def lookup(name: str) -> Command:
 
 
 def all_commands() -> List[Command]:
-    """Every registered command, in namespace order then alphabetically."""
+    """Every registered command, in namespace order then alphabetically.
+
+    Top-level commands sort last, because that is where ``help`` prints them:
+    after the subjects, as the short list of words for driving the shell.
+    """
     return sorted(
         _COMMANDS.values(),
         key=lambda entry: (_NAMESPACE_ORDER.get(entry.namespace, 99), entry.name),
     )
 
 
-def children(prefix: str) -> List[Command]:
-    """Commands sitting under ``prefix`` in the hierarchy.
+def top_level() -> List[Command]:
+    """The commands that live outside any namespace."""
+    return [entry for entry in all_commands() if entry.is_top_level]
 
-    Works for a namespace (``memory`` yields every ``memory:*``) and for a
-    command that has commands beneath it (``scan:results`` yields
-    ``scan:results:keep`` and its siblings), which is the same question in both
-    cases: what can follow this word?
+
+def namespace_summary(name: str) -> str:
+    """The one line describing a namespace, for the top-level help."""
+    return _NAMESPACE_SUMMARIES.get(name.strip().lower().rstrip(":"), "")
+
+
+def children(prefix: str) -> List[Command]:
+    """The commands one level below ``prefix``.
+
+    One level, not all of them: ``children("scan")`` yields ``scan:results``
+    but not ``scan:results:keep``. That is what makes the help layered — each
+    listing shows a screen you can take in, and points at the next level down
+    rather than dumping it.
+
+    Works the same for a namespace (``memory``) and for a command that has
+    commands beneath it (``scan:results``), because it is the same question in
+    both cases: what can follow this word?
     """
     head = prefix.strip().lower().rstrip(":")
     if not head:
         return []
-    return [entry for entry in all_commands() if entry.name.startswith(head + ":")]
+    depth = head.count(":") + 1
+    return [
+        entry
+        for entry in all_commands()
+        if entry.name.startswith(head + ":") and entry.name.count(":") == depth
+    ]
 
 
 def namespaces() -> List[str]:
     """Every namespace that has at least one command registered in it."""
     known = {entry.namespace for entry in _COMMANDS.values()}
-    return [name for name, _ in NAMESPACES if name in known]
+    return [name for name, _, _ in NAMESPACES if name in known]
 
 
 def command_words() -> List[str]:
@@ -295,6 +339,8 @@ __all__ = (
     "command_words",
     "describe_action",
     "lookup",
+    "namespace_summary",
     "namespaces",
     "option_words",
+    "top_level",
 )

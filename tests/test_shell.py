@@ -151,7 +151,6 @@ def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypat
                 name=entry.name,
                 handler=interrupted,
                 summary=entry.summary,
-                usage=entry.usage,
             )
         return entry
 

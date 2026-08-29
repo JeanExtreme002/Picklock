@@ -17,7 +17,7 @@ from ..errors import CommandError
 from ..output import LEFT, RIGHT, Timer, format_address, format_size, render_hexdump
 from ..session import Session
 from ..valuetypes import ValueType
-from . import CommandParser, command
+from . import CommandParser, add_paging_arguments, command, paginate
 
 #: The help text shared by every argument that takes an address expression.
 _ADDRESS_HELP = (
@@ -73,21 +73,13 @@ def _regions_parser() -> CommandParser:
         metavar="ADDRESS",
         help="show only the region containing this address",
     )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    return parser
+    return add_paging_arguments(parser)
 
 
 @command(
     "memory:regions",
     parser=_regions_parser,
     summary="List the target's mapped memory regions.",
-    usage="memory:regions [--writable] [--executable] [--path TEXT] [--at ADDRESS] [--limit N]",
     details=(
         "The memory map is re-read on every call, so it reflects allocations "
         "the target made since the last look.\n\n"
@@ -121,8 +113,14 @@ def cmd_regions(session: Session, args: List[str]) -> None:
                 if region.address <= address < region.address + region.size
             ]
 
-    limit = session.display_limit(options.limit)
-    shown = regions[:limit] if limit else regions
+    page = paginate(
+        session,
+        regions,
+        command="memory:regions",
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
     pointer_size = process.pointer_size
 
     session.printer.table(
@@ -134,11 +132,12 @@ def cmd_regions(session: Session, args: List[str]) -> None:
                 _permissions(region),
                 region.path,
             )
-            for region in shown
+            for region in page.rows
         ],
         (LEFT, RIGHT, LEFT, LEFT),
         elapsed=timer.elapsed,
-        total=len(regions),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
@@ -150,21 +149,13 @@ def _modules_parser() -> CommandParser:
         default=None,
         help="keep modules whose name or path contains this text",
     )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    return parser
+    return add_paging_arguments(parser)
 
 
 @command(
     "memory:modules",
     parser=_modules_parser,
     summary="List the modules loaded in the target.",
-    usage="memory:modules [pattern] [--limit N]",
     details=(
         "A module is the main executable or a shared library (.dll / .so / "
         ".dylib). Its BASE moves on every launch under ASLR, which is why an "
@@ -192,8 +183,14 @@ def cmd_modules(session: Session, args: List[str]) -> None:
             if needle in module.name.lower() or needle in module.path.lower()
         ]
 
-    limit = session.display_limit(options.limit)
-    shown = modules[:limit] if limit else modules
+    page = paginate(
+        session,
+        modules,
+        command="memory:modules",
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
     pointer_size = process.pointer_size
 
     session.printer.table(
@@ -205,31 +202,24 @@ def cmd_modules(session: Session, args: List[str]) -> None:
                 format_size(module.size) if module.size else "?",
                 module.path,
             )
-            for module in shown
+            for module in page.rows
         ],
         (LEFT, LEFT, RIGHT, LEFT),
         elapsed=timer.elapsed,
-        total=len(modules),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
 def _threads_parser() -> CommandParser:
     parser = CommandParser("memory:threads")
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    return parser
+    return add_paging_arguments(parser)
 
 
 @command(
     "memory:threads",
     parser=_threads_parser,
     summary="List the target's threads.",
-    usage="memory:threads [--limit N]",
     details=(
         "STATE and PRIORITY are filled in only where the platform exposes them "
         "cheaply (Linux does; Windows and macOS leave them empty). The meaning "
@@ -245,8 +235,14 @@ def cmd_threads(session: Session, args: List[str]) -> None:
     with Timer() as timer:
         threads = list(process.get_threads())
 
-    limit = session.display_limit(options.limit)
-    shown = threads[:limit] if limit else threads
+    page = paginate(
+        session,
+        threads,
+        command="memory:threads",
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
 
     session.printer.table(
         ("TID", "STATE", "PRIORITY"),
@@ -256,11 +252,12 @@ def cmd_threads(session: Session, args: List[str]) -> None:
                 thread.state if thread.state is not None else "",
                 thread.priority if thread.priority is not None else "",
             )
-            for thread in shown
+            for thread in page.rows
         ],
         (RIGHT, LEFT, RIGHT),
         elapsed=timer.elapsed,
-        total=len(threads),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
@@ -286,7 +283,6 @@ def _read_parser() -> CommandParser:
     "memory:read",
     parser=_read_parser,
     summary="Read a typed value from an address.",
-    usage="memory:read <address> [type] [length] [--count N] [--hex]",
     details=(
         "The type defaults to int32. 'string' and 'bytes' need a length in "
         "bytes; the fixed-width types ignore one.\n\n"
@@ -370,7 +366,6 @@ def _write_parser() -> CommandParser:
     "memory:write",
     parser=_write_parser,
     summary="Write a typed value to an address.",
-    usage="memory:write <address> <type> <value> [--length N] [--null-terminated]",
     details=(
         "There is no confirmation and no undo. Writing into a live process can "
         "crash it — read the address first if you are not sure of it."
@@ -435,7 +430,6 @@ def _dump_parser() -> CommandParser:
     "memory:dump",
     parser=_dump_parser,
     summary="Hex-dump a range of memory.",
-    usage="memory:dump <address> [length] [--width N]",
     details=(
         "Prints the classic three-column layout: absolute address, hex bytes, "
         "printable ASCII.\n\n"
@@ -502,7 +496,6 @@ def _watch_parser() -> CommandParser:
     "memory:watch",
     parser=_watch_parser,
     summary="Poll an address and print it as it changes.",
-    usage="memory:watch <address> [type] [length] [--interval S] [--count N] [--all]",
     details=(
         "Reads the address on a timer and prints a line per sample. By default "
         "only samples whose value differs from the previous one are printed, "
@@ -591,7 +584,6 @@ def _alloc_parser() -> CommandParser:
     "memory:alloc",
     parser=_alloc_parser,
     summary="Allocate memory inside the target.",
-    usage="memory:alloc <size> [--permission N]",
     details=(
         "Reserves and commits SIZE bytes in the target's address space and "
         "prints the base address. The region stays until 'memory:free' releases "
@@ -651,7 +643,6 @@ def _free_parser() -> CommandParser:
     "memory:free",
     parser=_free_parser,
     summary="Release memory allocated with 'memory:alloc'.",
-    usage="memory:free <address> [size]",
     details="Not available on Linux, for the same reason as 'memory:alloc'.",
     examples=("memory:free 0x7ffee3a01000", "memory:free 0x7ffee3a01000 4096"),
 )

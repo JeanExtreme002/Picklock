@@ -11,7 +11,7 @@ from .. import __version__, processes
 from ..errors import CommandError
 from ..output import LEFT, RIGHT, Timer, format_size, render_vertical
 from ..session import Session
-from . import CommandParser, command
+from . import CommandParser, add_paging_arguments, command, paginate
 
 
 def _ps_parser() -> CommandParser:
@@ -33,21 +33,13 @@ def _ps_parser() -> CommandParser:
         action="store_true",
         help="match the pattern case-sensitively",
     )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    return parser
+    return add_paging_arguments(parser)
 
 
 @command(
     "process:list",
     parser=_ps_parser,
     summary="List the processes visible to you.",
-    usage="process:list [pattern] [--pid-sort] [--case-sensitive] [--limit N]",
     details=(
         "Only processes your user can see are listed. Run Peekmem elevated to "
         "see (and open) processes belonging to other users."
@@ -64,18 +56,25 @@ def cmd_ps(session: Session, args: List[str]) -> None:
             sort_by="pid" if options.pid_sort else "name",
         )
 
-    limit = session.display_limit(options.limit)
-    shown = entries[:limit] if limit else entries
+    page = paginate(
+        session,
+        entries,
+        command="process:list",
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
 
     session.printer.table(
         ("PID", "NAME"),
         # A blank name means the OS would not tell us — macOS does that for
         # some system processes. Print a placeholder so the column is never
         # mistaken for an empty string the process actually has.
-        [(pid, name or "?") for pid, name in shown],
+        [(pid, name or "?") for pid, name in page.rows],
         (RIGHT, LEFT),
         elapsed=timer.elapsed,
-        total=len(entries),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
@@ -85,6 +84,7 @@ def _open_parser() -> CommandParser:
         "target",
         nargs="?",
         default=None,
+        metavar="pid|name",
         help="the PID (all digits) or the process name to attach to",
     )
     parser.add_argument(
@@ -130,7 +130,6 @@ def _open_parser() -> CommandParser:
     "process:open",
     parser=_open_parser,
     summary="Attach to a process by PID or name.",
-    usage="process:open <pid|name> [-i] [--partial] [--strict-bitness]",
     details=(
         "An all-digits target is taken as a PID, anything else as a process "
         "name; force either reading with --pid or --name.\n\n"
@@ -190,7 +189,6 @@ def _close_parser() -> CommandParser:
     "process:close",
     parser=_close_parser,
     summary="Detach from the current process.",
-    usage="process:close",
     details=(
         "Takes no arguments.\n\n"
         "Closes the OS handle and drops the scan results, the pointer paths "
@@ -213,7 +211,6 @@ def _status_parser() -> CommandParser:
     "status",
     parser=_status_parser,
     summary="Show the session state and versions.",
-    usage="status",
     aliases=("\\s",),
     details=(
         "Takes no arguments.\n\n"
@@ -258,7 +255,6 @@ def _info_parser() -> CommandParser:
     "process:info",
     parser=_info_parser,
     summary="Describe the attached process in detail.",
-    usage="process:info",
     details=(
         "Takes no arguments.\n\n"
         "Enumerates the memory map to report how much of the address space is "

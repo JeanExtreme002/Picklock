@@ -30,7 +30,7 @@ from ..errors import CommandError
 from ..output import LEFT, RIGHT, Timer, format_address
 from ..session import ScanState, Session
 from ..valuetypes import ValueType
-from . import CommandParser, command
+from . import CommandParser, add_paging_arguments, command, paginate
 
 #: Bytes of address space handed to the library per call. Large enough that
 #: per-call overhead is noise next to the scan itself, small enough that the
@@ -239,31 +239,38 @@ def _print_results(
     session: Session,
     state: ScanState,
     *,
-    limit: Optional[int],
-    elapsed: Optional[float],
+    limit: Optional[int] = None,
+    elapsed: Optional[float] = None,
     offset: int = 0,
 ) -> None:
+    """Print the result set, one page at a time.
+
+    The next page is fetched with ``scan:results``, not by re-running the scan
+    — which is why the hint names that command whatever produced the rows.
+    """
     process = session.require_process()
     hex_output = bool(session.option("hex"))
-    display_limit = session.display_limit(limit)
+    indexes = range(len(state.addresses))
+    page = paginate(
+        session, indexes, command="scan:results", limit=limit, offset=offset
+    )
 
-    end = len(state.addresses) if display_limit is None else offset + display_limit
-    rows = []
-    for index in range(offset, min(end, len(state.addresses))):
-        rows.append(
-            (
-                f"#{index + 1}",
-                format_address(state.addresses[index], process.pointer_size),
-                state.value_type.format(state.values[index], hex_output=hex_output),
-            )
+    rows = [
+        (
+            f"#{index + 1}",
+            format_address(state.addresses[index], process.pointer_size),
+            state.value_type.format(state.values[index], hex_output=hex_output),
         )
+        for index in page.rows
+    ]
 
     session.printer.table(
         ("ROW", "ADDRESS", "VALUE"),
         rows,
         (RIGHT, LEFT, LEFT),
         elapsed=elapsed,
-        total=len(state.addresses),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
@@ -322,7 +329,6 @@ def _scan_parser() -> CommandParser:
     "scan:value",
     parser=_scan_parser,
     summary="Search the whole address space for a value.",
-    usage="scan:value <type> [value] [--op OP] [--between A B] [--writable] [--max N]",
     details=(
         "The first scan of a cycle. Every matching address is kept as the "
         "result set that 'scan:next', 'scan:results' and the '#N' address form "
@@ -446,7 +452,6 @@ def _next_parser() -> CommandParser:
     "scan:next",
     parser=_next_parser,
     summary="Narrow the results with another comparison.",
-    usage="scan:next [op] [value]",
     details=(
         "Re-reads every address in the result set and keeps the ones that "
         "still match. Bare 'scan:next 100' means 'scan:next eq 100'.\n\n"
@@ -562,7 +567,7 @@ def cmd_next(session: Session, args: List[str]) -> None:
             description,
         )
 
-    _print_results(session, new_state, limit=None, elapsed=timer.elapsed)
+    _print_results(session, new_state, elapsed=timer.elapsed)
 
 
 def _aob_parser() -> CommandParser:
@@ -580,7 +585,6 @@ def _aob_parser() -> CommandParser:
     "scan:aob",
     parser=_aob_parser,
     summary="Scan for a byte pattern with wildcards (AOB).",
-    usage="scan:aob <pattern> [--max N]",
     details=(
         "This is how you find code that moves between builds: the opcodes stay "
         "put while the operands change, so you wildcard the operands. The "
@@ -649,7 +653,6 @@ def _regex_parser() -> CommandParser:
     "scan:regex",
     parser=_regex_parser,
     summary="Scan for text matching a regular expression.",
-    usage="scan:regex <pattern> [--length N] [--max N]",
     details=(
         "Because the match runs over *bytes*, a metacharacter spans one byte: "
         "'.' matches any single byte and '\\d' is ASCII-only, so quantify with "
@@ -706,32 +709,13 @@ def cmd_regex(session: Session, args: List[str]) -> None:
 
 
 def _results_parser() -> CommandParser:
-    parser = CommandParser("scan:results")
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    parser.add_argument(
-        "--offset",
-        type=int,
-        default=0,
-        metavar="N",
-        help="start at row N+1, for paging through a long result set",
-    )
-    parser.add_argument(
-        "--all", action="store_true", help="print every row, ignoring the limit"
-    )
-    return parser
+    return add_paging_arguments(CommandParser("scan:results"))
 
 
 @command(
     "scan:results",
     parser=_results_parser,
     summary="Show the current result set, re-read.",
-    usage="scan:results [--limit N] [--offset N] [--all]",
     details=(
         "Reads every address again, so the VALUE column is what the target "
         "holds now, not what it held when the scan ran. The PREVIOUS column "
@@ -749,12 +733,15 @@ def cmd_results(session: Session, args: List[str]) -> None:
     process = session.require_process("scan:results")
     hex_output = bool(session.option("hex"))
 
-    if options.offset < 0:
-        raise CommandError("--offset cannot be negative.")
-
-    limit = None if options.all else session.display_limit(options.limit)
-    end = len(state.addresses) if limit is None else options.offset + limit
-    window = list(range(options.offset, min(end, len(state.addresses))))
+    page = paginate(
+        session,
+        range(len(state.addresses)),
+        command="scan:results",
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
+    window = list(page.rows)
 
     with Timer() as timer:
         current = _read_values(
@@ -784,7 +771,8 @@ def cmd_results(session: Session, args: List[str]) -> None:
         rows,
         (RIGHT, LEFT, LEFT, LEFT),
         elapsed=timer.elapsed,
-        total=len(state.addresses),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
@@ -821,7 +809,7 @@ _ROWS_HELP = "row numbers from 'results', singly or as ranges: 1 4 7-9 (a '#' pr
 
 def _keep_parser() -> CommandParser:
     parser = CommandParser("scan:keep")
-    parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
+    parser.add_argument("rows", nargs="+", metavar="row", help=_ROWS_HELP)
     return parser
 
 
@@ -829,7 +817,6 @@ def _keep_parser() -> CommandParser:
     "scan:keep",
     parser=_keep_parser,
     summary="Keep only the named result rows.",
-    usage="scan:keep <row> [row ...]",
     details=(
         "Use it when you can see which candidates are real and would rather "
         "not invent a comparison that happens to exclude the others."
@@ -850,12 +837,12 @@ def cmd_keep(session: Session, args: List[str]) -> None:
         [state.values[index] for index in ordered],
         f"{state.description} → kept {len(ordered)} row(s)",
     )
-    _print_results(session, new_state, limit=None, elapsed=None)
+    _print_results(session, new_state)
 
 
 def _drop_parser() -> CommandParser:
     parser = CommandParser("scan:drop")
-    parser.add_argument("rows", nargs="+", help=_ROWS_HELP)
+    parser.add_argument("rows", nargs="+", metavar="row", help=_ROWS_HELP)
     return parser
 
 
@@ -863,7 +850,6 @@ def _drop_parser() -> CommandParser:
     "scan:drop",
     parser=_drop_parser,
     summary="Remove the named result rows.",
-    usage="scan:drop <row> [row ...]",
     details="The inverse of 'keep'. Ranges work the same way.",
     examples=("scan:drop 2", "scan:drop 5-12"),
 )
@@ -881,7 +867,7 @@ def cmd_drop(session: Session, args: List[str]) -> None:
         [state.values[index] for index in remaining],
         f"{state.description} → dropped {len(removed)} row(s)",
     )
-    _print_results(session, new_state, limit=None, elapsed=None)
+    _print_results(session, new_state)
 
 
 def _reset_parser() -> CommandParser:
@@ -892,7 +878,6 @@ def _reset_parser() -> CommandParser:
     "scan:reset",
     parser=_reset_parser,
     summary="Discard the current scan results.",
-    usage="scan:reset",
     details=(
         "Takes no arguments.\n\n"
         "Clears the result set so the next 'scan' starts a fresh cycle. The "

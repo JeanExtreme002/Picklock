@@ -4,6 +4,7 @@
 
 import os
 import platform
+import textwrap
 from typing import List, Tuple
 
 import PyMemoryEditor
@@ -288,7 +289,18 @@ def _print_command_help(session: Session, name: str) -> None:
 
     printer.write(f"{entry.name} — {entry.summary}")
     printer.write()
-    printer.write(f"Usage: {entry.usage}")
+    # A generated usage line lists every flag, so it can outrun the terminal.
+    # Wrap it under a hanging indent rather than letting the terminal fold it
+    # at an arbitrary column.
+    printer.write(
+        textwrap.fill(
+            f"Usage: {entry.usage}",
+            width=_LISTING_WIDTH,
+            subsequent_indent="       ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
     if entry.aliases:
         printer.write(f"Aliases: {', '.join(entry.aliases)}")
     printer.write()
@@ -324,7 +336,6 @@ def _help_parser() -> CommandParser:
     "help",
     parser=_help_parser,
     summary="List the commands, or describe one.",
-    usage="help [command|types|address|scanning]",
     aliases=("?", "\\h"),
     details=(
         "With a command name, prints that command's usage, every argument and "
@@ -403,7 +414,6 @@ def _set_parser() -> CommandParser:
     "set",
     parser=_set_parser,
     summary="Show or change a session setting.",
-    usage="set [name [value]]",
     details=(
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
@@ -465,7 +475,6 @@ def _source_parser() -> CommandParser:
     "source",
     parser=_source_parser,
     summary="Run the commands in a file.",
-    usage="source <file>",
     aliases=("\\.",),
     details=(
         "Reads the file and runs each line as if it had been typed.\n\n"
@@ -503,7 +512,6 @@ def _clear_parser() -> CommandParser:
     "clear",
     parser=_clear_parser,
     summary="Clear the terminal.",
-    usage="clear",
     aliases=("cls",),
     details=(
         "Takes no arguments.\n\n"
@@ -529,7 +537,6 @@ def _version_parser() -> CommandParser:
     "version",
     parser=_version_parser,
     summary="Print the Peekmem and PyMemoryEditor versions.",
-    usage="version",
     details=(
         "Takes no arguments.\n\n"
         "The one line to quote in a bug report: it names Peekmem, "
@@ -554,7 +561,6 @@ def _exit_parser() -> CommandParser:
     "exit",
     parser=_exit_parser,
     summary="Leave the shell.",
-    usage="exit",
     aliases=("quit", "\\q"),
     details=(
         "Takes no arguments.\n\n"

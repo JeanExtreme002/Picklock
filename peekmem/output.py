@@ -268,18 +268,19 @@ class Printer:
         *,
         elapsed: Optional[float] = None,
         total: Optional[int] = None,
+        next_page: Optional[str] = None,
     ) -> None:
         """Print a result table plus its footer.
 
         ``total`` names the number of rows that *matched* when ``rows`` only
-        carries the ones that fit the display limit, so the footer can say
-        ``20 rows in set (of 1043)`` instead of pretending the rest do not
-        exist.
+        carries the ones that fit the display limit, so the footer can say how
+        many were left out instead of pretending they do not exist, and
+        ``next_page`` is the command that shows them.
         """
         self.clear_progress()
         if rows:
             self.write(render_table(headers, rows, aligns))
-        self.footer(len(rows), elapsed=elapsed, total=total)
+        self.footer(len(rows), elapsed=elapsed, total=total, next_page=next_page)
 
     def footer(
         self,
@@ -287,8 +288,9 @@ class Printer:
         *,
         elapsed: Optional[float] = None,
         total: Optional[int] = None,
+        next_page: Optional[str] = None,
     ) -> None:
-        """Print the ``N rows in set (0.01 sec)`` line."""
+        """Print the ``N rows in set (0.01 sec)`` line, and how to see more."""
         if count == 0 and not total:
             text = "Empty set"
         elif total is not None and total != count:
@@ -300,6 +302,10 @@ class Printer:
         if self.timing and elapsed is not None:
             text += f" ({format_duration(elapsed)})"
         self.write(text)
+        if next_page:
+            # A line the reader can copy, rather than a hint they have to
+            # translate into flags.
+            self.write(f"Next page: {next_page}")
         self.write()
 
     def ok(self, message: str, *, elapsed: Optional[float] = None) -> None:

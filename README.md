@@ -47,7 +47,7 @@ pip install "peekmem[speed]"
 ```console
 $ peekmem
 Welcome to Peekmem 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
-Commands end with a newline. Type 'help' for the command list, 'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.
+Type 'help' for the command list, 'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.
 
 peekmem> process:list game
 +-------+----------+
@@ -220,6 +220,10 @@ Highlights:
 - **Progress you can trust.** Long scans report a percentage that advances
   whether or not anything is being found, and Ctrl+C stops a scan while keeping
   what it already found.
+- **Every listing pages the same way.** `--limit`, `--offset` and `--all` on
+  each of them, and a truncated table ends with the command that shows the
+  next page — `Next page: memory:regions --offset 20` — so it is a copy-paste,
+  not a puzzle.
 - **Ctrl+C means the obvious thing.** During a command it abandons that command
   and returns to the prompt; at the prompt it quits. So stopping a scan costs
   one keystroke and leaving costs two, and neither one loses your results by

@@ -217,7 +217,7 @@ class Shell:
         return (
             f"Welcome to Peekmem {__version__}, a terminal client for "
             f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
-            "Commands end with a newline. Type 'help' for the command list, "
+            "Type 'help' for the command list, "
             "'help scanning' for a walkthrough, 'exit' or Ctrl+C to quit.\n"
         )
 

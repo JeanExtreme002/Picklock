@@ -106,7 +106,6 @@ def test_the_registry_refuses_a_third_level():
             "scan:results:keep",
             parser=lambda: CommandParser("scan:results:keep"),
             summary="Never registered.",
-            usage="scan:results:keep",
         )(lambda session, args: None)
 
 
@@ -290,21 +289,30 @@ def test_help_lists_every_flag(entry, shell, capture):
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
-def test_usage_line_advertises_only_real_flags(entry):
-    """The usage line is hand-written; a flag it names must still exist.
+def test_usage_line_names_every_flag(entry):
+    """A flag the command accepts is a flag its usage line shows.
 
-    The other direction is deliberately not checked: a usage line is a summary
-    for a human, so it is free to leave a rarely-used flag to the generated
-    Options section below it.
+    Three commands had grown options their hand-written usage never mentioned,
+    which is why the line is generated from the parser now. This pins the
+    property down in both directions at once: what is listed is what exists.
     """
     declared = {
-        flag for action in entry.arguments() for flag in action.option_strings
+        flag
+        for action in entry.arguments()
+        for flag in action.option_strings
+        if flag.startswith("--")
     }
-    for word in entry.usage.replace("[", " ").replace("]", " ").split():
-        if word.startswith("--") and len(word) > 2:
-            assert word in declared, (
-                f"{entry.name}: usage names {word}, which the parser does not accept"
-            )
+    shown = {
+        word.strip("[]")
+        for word in entry.usage.replace("[", " [").split()
+        if word.strip("[]").startswith("--")
+    }
+    assert declared == shown, f"{entry.name}: usage and parser disagree"
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_usage_line_starts_with_the_command(entry):
+    assert entry.usage == entry.name or entry.usage.startswith(entry.name + " ")
 
 
 @pytest.mark.parametrize("flag", ["--help", "-h"])
@@ -429,3 +437,76 @@ def test_reset_reports_what_it_discarded(shell, capture):
     shell.run_line("scan:reset")
     assert "Discarded 2 result(s)." in capture.out
     assert shell.session.scan is None
+
+
+#: Every command that reports "Showing n of m rows" must offer a way to see
+#: the rest. Kept as a list so a new listing command has to join it.
+PAGED = [
+    "process:list",
+    "memory:regions",
+    "memory:modules",
+    "memory:threads",
+    "scan:results",
+    "pointer:paths",
+]
+
+
+@pytest.mark.parametrize("name", PAGED)
+def test_every_listing_command_pages_the_same_way(name):
+    """One set of flags, one wording — a listing you learn once."""
+    flags = {
+        flag for action in lookup(name).arguments() for flag in action.option_strings
+    }
+    assert {"--limit", "--offset", "--all"} <= flags
+
+
+@pytest.mark.parametrize("name", PAGED)
+def test_paging_flags_are_documented_identically(name):
+    """The shared helper is the point: the help text must not drift per command."""
+    reference = {
+        action.dest: action.help
+        for action in lookup("scan:results").arguments()
+        if action.dest in ("limit", "offset", "all")
+    }
+    actual = {
+        action.dest: action.help
+        for action in lookup(name).arguments()
+        if action.dest in ("limit", "offset", "all")
+    }
+    assert actual == reference
+
+
+def test_a_truncated_listing_names_the_next_page(shell, capture):
+    shell.run_line("process:list --limit 2")
+    assert "Showing 2 of" in capture.out
+    assert "Next page: process:list --offset 2 --limit 2" in capture.out
+
+
+def test_the_last_page_offers_no_next(shell, capture):
+    shell.run_line("process:list --all")
+    assert "Next page:" not in capture.out
+
+
+def test_offset_cannot_be_negative(shell):
+    with pytest.raises(CommandError, match="offset"):
+        shell.run_line("process:list --offset -1", raise_errors=True)
+
+
+def test_a_scan_preview_pages_through_scan_results(session, capture):
+    """Re-running a scan to see page two would be absurd; scan:results is the pager."""
+    from peekmem import valuetypes
+    from peekmem.commands.scan_commands import _print_results
+
+    session.set_option("limit", "2")
+    state = session.store_scan(
+        valuetypes.resolve("int32"), 4, [0x10, 0x20, 0x30], [1, 2, 3], "test"
+    )
+
+    class FakeProcess:
+        pointer_size = 8
+
+    session.process = FakeProcess()  # type: ignore[assignment]
+    _print_results(session, state)
+
+    assert "Showing 2 of 3 rows" in capture.out
+    assert "Next page: scan:results --offset 2" in capture.out

@@ -17,7 +17,7 @@ registering; nothing else needs to know they exist.
 import argparse
 import difflib
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..errors import CommandError
 
@@ -168,6 +168,34 @@ def describe_action(action: argparse.Action) -> str:
     return f"{flags} {value}" if value else flags
 
 
+def usage_token(action: argparse.Action) -> str:
+    """Render one argument as it appears in a ``usage:`` line.
+
+    Positionals come out as ``<address>`` or ``[length]``, options as
+    ``[--limit N]``. Long flags win over short ones: a usage line is read, not
+    typed, and ``--ignore-case`` says what it does where ``-i`` does not.
+    """
+    value = _value_placeholder(action)
+
+    if not action.option_strings:
+        name = action.metavar or action.dest
+        if isinstance(name, tuple):
+            name = " ".join(name)
+        if action.nargs == "?":
+            return f"[{name}]"
+        if action.nargs == "*":
+            return f"[{name} ...]"
+        if action.nargs == "+":
+            return f"<{name}> [{name} ...]"
+        return f"<{name}>"
+
+    flag = next(
+        (item for item in action.option_strings if item.startswith("--")),
+        action.option_strings[0],
+    )
+    return f"[{flag} {value}]" if value else f"[{flag}]"
+
+
 def _value_placeholder(action: argparse.Action) -> str:
     """The ``VALUE`` part of ``--flag VALUE``, or '' for a flag that takes none."""
     if action.nargs == 0:  # store_true / store_false
@@ -201,11 +229,20 @@ class Command:
     name: str
     handler: Handler
     summary: str
-    usage: str
     parser: Optional[ParserFactory] = None
     aliases: Tuple[str, ...] = ()
     details: str = ""
     examples: Tuple[str, ...] = field(default=())
+
+    @property
+    def usage(self) -> str:
+        """The usage line, built from the parser.
+
+        Generated rather than written by hand, because a hand-written one drifts:
+        three commands had grown flags their usage line never mentioned. There is
+        now nothing to keep in step — a flag that exists is a flag that shows.
+        """
+        return " ".join([self.name] + [usage_token(a) for a in self.arguments()])
 
     @property
     def namespace(self) -> str:
@@ -237,7 +274,6 @@ def command(
     name: str,
     *,
     summary: str,
-    usage: str,
     parser: Optional[ParserFactory] = None,
     aliases: Sequence[str] = (),
     details: str = "",
@@ -271,7 +307,6 @@ def command(
             name=name,
             handler=handler,
             summary=summary,
-            usage=usage,
             parser=parser,
             aliases=tuple(aliases),
             details=details,
@@ -364,6 +399,73 @@ def option_words(name: str) -> List[str]:
     )
 
 
+@dataclass(frozen=True)
+class Page:
+    """One screen of a longer listing, plus the way to ask for the next."""
+
+    rows: List[Any]
+    total: int
+    #: The command line that shows the following page, or ``None`` at the end.
+    next_page: Optional[str] = None
+
+
+def add_paging_arguments(parser: CommandParser) -> CommandParser:
+    """Give a listing command the same three paging flags as every other one.
+
+    Declared in one place so the wording, the behaviour and the help text
+    cannot drift between commands — a listing that pages differently from its
+    neighbour is a listing you have to learn twice.
+    """
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="rows per page, overriding the 'limit' setting",
+    )
+    parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        metavar="N",
+        help="skip the first N rows — how you reach the second page",
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="print every row, ignoring the limit"
+    )
+    return parser
+
+
+def paginate(
+    session: Any,
+    entries: Sequence[Any],
+    *,
+    command: str,
+    limit: Optional[int] = None,
+    offset: int = 0,
+    show_all: bool = False,
+) -> Page:
+    """Cut ``entries`` down to one page, and name the command for the next one.
+
+    ``command`` is what the reader would type to page on; it is spelled out in
+    the footer so the next page is a copy-paste rather than a puzzle.
+    """
+    if offset < 0:
+        raise CommandError("--offset cannot be negative.")
+
+    total = len(entries)
+    size = None if show_all else session.display_limit(limit)
+    if size is None:
+        return Page(list(entries[offset:]), total)
+
+    window = list(entries[offset : offset + size])
+    following = offset + size
+    next_page = f"{command} --offset {following}" if following < total else None
+    if next_page is not None and limit is not None:
+        next_page += f" --limit {limit}"
+    return Page(window, total, next_page)
+
+
 from . import memory_commands  # noqa: E402,F401  (registration side effect)
 from . import pointer_commands  # noqa: E402,F401
 from . import process_commands  # noqa: E402,F401
@@ -375,6 +477,8 @@ __all__ = (
     "CommandParser",
     "NAMESPACES",
     "Namespace",
+    "Page",
+    "add_paging_arguments",
     "all_commands",
     "children",
     "command",
@@ -385,5 +489,7 @@ __all__ = (
     "namespace_summary",
     "namespaces",
     "option_words",
+    "paginate",
+    "usage_token",
     "top_level",
 )

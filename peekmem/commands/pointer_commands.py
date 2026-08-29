@@ -22,7 +22,7 @@ from ..addressing import parse_address, parse_int
 from ..errors import CommandError
 from ..output import LEFT, RIGHT, Timer, format_address
 from ..session import Session
-from . import CommandParser, command
+from . import CommandParser, add_paging_arguments, command, paginate
 
 _BASE_HELP = (
     "the static base of the chain, as an address expression — usually "
@@ -53,15 +53,24 @@ def _print_paths(
     session: Session,
     paths: Sequence[PointerPath],
     *,
-    limit: Optional[int],
+    limit: Optional[int] = None,
+    offset: int = 0,
+    show_all: bool = False,
     elapsed: Optional[float] = None,
 ) -> None:
     process = session.require_process()
     pointer_size = process.pointer_size
-    shown = paths[:limit] if limit else paths
+    page = paginate(
+        session,
+        paths,
+        command="pointer:paths",
+        limit=limit,
+        offset=offset,
+        show_all=show_all,
+    )
 
     rows = []
-    for index, path in enumerate(shown):
+    for index, path in enumerate(page.rows, start=offset):
         try:
             target = format_address(path.resolve(process), pointer_size)
         except (OSError, ValueError):
@@ -77,14 +86,15 @@ def _print_paths(
         rows,
         (RIGHT, LEFT, LEFT, LEFT),
         elapsed=elapsed,
-        total=len(paths),
+        total=page.total,
+        next_page=page.next_page,
     )
 
 
 def _deref_parser() -> CommandParser:
     parser = CommandParser("pointer:deref")
     parser.add_argument("base", help=_BASE_HELP)
-    parser.add_argument("offsets", nargs="*", help=_OFFSETS_HELP)
+    parser.add_argument("offsets", nargs="*", metavar="offset", help=_OFFSETS_HELP)
     return parser
 
 
@@ -92,7 +102,6 @@ def _deref_parser() -> CommandParser:
     "pointer:deref",
     parser=_deref_parser,
     summary="Walk a pointer chain and print the address it lands on.",
-    usage="pointer:deref <base> [offset ...]",
     details=(
         "Reads the pointer at BASE, adds the first offset, reads the pointer "
         "there, and so on; the last offset is added without a final read — the "
@@ -131,7 +140,7 @@ def cmd_deref(session: Session, args: List[str]) -> None:
 def _pointer_parser() -> CommandParser:
     parser = CommandParser("pointer:read")
     parser.add_argument("base", help=_BASE_HELP)
-    parser.add_argument("offsets", nargs="*", help=_OFFSETS_HELP)
+    parser.add_argument("offsets", nargs="*", metavar="offset", help=_OFFSETS_HELP)
     parser.add_argument(
         "--type",
         dest="value_type",
@@ -159,7 +168,6 @@ def _pointer_parser() -> CommandParser:
     "pointer:read",
     parser=_pointer_parser,
     summary="Read or write the value at the end of a pointer chain.",
-    usage="pointer:read <base> [offset ...] [--type T] [--length N] [--write VALUE]",
     details=(
         "The one-line form of 'pointer:deref' followed by 'memory:read'.\n\n"
         "The chain is re-walked on every call, which is the point: it keeps "
@@ -274,7 +282,6 @@ def _ptrscan_parser() -> CommandParser:
     "pointer:scan",
     parser=_ptrscan_parser,
     summary="Find static pointer paths that reach an address.",
-    usage="pointer:scan <address> [--depth N] [--max-offset N] [--max N] [--unaligned] [--all-regions]",
     details=(
         "Builds a map of every pointer in the target and walks it backwards "
         "from ADDRESS until it reaches a static base inside a module. The "
@@ -336,29 +343,17 @@ def cmd_ptrscan(session: Session, args: List[str]) -> None:
             "larger --max-offset, or check that the address is still valid."
         )
 
-    _print_paths(session, paths, limit=session.display_limit(), elapsed=timer.elapsed)
+    _print_paths(session, paths, elapsed=timer.elapsed)
 
 
 def _paths_parser() -> CommandParser:
-    parser = CommandParser("pointer:paths")
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="print at most N rows, overriding the 'limit' setting",
-    )
-    parser.add_argument(
-        "--all", action="store_true", help="print every path, ignoring the limit"
-    )
-    return parser
+    return add_paging_arguments(CommandParser("pointer:paths"))
 
 
 @command(
     "pointer:paths",
     parser=_paths_parser,
     summary="Show the pointer paths currently held.",
-    usage="pointer:paths [--limit N] [--all]",
     details=(
         "Lists the paths from the last 'pointer:scan', 'pointer:load', "
         "'pointer:rescan' or 'pointer:diff'. TARGET is where each one resolves "
@@ -373,8 +368,13 @@ def cmd_paths(session: Session, args: List[str]) -> None:
     if not session.pointer_paths:
         raise CommandError('No pointer paths. Run "pointer:scan <address>" first.')
 
-    limit = None if options.all else session.display_limit(options.limit)
-    _print_paths(session, session.pointer_paths, limit=limit)
+    _print_paths(
+        session,
+        session.pointer_paths,
+        limit=options.limit,
+        offset=options.offset,
+        show_all=options.all,
+    )
 
 
 def _ptrsave_parser() -> CommandParser:
@@ -387,7 +387,6 @@ def _ptrsave_parser() -> CommandParser:
     "pointer:save",
     parser=_ptrsave_parser,
     summary="Save the current pointer paths to a file.",
-    usage="pointer:save <file>",
     details=(
         "Writes the paths as JSON, keeping the module name and module-relative "
         "offset of each base so the file survives ASLR and can be re-used "
@@ -425,7 +424,6 @@ def _ptrload_parser() -> CommandParser:
     "pointer:load",
     parser=_ptrload_parser,
     summary="Load pointer paths from a file.",
-    usage="pointer:load <file>",
     details=(
         "Replaces the paths currently held. Each base is rebased onto the "
         "module addresses of the *running* target, so a file saved before a "
@@ -460,7 +458,7 @@ def cmd_ptrload(session: Session, args: List[str]) -> None:
         f"Loaded {len(rebased)} path(s) from {options.file}.", elapsed=timer.elapsed
     )
     session.printer.write()
-    _print_paths(session, rebased, limit=session.display_limit())
+    _print_paths(session, rebased)
 
 
 def _ptrrescan_parser() -> CommandParser:
@@ -484,7 +482,6 @@ def _ptrrescan_parser() -> CommandParser:
     "pointer:rescan",
     parser=_ptrrescan_parser,
     summary="Keep only the paths that still reach an address.",
-    usage="pointer:rescan <address> [file]",
     details=(
         "The step that separates a real pointer path from a coincidence. "
         "Restart the target, find the value's new address, then rescan the "
@@ -526,7 +523,7 @@ def cmd_ptrrescan(session: Session, args: List[str]) -> None:
         elapsed=timer.elapsed,
     )
     session.printer.write()
-    _print_paths(session, surviving, limit=session.display_limit())
+    _print_paths(session, surviving)
 
 
 def _ptrdiff_parser() -> CommandParser:
@@ -534,6 +531,7 @@ def _ptrdiff_parser() -> CommandParser:
     parser.add_argument(
         "files",
         nargs="*",
+        metavar="file",
         help="two or more JSON files written by 'pointer:save', one per run of the "
         "target",
     )
@@ -544,7 +542,6 @@ def _ptrdiff_parser() -> CommandParser:
     "pointer:diff",
     parser=_ptrdiff_parser,
     summary="Intersect pointer-path files from several runs.",
-    usage="pointer:diff <file> <file> [file ...]",
     details=(
         "Keeps only the paths present in *every* file, compared by their "
         "portable recipe (module, module offset, offsets) rather than by "
@@ -577,7 +574,7 @@ def cmd_ptrdiff(session: Session, args: List[str]) -> None:
         elapsed=timer.elapsed,
     )
     session.printer.write()
-    _print_paths(session, common, limit=session.display_limit())
+    _print_paths(session, common)
 
 
 __all__ = ()

@@ -103,7 +103,6 @@ Two rules keep the shape:
        "memory:mycommand",
        parser=_mycommand_parser,
        summary="One line, sentence case, ending in a period.",
-       usage="memory:mycommand <address> [--flag]",
        details="The long help, printed by 'help memory:mycommand'.",
        examples=("memory:mycommand 0x1000",),
    )
@@ -114,6 +113,30 @@ Two rules keep the shape:
        address = parse_address(options.address, session)
        ...
    ```
+
+   There is no `usage=`: the usage line is generated from the parser, so it
+   always names every flag the command accepts. Give each argument a `help=`
+   and a readable `metavar` — those two are what the help is built from.
+
+   If the command prints a table that can be longer than a screen, page it
+   with the shared helpers rather than a `--limit` of your own:
+
+   ```python
+   def _mycommand_parser() -> CommandParser:
+       return add_paging_arguments(CommandParser("memory:mycommand"))
+
+
+   page = paginate(
+       session, rows, command="memory:mycommand",
+       limit=options.limit, offset=options.offset, show_all=options.all,
+   )
+   session.printer.table(headers, page.rows, total=page.total,
+                         next_page=page.next_page)
+   ```
+
+   That gives the same three flags, the same wording and the same
+   `Next page: ...` footer as every other listing — and a test enforces that
+   the wording does not drift.
 
    Names go **two levels at most** — `scan:keep`, never `scan:results:keep`.
    The registry rejects a third level, and a test pins that down: a deeper name

@@ -19,6 +19,7 @@ and costs nothing: the library processes regions independently anyway, so
 batching them changes no result.
 """
 
+from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple
 
 from PyMemoryEditor import MemoryRegion, ScanTypesEnum
@@ -85,19 +86,45 @@ def _batch_regions(
         yield batch, size
 
 
+@dataclass
+class ScanOutcome:
+    """What a scan found, and everything that got in its way.
+
+    A scan is long and the address space is a moving target, so "it worked" and
+    "it failed" are not the only two answers. Each of these flags means the
+    results are real but partial, and every one of them is reported to the user
+    rather than quietly folded into the row count.
+    """
+
+    addresses: List[int] = field(default_factory=list)
+    #: The ``max_results`` cap stopped the scan early.
+    truncated: bool = False
+    #: Ctrl+C stopped it.
+    interrupted: bool = False
+    #: Batches of regions the backend refused to read.
+    skipped: int = 0
+    #: The last such refusal, for the note that reports them.
+    last_error: Optional[BaseException] = None
+
+
 def _run_scan(
     session: Session,
     search: Callable[[List[MemoryRegion]], Iterable[Any]],
     *,
     label: str = "Scanning",
-) -> Tuple[List[int], bool, bool]:
+) -> ScanOutcome:
     """Drive ``search`` over the target's regions.
 
     :param search: called with a batch of regions, yields matching addresses.
-    :return: ``(addresses, truncated, interrupted)`` — ``truncated`` when the
-        ``max_results`` cap stopped the scan, ``interrupted`` when Ctrl+C did.
-        Both keep whatever was found so far, because throwing away four
-        minutes of scanning to punish an impatient keystroke helps nobody.
+
+    Nothing here throws away results it already has. Ctrl+C stops the scan and
+    keeps them, because punishing an impatient keystroke by discarding four
+    minutes of scanning helps nobody. A read failure skips the rest of that
+    batch and moves to the next one, for the same reason and one more: a page
+    that cannot be read is ordinary weather in another process's address
+    space — it may have been unmapped a microsecond ago, or be file-backed and
+    declined by its pager — and it says nothing about the thousands of regions
+    behind it. Both are reported; neither is silent.
     """
     regions = session.scan_regions()
     total = sum(region.size for region in regions) or 1
@@ -105,29 +132,35 @@ def _run_scan(
     show_progress = bool(session.option("progress"))
     printer = session.printer
 
-    addresses: List[int] = []
+    outcome = ScanOutcome()
     scanned = 0
-    truncated = False
-    interrupted = False
 
     try:
         for batch, batch_size in _batch_regions(regions):
-            for address in search(batch):
-                addresses.append(address)
-                if max_results and len(addresses) >= max_results:
-                    truncated = True
-                    break
+            try:
+                for address in search(batch):
+                    outcome.addresses.append(address)
+                    if max_results and len(outcome.addresses) >= max_results:
+                        outcome.truncated = True
+                        break
+            except OSError as error:
+                # The backend gave up on this batch. Matches it had already
+                # yielded are kept; the rest of the address space is still
+                # worth walking.
+                outcome.skipped += 1
+                outcome.last_error = error
+
             scanned += batch_size
             if show_progress:
                 printer.progress(label, scanned / total)
-            if truncated:
+            if outcome.truncated:
                 break
     except KeyboardInterrupt:
-        interrupted = True
+        outcome.interrupted = True
     finally:
         printer.clear_progress()
 
-    return addresses, truncated, interrupted
+    return outcome
 
 
 def _read_values(
@@ -178,19 +211,25 @@ def _report(
     session: Session,
     state: ScanState,
     elapsed: float,
+    outcome: ScanOutcome,
     *,
-    interrupted: bool = False,
     limit: Optional[int] = None,
 ) -> None:
-    """Print the outcome of a scan: a preview table plus the count."""
+    """Print the outcome of a scan: any caveats, then a preview table."""
     printer = session.printer
 
-    if interrupted:
+    if outcome.interrupted:
         printer.note("Interrupted — showing what had been found so far.")
     if state.truncated:
         printer.note(
             f"Stopped at the max_results cap ({session.option('max_results')}). "
             "Narrow the scan, or raise it with 'set max_results N'."
+        )
+    if outcome.skipped:
+        printer.note(
+            f"Skipped {outcome.skipped} batch(es) of regions the target would "
+            f"not let us read — the last failure was: {outcome.last_error}. "
+            "The rest of the address space was scanned normally."
         )
 
     _print_results(session, state, limit=limit, elapsed=elapsed)
@@ -371,12 +410,17 @@ def cmd_scan(session: Session, args: List[str]) -> None:
             )
 
     with Timer() as timer:
-        addresses, truncated, interrupted = _run_scan(session, search)
+        outcome = _run_scan(session, search)
         state = _store(
-            session, value_type, width, addresses, description, truncated=truncated
+            session,
+            value_type,
+            width,
+            outcome.addresses,
+            description,
+            truncated=outcome.truncated,
         )
 
-    _report(session, state, timer.elapsed, interrupted=interrupted)
+    _report(session, state, timer.elapsed, outcome)
 
 
 def _next_parser() -> CommandParser:
@@ -573,17 +617,17 @@ def cmd_aob(session: Session, args: List[str]) -> None:
     value_type = valuetypes.resolve("bytes")
 
     with Timer() as timer:
-        addresses, truncated, interrupted = _run_scan(session, search, label="AOB scan")
+        outcome = _run_scan(session, search, label="AOB scan")
         state = _store(
             session,
             value_type,
             width,
-            addresses,
+            outcome.addresses,
             f"aob {options.pattern}",
-            truncated=truncated,
+            truncated=outcome.truncated,
         )
 
-    _report(session, state, timer.elapsed, interrupted=interrupted)
+    _report(session, state, timer.elapsed, outcome)
 
 
 def _regex_parser() -> CommandParser:
@@ -649,19 +693,17 @@ def cmd_regex(session: Session, args: List[str]) -> None:
     value_type = valuetypes.resolve("string")
 
     with Timer() as timer:
-        addresses, truncated, interrupted = _run_scan(
-            session, search, label="Regex scan"
-        )
+        outcome = _run_scan(session, search, label="Regex scan")
         state = _store(
             session,
             value_type,
             options.length,
-            addresses,
+            outcome.addresses,
             f"regex {options.pattern}",
-            truncated=truncated,
+            truncated=outcome.truncated,
         )
 
-    _report(session, state, timer.elapsed, interrupted=interrupted)
+    _report(session, state, timer.elapsed, outcome)
 
 
 def _results_parser() -> CommandParser:

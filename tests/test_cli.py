@@ -81,6 +81,17 @@ def test_limit_flag_reaches_the_session():
     assert "Showing 1 of" in out
 
 
+def test_an_outdated_pymemoryeditor_stops_the_run(monkeypatch):
+    """The check must land before any command touches a process."""
+    from peekmem import dependencies
+
+    monkeypatch.setattr(dependencies.PyMemoryEditor, "__version__", "2.1.0")
+    status, out, err = run(["-e", "version"])
+    assert status == 2
+    assert "PyMemoryEditor 2.2.0 or newer" in err
+    assert out == ""
+
+
 def test_version_flag():
     parser = build_parser()
     with pytest.raises(SystemExit) as exit_info:

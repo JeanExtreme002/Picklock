@@ -22,7 +22,7 @@ from typing import List, Optional, Sequence
 
 import PyMemoryEditor
 
-from . import __version__
+from . import __version__, dependencies
 from .commands import GROUPS, all_commands
 from .errors import CommandError, PeekmemError
 from .output import Printer
@@ -178,6 +178,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         color=False if options.no_color else None,
         timing=not options.no_timing,
     )
+
+    # Before anything touches a process: a PyMemoryEditor below the declared
+    # floor fails later, deep inside a scan, with an error that names a Mach
+    # call rather than the cause.
+    outdated = dependencies.check()
+    if outdated is not None:
+        printer.error(outdated)
+        return 2
     session = Session(printer)
     shell = Shell(session, printer=printer)
 

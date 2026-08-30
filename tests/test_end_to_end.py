@@ -303,6 +303,20 @@ def test_scan_then_refine_against_the_previous_reading(target, capture, block):
 
 
 @slow
+def test_a_writable_only_scan_says_so_and_keeps_saying_so(target, capture, block):
+    """The restriction is easy to forget and expensive to forget."""
+    out = run(target, capture, f"scan:value int32 {MARKER} --writable")
+    assert "Writable regions only" in out
+
+    # and again when the results are looked at later, which is when the
+    # question "why is my address not here?" actually gets asked
+    assert "Writable regions only" in run(target, capture, "scan:results")
+
+    # a refine narrows what that scan found, so it inherits the caveat
+    assert "Writable regions only" in run(target, capture, "scan:next --unchanged")
+
+
+@slow
 def test_scan_a_string(target, capture, block):
     run(target, capture, "scan:value string PicklockMarker42")
     assert block.text_at in target.session.scan.addresses

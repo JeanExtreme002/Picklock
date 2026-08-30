@@ -18,7 +18,10 @@ Work through these in order:
    at "75%" may hold `0.75`, or `75.0`, or `7500`. Scan with a comparison
    instead: `scan:value float --between 0.7 0.8`.
 3. **`--writable` excluded it.** A value that never changes may live in
-   read-only data. `--all-regions` searches everything.
+   read-only data. `--all-regions` searches everything. Picklock says so when
+   a result set skipped read-only memory, so check for the
+   "Writable regions only" note — and remember the `writable_only` setting
+   produces it too.
 4. **It moved.** Between your first scan and your refine, the target may have
    reallocated. Start over with `scan:reset`.
 

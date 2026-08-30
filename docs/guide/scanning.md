@@ -29,6 +29,19 @@ writable memory, and skipping everything else makes the scan several times
 faster. `--all-regions` overrides it when you are looking for something in
 read-only data.
 
+Because that restriction is easy to forget and expensive to forget, a
+result set that skipped read-only memory says so — on the scan, on every
+refine, and again on `scan:results`:
+
+```
+Note: Writable regions only — nothing in read-only memory was searched.
+Use '--all-regions' on the first scan to include it.
+```
+
+You will also see it without having typed `--writable`, if the
+`writable_only` setting is on. That is the point of the line: the reason an
+address is missing should not be a setting you turned on last week.
+
 ## When you cannot see the number
 
 A health bar with no digits, a timer that only moves — you cannot type the new

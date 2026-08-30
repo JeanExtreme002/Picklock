@@ -176,6 +176,7 @@ def _run_scan(
     *,
     label: str = "Scanning",
     max_results: Optional[int] = None,
+    writable_only: Optional[bool] = None,
 ) -> ScanOutcome:
     """Drive ``search`` over the target's regions.
 
@@ -184,6 +185,10 @@ def _run_scan(
         ``max_results`` setting applies. It is an argument rather than a write
         to the setting so that capping one scan does not quietly cap every
         scan after it.
+    :param writable_only: which regions to walk, once ``--writable`` and
+        ``--all-regions`` have had their say. Without it the ``writable_only``
+        setting decides — which is why it has to be passed: the setting alone
+        would filter the regions before ``--all-regions`` could widen them.
 
     Nothing here throws away results it already has. Ctrl+C stops the scan and
     keeps them, because punishing an impatient keystroke by discarding four
@@ -194,7 +199,7 @@ def _run_scan(
     declined by its pager — and it says nothing about the thousands of regions
     behind it. Both are reported; neither is silent.
     """
-    regions = session.scan_regions()
+    regions = session.scan_regions(writable_only=writable_only)
     total = sum(region.size for region in regions) or 1
     if max_results is None:
         max_results = int(session.option("max_results"))
@@ -261,6 +266,16 @@ def _read_values(
     return [value_type.decode(found.get(address)) for address in addresses]
 
 
+#: Said whenever a result set that skipped read-only memory is shown. A scan
+#: that quietly searched a tenth of the address space is the kind of thing you
+#: work out an hour later, from an address that should have been found and was
+#: not.
+_WRITABLE_ONLY = (
+    "Writable regions only — nothing in read-only memory was searched. "
+    "Use '--all-regions' on the first scan to include it."
+)
+
+
 def _store(
     session: Session,
     value_type: ValueType,
@@ -269,10 +284,17 @@ def _store(
     description: str,
     *,
     truncated: bool,
+    writable_only: bool = False,
 ) -> ScanState:
     values = _read_values(session, value_type, width, addresses)
     return session.store_scan(
-        value_type, width, addresses, values, description, truncated=truncated
+        value_type,
+        width,
+        addresses,
+        values,
+        description,
+        truncated=truncated,
+        writable_only=writable_only,
     )
 
 
@@ -318,6 +340,9 @@ def _print_results(
     The next page is fetched with ``scan:results``, not by re-running the scan
     — which is why the hint names that command whatever produced the rows.
     """
+    if state.writable_only:
+        session.printer.note(_WRITABLE_ONLY)
+
     process = session.require_process()
     hex_output = bool(session.option("hex"))
     indexes = range(len(state.addresses))
@@ -459,7 +484,9 @@ def cmd_scan(session: Session, args: List[str]) -> None:
             )
 
     with Timer() as timer:
-        outcome = _run_scan(session, search, max_results=options.max)
+        outcome = _run_scan(
+            session, search, max_results=options.max, writable_only=writable_only
+        )
         state = _store(
             session,
             value_type,
@@ -467,6 +494,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
             outcome.addresses,
             description,
             truncated=outcome.truncated,
+            writable_only=writable_only,
         )
 
     _report(session, state, timer.elapsed, outcome)
@@ -581,6 +609,9 @@ def cmd_next(session: Session, args: List[str]) -> None:
             kept_addresses,
             kept_values,
             description,
+            # A refine narrows what the first scan found, so it inherits what
+            # that scan never looked at.
+            writable_only=state.writable_only,
         )
 
     _print_results(session, new_state, elapsed=timer.elapsed)
@@ -640,6 +671,7 @@ def cmd_aob(session: Session, args: List[str]) -> None:
             outcome.addresses,
             f"aob {options.pattern}",
             truncated=outcome.truncated,
+            writable_only=bool(session.option("writable_only")),
         )
 
     _report(session, state, timer.elapsed, outcome)
@@ -715,6 +747,7 @@ def cmd_regex(session: Session, args: List[str]) -> None:
             outcome.addresses,
             f"regex {options.pattern}",
             truncated=outcome.truncated,
+            writable_only=bool(session.option("writable_only")),
         )
 
     _report(session, state, timer.elapsed, outcome)
@@ -820,6 +853,9 @@ def cmd_results(session: Session, args: List[str]) -> None:
         )
         session.printer.write()
         return
+
+    if state.writable_only:
+        session.printer.note(_WRITABLE_ONLY)
 
     page = paginate(
         session,

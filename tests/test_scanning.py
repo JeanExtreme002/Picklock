@@ -113,6 +113,30 @@ def test_the_max_results_cap_stops_the_scan(scannable):
     assert len(calls) == 1, "the cap must stop the scan, not just trim the output"
 
 
+def test_the_region_choice_reaches_region_selection(session, monkeypatch):
+    """``--all-regions`` has to widen the regions, not only the search call.
+
+    The regions handed to the search are chosen before the search runs. While
+    that choice read the ``writable_only`` setting directly, a setting of
+    ``on`` filtered them down and ``--all-regions`` had nothing left to widen:
+    the flag reached the library and the library was only ever offered
+    writable regions.
+    """
+    asked = []
+    regions = make_regions(3)
+    monkeypatch.setattr(
+        session, "scan_regions", lambda **kwargs: (asked.append(kwargs), regions)[1]
+    )
+    monkeypatch.setattr(session, "regions", lambda **kwargs: regions)
+
+    _run_scan(session, lambda batch: iter(()), writable_only=False)
+    assert asked == [{"writable_only": False}]
+
+    asked.clear()
+    _run_scan(session, lambda batch: iter(()))
+    assert asked == [{"writable_only": None}], "no flag leaves it to the setting"
+
+
 def test_the_max_argument_caps_one_scan_without_changing_the_setting(scannable):
     """``--max`` is an override for the scan that carries it, and nothing else.
 

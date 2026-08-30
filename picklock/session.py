@@ -76,6 +76,12 @@ class ScanState:
     values: List[Any] = field(default_factory=list)
     description: str = ""
     truncated: bool = False
+    #: The scan looked only at writable regions, so nothing in read-only
+    #: memory was ever a candidate. Carried on the result set rather than
+    #: read from the setting when it is reported, because the setting can be
+    #: changed after the scan and the results would then describe themselves
+    #: wrongly.
+    writable_only: bool = False
 
     def __len__(self) -> int:
         return len(self.addresses)
@@ -374,6 +380,7 @@ class Session:
         description: str,
         *,
         truncated: bool = False,
+        writable_only: bool = False,
     ) -> ScanState:
         """Replace the current result set."""
         self.scan = ScanState(
@@ -383,6 +390,7 @@ class Session:
             values=list(values),
             description=description,
             truncated=truncated,
+            writable_only=writable_only,
         )
         return self.scan
 

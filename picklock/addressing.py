@@ -20,7 +20,7 @@ of term above — because an address expression that needs its own manual page
 has stopped being a convenience.
 """
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional
 
 from .errors import CommandError
 
@@ -33,36 +33,59 @@ _IDENT_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567
 _NUMBER, _IDENT, _RESULT, _OPEN, _CLOSE, _PLUS, _MINUS = range(7)
 
 
-def _tokenize(text: str) -> List[Tuple[int, Any]]:
-    tokens: List[Tuple[int, Any]] = []
+class _Token(NamedTuple):
+    """One lexeme, with what it looked like and whether a space came first.
+
+    The source text and the spacing are what let a module name containing a
+    hyphen be told from a subtraction: ``_ssl.cpython-311-darwin.so`` is one
+    name, ``game.exe - 0x10`` is a sum.
+    """
+
+    kind: int
+    value: Any
+    source: str
+    spaced_before: bool
+
+
+def _tokenize(text: str) -> List["_Token"]:
+    tokens: List[_Token] = []
     index = 0
     length = len(text)
+    spaced = False
+
+    def emit(kind: int, value: Any, source: str) -> None:
+        tokens.append(_Token(kind, value, source, spaced))
 
     while index < length:
         char = text[index]
 
         if char.isspace():
             index += 1
+            spaced = True
             continue
 
         if char == "[":
-            tokens.append((_OPEN, "["))
+            emit(_OPEN, "[", "[")
             index += 1
+            spaced = False
             continue
 
         if char == "]":
-            tokens.append((_CLOSE, "]"))
+            emit(_CLOSE, "]", "]")
             index += 1
+            spaced = False
             continue
 
         if char == "+":
-            tokens.append((_PLUS, "+"))
+            emit(_PLUS, "+", "+")
             index += 1
+            spaced = False
             continue
 
         if char == "-":
-            tokens.append((_MINUS, "-"))
+            emit(_MINUS, "-", "-")
             index += 1
+            spaced = False
             continue
 
         if char == "#":
@@ -72,15 +95,17 @@ def _tokenize(text: str) -> List[Tuple[int, Any]]:
                 index += 1
             if start == index:
                 raise CommandError("'#' must be followed by a result number, e.g. #3.")
-            tokens.append((_RESULT, int(text[start:index])))
+            emit(_RESULT, int(text[start:index]), text[start - 1 : index])
+            spaced = False
             continue
 
         if char in ("'", '"'):
             end = text.find(char, index + 1)
             if end == -1:
                 raise CommandError(f"Unterminated {char} in address expression.")
-            tokens.append((_IDENT, text[index + 1 : end]))
+            emit(_IDENT, text[index + 1 : end], text[index : end + 1])
             index = end + 1
+            spaced = False
             continue
 
         if char.lower() == "0" and text[index : index + 2].lower() == "0x":
@@ -89,7 +114,8 @@ def _tokenize(text: str) -> List[Tuple[int, Any]]:
             while index < length and text[index] in "0123456789abcdefABCDEF_":
                 index += 1
             try:
-                tokens.append((_NUMBER, int(text[start:index].replace("_", ""), 16)))
+                emit(_NUMBER, int(text[start:index].replace("_", ""), 16), text[start:index])
+                spaced = False
             except ValueError:
                 raise CommandError(f"{text[start:index]!r} is not a hex number.")
             continue
@@ -102,9 +128,10 @@ def _tokenize(text: str) -> List[Tuple[int, Any]]:
             # A run of digits is a decimal literal; anything else (including
             # "game.exe" and "libc.so.6") is a module name.
             if word.replace("_", "").isdigit():
-                tokens.append((_NUMBER, int(word.replace("_", ""))))
+                emit(_NUMBER, int(word.replace("_", "")), word)
             else:
-                tokens.append((_IDENT, word))
+                emit(_IDENT, word, word)
+            spaced = False
             continue
 
         raise CommandError(f"Unexpected character {char!r} in address expression.")
@@ -115,17 +142,18 @@ def _tokenize(text: str) -> List[Tuple[int, Any]]:
 class _Parser:
     """Recursive-descent parser over the token list. One expression per call."""
 
-    def __init__(self, tokens: List[Tuple[int, Any]], session: "Session"):
+    def __init__(self, tokens: List[_Token], session: "Session"):
         self.tokens = tokens
         self.session = session
         self.position = 0
 
-    def peek(self) -> Optional[Tuple[int, Any]]:
-        if self.position < len(self.tokens):
-            return self.tokens[self.position]
+    def peek(self, ahead: int = 0) -> Optional[_Token]:
+        index = self.position + ahead
+        if index < len(self.tokens):
+            return self.tokens[index]
         return None
 
-    def next(self) -> Tuple[int, Any]:
+    def next(self) -> _Token:
         token = self.peek()
         if token is None:
             raise CommandError("Unexpected end of address expression.")
@@ -136,32 +164,64 @@ class _Parser:
         value = self.parse_term()
         while True:
             token = self.peek()
-            if token is None or token[0] not in (_PLUS, _MINUS):
+            if token is None or token.kind not in (_PLUS, _MINUS):
                 return value
             self.position += 1
             operand = self.parse_term()
-            value = value + operand if token[0] == _PLUS else value - operand
+            value = value + operand if token.kind == _PLUS else value - operand
 
     def parse_term(self) -> int:
-        kind, value = self.next()
+        token = self.next()
 
-        if kind == _NUMBER:
-            return int(value)
+        if token.kind == _NUMBER:
+            return int(token.value)
 
-        if kind == _RESULT:
-            return self.session.result_address(int(value))
+        if token.kind == _RESULT:
+            return self.session.result_address(int(token.value))
 
-        if kind == _IDENT:
-            return self.session.module_base(str(value))
+        if token.kind == _IDENT:
+            return self.session.module_base(self._module_name(str(token.value)))
 
-        if kind == _OPEN:
+        if token.kind == _OPEN:
             inner = self.parse_expression()
             closing = self.next()
-            if closing[0] != _CLOSE:
+            if closing.kind != _CLOSE:
                 raise CommandError("Missing ']' in address expression.")
             return self.session.read_pointer(inner)
 
         raise CommandError("Expected an address, a module name or '[' here.")
+
+    def _module_name(self, name: str) -> str:
+        """Rejoin a module name the tokenizer split on a hyphen.
+
+        A hyphen is a subtraction sign and also a perfectly ordinary character
+        in a library's name — ``_ssl.cpython-311-darwin.so`` is what every
+        Python process is full of. The two are told apart by asking: the pieces
+        are rejoined only while they are written without spaces *and* the
+        result names a module that is actually loaded. So
+        ``game.exe-0x10`` stays a subtraction, because no such module exists,
+        and ``game.exe - 0x10`` never even gets here.
+        """
+        best, consumed = name, 0
+        candidate = name
+        ahead = 0
+
+        while True:
+            minus, part = self.peek(ahead), self.peek(ahead + 1)
+            if minus is None or part is None:
+                break
+            if minus.kind != _MINUS or minus.spaced_before or part.spaced_before:
+                break
+            if part.kind not in (_IDENT, _NUMBER):
+                break
+
+            candidate += "-" + part.source
+            ahead += 2
+            if self.session.knows_module(candidate):
+                best, consumed = candidate, ahead
+
+        self.position += consumed
+        return best
 
 
 def parse_address(text: str, session: "Session") -> int:

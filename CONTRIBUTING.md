@@ -23,17 +23,26 @@ parentheses if you would rather run it directly.
 
 ```bash
 make test                   # pytest tests -v
+pytest -m "not slow"        # ~2 s, skipping the scans
 ```
 
-The suite never attaches to a process. It covers parsing, formatting, dispatch
-and help — the parts that are Picklock's own — and leaves reading another
-process's memory to PyMemoryEditor's tests. That is deliberate: it means the
-suite runs identically on any machine, including CI runners where opening a
-second process is not permitted.
+The suite has two halves.
 
-The consequence is that a change to a command *body* is not covered by the
-suite. Exercise it by hand against a real target and say so in the PR — a
-transcript of the session is the ideal evidence.
+Most of it never touches a process: parsing, formatting, dispatch, help,
+aliases, settings. Those run in about two seconds.
+
+`tests/test_end_to_end.py` drives every command against a **real** process —
+the test process itself, the same trick PyMemoryEditor's own suite uses, which
+is why it needs no privileges and no second program to launch. It puts known
+values in memory with `ctypes`, types the command, and asserts on the table
+that comes back. What is under test is the command, not the library: a failure
+there means Picklock is wrong.
+
+The scans walk a live address space, so they are marked `slow` and add about
+thirty seconds. Run them before pushing anything that touches a command body —
+`make test` includes them, and CI runs the lot. The `target` fixture skips
+itself if the platform refuses to open its own process, so a hostile runner
+degrades to the fast half rather than failing.
 
 ## Linting and type checking
 

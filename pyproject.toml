@@ -107,6 +107,14 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The end-to-end tests attach to the test process itself and scan its address
+# space, which costs seconds rather than milliseconds. Everything else runs in
+# about two:
+#   pytest -m "not slow"   # the fast suite
+#   pytest                 # including the scans
+markers = [
+    "slow: end-to-end tests that scan the whole address space of a live process",
+]
 
 [tool.coverage.run]
 source = ["picklock"]

@@ -71,13 +71,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     - name: Run tests
+      # The whole suite, end-to-end tests included: those attach to the test
+      # process itself, so they need no privileges and no second program, and
+      # they skip themselves on a runner that refuses even that.
+      #
       # --cov-fail-under is the real, in-repo coverage gate: deterministic and
-      # independent of any external service. It is a conservative floor — the
-      # suite measures ~60% today, and the gap is almost entirely command
-      # bodies that need a live target the suite deliberately never attaches
-      # to. Ratchet it up as fake-target coverage grows.
+      # independent of any external service. The suite measures ~89%; 80 is a
+      # floor with room for per-platform variance (the three backends, and the
+      # allocation commands that only exist on two of them).
       run: |
-        pytest -q --cov=picklock --cov-report=term --cov-report=xml --cov-fail-under=55
+        pytest -q --cov=picklock --cov-report=term --cov-report=xml --cov-fail-under=80
     - name: Upload coverage to Codecov
       # Informational only — see codecov.yml — so a flaky upload never blocks
       # the merge; the hard gate is --cov-fail-under above. Runs even when the

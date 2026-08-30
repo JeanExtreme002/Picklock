@@ -301,6 +301,18 @@ class Session:
 
     # -- hooks used by the address expression parser ----------------------
 
+    def knows_module(self, name: str) -> bool:
+        """True when ``name`` resolves to a loaded module.
+
+        Asked by the address parser, which offers it several readings of a
+        hyphenated word and keeps the one the target recognises.
+        """
+        try:
+            self.module_base(name)
+        except CommandError:
+            return False
+        return True
+
     def module_base(self, name: str) -> int:
         """Base address of a loaded module, matched by name then by prefix."""
         self.require_process()

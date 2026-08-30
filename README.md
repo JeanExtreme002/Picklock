@@ -316,8 +316,9 @@ make install-dev      # pip install -e ".[dev]"
 make pre-commit       # lint + type-check + tests
 ```
 
-`make help` lists every target. The test suite never attaches to another
-process, so it runs anywhere — including CI runners that would refuse.
+`make help` lists every target. Every command is covered end-to-end against a
+real process — the test process itself, so the suite needs no privileges and
+no second program to launch.
 
 [**CONTRIBUTING.md**](CONTRIBUTING.md) covers the project layout, the two rules
 that keep its shape, and how to add a command (it is one decorator, and `help`

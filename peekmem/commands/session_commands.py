@@ -83,6 +83,15 @@ _TOPICS = {
 }
 
 
+def _find_setting(name: str):
+    """Look up a setting by name, listing the real ones when it is not one."""
+    setting = {item.name: item for item in SETTINGS}.get(name.strip().lower())
+    if setting is None:
+        known = ", ".join(item.name for item in SETTINGS)
+        raise CommandError(f"Unknown setting {name!r}. Known settings: {known}.")
+    return setting
+
+
 def _format_setting(value: object) -> str:
     """Print a setting the way it is typed: booleans as on/off, not True/False."""
     if isinstance(value, bool):
@@ -387,70 +396,91 @@ def command_words_set() -> set:
     return set(command_words())
 
 
-def _config_parser() -> CommandParser:
-    parser = CommandParser("config")
+def _config_list_parser() -> CommandParser:
+    parser = CommandParser("config:list")
     parser.add_argument(
-        "assignment",
-        nargs="*",
-        default=[],
-        help="'name value', 'name=value', or a bare 'name' to read one back. "
-        "Omit it to print every setting",
+        "name",
+        nargs="?",
+        default=None,
+        help="show just this one setting; omit it for all of them",
     )
     return parser
 
 
 @command(
-    "config",
-    parser=_config_parser,
-    summary="Show or change a session setting.",
+    "config:list",
+    parser=_config_list_parser,
+    summary="Show the session's settings and their current values.",
     details=(
         "Settings live for the session only — Peekmem writes no config file, "
         "so a fresh shell always starts from the documented defaults. Put the "
-        "'config' lines in a script and run it with 'source' to reuse a "
-        "setup.\n\n"
-        "Run 'config' with no argument to see every setting, its current value "
-        "and what it does."
+        "'config:set' lines in a script and run it with 'source' to reuse a "
+        "setup."
     ),
-    examples=(
-        "config",
-        "config limit 50",
-        "config hex on",
-        "config writable_only=true",
-    ),
+    examples=("config:list", "config:list limit"),
 )
-def cmd_config(session: Session, args: List[str]) -> None:
-    options = _config_parser().parse_args(args)
-    assignment = options.assignment
+def cmd_config_list(session: Session, args: List[str]) -> None:
+    options = _config_list_parser().parse_args(args)
 
-    if not assignment:
-        rows = [
-            (setting.name, _format_setting(session.option(setting.name)), setting.summary)
-            for setting in SETTINGS
-        ]
-        session.printer.table(
-            ("SETTING", "VALUE", "DESCRIPTION"), rows, (LEFT, RIGHT, LEFT)
-        )
-        return
-
-    if len(assignment) == 1 and "=" in assignment[0]:
-        name, _, value = assignment[0].partition("=")
-    elif len(assignment) == 1:
-        name, value = assignment[0], None
-    elif len(assignment) == 2:
-        name, value = assignment[0], assignment[1]
-    else:
-        raise CommandError("Usage: config [name [value]]")
-
-    if value is None:
-        setting = {item.name: item for item in SETTINGS}.get(name.lower())
-        if setting is None:
-            raise CommandError(f"Unknown setting {name!r}.")
+    if options.name is not None:
+        setting = _find_setting(options.name)
         session.printer.write(
-            render_vertical([(setting.name, _format_setting(session.option(setting.name)))])
+            render_vertical(
+                [(setting.name, _format_setting(session.option(setting.name)))]
+            )
         )
         session.printer.write()
         return
 
+    rows = [
+        (setting.name, _format_setting(session.option(setting.name)), setting.summary)
+        for setting in SETTINGS
+    ]
+    session.printer.table(("SETTING", "VALUE", "DESCRIPTION"), rows, (LEFT, RIGHT, LEFT))
+
+
+def _config_set_parser() -> CommandParser:
+    parser = CommandParser("config:set")
+    parser.add_argument(
+        "name", help="the setting to change; 'name=value' in one word also works"
+    )
+    parser.add_argument(
+        "value",
+        nargs="?",
+        default=None,
+        help="its new value — on/off for a switch, a number otherwise",
+    )
+    return parser
+
+
+@command(
+    "config:set",
+    parser=_config_set_parser,
+    summary="Change one of the session's settings.",
+    details=(
+        "'config:set limit 50' and 'config:set limit=50' do the same thing.\n\n"
+        "The change lasts for the session and no longer. Run 'config:list' to "
+        "see what can be set, and what each one does."
+    ),
+    examples=(
+        "config:set limit 50",
+        "config:set hex on",
+        "config:set writable_only=true",
+    ),
+)
+def cmd_config_set(session: Session, args: List[str]) -> None:
+    options = _config_set_parser().parse_args(args)
+
+    name, value = options.name, options.value
+    if value is None:
+        if "=" not in name:
+            raise CommandError(
+                f"config:set needs a value: 'config:set {name} <value>'. "
+                f"To read one back, use 'config:list {name}'."
+            )
+        name, _, value = name.partition("=")
+
+    _find_setting(name)  # Reject an unknown name before parsing its value.
     applied = session.set_option(name, value)
     session.printer.ok(f"{name.strip().lower()} = {_format_setting(applied)}")
     session.printer.write()

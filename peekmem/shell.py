@@ -351,7 +351,7 @@ class Shell:
             ]
         else:
             head = buffer.strip().split()[0].lower()
-            if head == "config":
+            if head in ("config:set", "config:list"):
                 candidates = [setting.name for setting in SETTINGS]
             elif head == "help":
                 candidates = command_words() + ["types", "address", "scanning"]

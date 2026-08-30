@@ -223,7 +223,7 @@ def _report(
     if state.truncated:
         printer.note(
             f"Stopped at the max_results cap ({session.option('max_results')}). "
-            "Narrow the scan, or raise it with 'config max_results N'."
+            "Narrow the scan, or raise it with 'config:set max_results N'."
         )
     if outcome.skipped:
         printer.note(

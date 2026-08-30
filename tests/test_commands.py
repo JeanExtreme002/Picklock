@@ -40,7 +40,6 @@ def test_only_shell_commands_are_top_level():
     """Anything that touches the target belongs to a subject namespace."""
     assert sorted(entry.name for entry in top_level()) == [
         "clear",
-        "config",
         "exit",
         "help",
         "source",
@@ -434,21 +433,21 @@ def test_ps_lists_this_process(shell, capture):
     """The one command that talks to the OS without attaching to anything."""
     import os
 
-    shell.run_line("config limit 0")
+    shell.run_line("config:set limit 0")
     shell.run_line("ps:list")
     assert str(os.getpid()) in capture.out
 
 
 def test_config_prints_booleans_the_way_they_are_typed(shell, capture):
-    shell.run_line("config")
+    shell.run_line("config:list")
     assert "| off" in capture.out or "off " in capture.out
     capture.reset()
-    shell.run_line("config hex on")
+    shell.run_line("config:set hex on")
     assert "hex = on" in capture.out
 
 
 def test_config_accepts_the_equals_form(shell):
-    shell.run_line("config limit=42")
+    shell.run_line("config:set limit=42")
     assert shell.session.option("limit") == 42
 
 
@@ -612,3 +611,21 @@ def test_the_help_only_ever_advertises_one_spelling(shell, capture):
             row for row in capture.out.splitlines() if "get help with" in row
         )
         assert '"help ' in hint, f"{line!r} advertises something else: {hint!r}"
+
+
+def test_config_reads_one_setting_back(shell, capture):
+    shell.run_line("config:list limit")
+    assert "limit: 20" in capture.out
+
+
+def test_config_set_without_a_value_points_at_the_reader(shell, capture):
+    """Setting and reading are different commands now; say which is which."""
+    assert shell.run_line("config:set limit") is False
+    assert "config:list limit" in capture.err
+
+
+@pytest.mark.parametrize("line", ["config:list nosuch", "config:set nosuch on"])
+def test_an_unknown_setting_lists_the_real_ones(shell, capture, line):
+    assert shell.run_line(line) is False
+    assert "Unknown setting" in capture.err
+    assert "max_results" in capture.err

@@ -178,7 +178,8 @@ and `help scan` all produce the same output.
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
 | **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
-| Top level | `help` · `config` · `source` · `version` · `clear` · `exit` |
+| **`config:`** | `list` · `set` |
+| Top level | `help` · `source` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
 argument, every flag, and examples. That list is generated from the command's

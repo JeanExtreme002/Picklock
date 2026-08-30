@@ -86,6 +86,17 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "1 row in set (0.02 sec)",
     ),
     Namespace(
+        "config",
+        "Configuration",
+        "Show or change the session's settings.",
+        "peekmem> config:set writable_only on\n"
+        "writable_only = on\n"
+        "\n"
+        "peekmem> config:list limit\n"
+        "\n"
+        "limit: 20",
+    ),
+    Namespace(
         "pointer",
         "Pointers",
         "Follow pointer chains, and find ones that survive a restart.",

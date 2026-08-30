@@ -123,7 +123,7 @@ def test_help_topics_are_reachable(shell, capture):
 
 def test_source_runs_a_file(shell, capture, tmp_path):
     script = tmp_path / "setup.peek"
-    script.write_text("# a comment\nconfig limit 7\n\nconfig hex on\n")
+    script.write_text("# a comment\nconfig:set limit 7\n\nconfig:set hex on\n")
     shell.run_line(f"source {script}")
     assert shell.session.option("limit") == 7
     assert shell.session.option("hex") is True
@@ -131,7 +131,7 @@ def test_source_runs_a_file(shell, capture, tmp_path):
 
 def test_source_stops_at_the_failing_line(shell, capture, tmp_path):
     script = tmp_path / "bad.peek"
-    script.write_text("config limit 7\nnosuchcommand\nconfig limit 9\n")
+    script.write_text("config:set limit 7\nnosuchcommand\nconfig:set limit 9\n")
     shell.run_line(f"source {script}")
     assert "bad.peek:2" in capture.err
     assert shell.session.option("limit") == 7

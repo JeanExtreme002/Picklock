@@ -34,7 +34,7 @@ def test_execute_runs_a_command_and_exits():
 
 
 def test_execute_flags_run_in_order():
-    status, out, _ = run(["-e", "config limit 3", "-e", "config"])
+    status, out, _ = run(["-e", "config:set limit 3", "-e", "config:list"])
     assert status == 0
     assert out.index("limit = 3") < out.index("SETTING")
 

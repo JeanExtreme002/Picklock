@@ -64,9 +64,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from picklock.shell import Shell  # noqa: E402  (must follow the env var above)
 
-#: The name the recording runs under. Short, lowercase and evocative of what
-#: people actually point a memory scanner at.
-DEMO_NAME = "game"
+#: The name the recording runs under — the shape of thing people actually
+#: point a memory scanner at, and the one the README's walkthrough uses. The
+#: suffix is only a file name: the link is made and run wherever this script
+#: runs, and the kernel reports the name it was given.
+DEMO_NAME = "game.exe"
 
 #: Passed to the renamed child to tell it where to leave the transcript.
 RECORD_FLAG = "--record-to"

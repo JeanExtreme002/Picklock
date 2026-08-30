@@ -536,6 +536,13 @@ def paginate(
     ``command`` is what they would type to move on; it is spelled out in the
     footer so the next page is a copy-paste rather than a puzzle.
     """
+    # Checked here rather than per command, so every listing agrees — and
+    # because a negative limit is not merely odd: it reaches a Python slice as
+    # `entries[0:-5]`, which quietly prints all but the last five rows and
+    # calls it a page. `config:set limit` has always refused one.
+    if limit is not None and limit < 0:
+        raise CommandError("--limit cannot be negative (0 means no limit).")
+
     total = len(entries)
     size = None if show_all else session.display_limit(limit)
 

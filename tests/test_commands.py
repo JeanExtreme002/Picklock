@@ -465,6 +465,20 @@ def test_reset_reports_what_it_discarded(shell, capture):
     assert shell.session.scan is None
 
 
+def test_a_negative_limit_is_refused(shell, capture):
+    """A negative limit reached a Python slice and printed a lie.
+
+    `--limit -5` became `entries[0:-5]`, which prints all but the last five
+    rows and reports them as a page. `config:set limit -5` has always been
+    refused; the flag now agrees.
+    """
+    assert not shell.run_line("ps:list --limit -5")
+    assert "cannot be negative" in capture.err
+
+    capture.reset()
+    assert shell.run_line("ps:list --limit 0"), "zero still means no limit"
+
+
 def test_a_script_cannot_source_itself(shell, capture, tmp_path):
     script = tmp_path / "loop.txt"
     script.write_text(f"source {script}\n")

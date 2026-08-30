@@ -50,9 +50,7 @@ classifiers = [
 requires-python = ">=3.10"
 
 # Picklock is a client, not a reimplementation: every memory operation is
-# PyMemoryEditor's. The floor is 2.2.0 because Picklock uses the region
-# snapshot, the module/thread descriptors and the pointer-scan file format
-# introduced up to that release.
+# PyMemoryEditor's.
 #
 # Nothing else is needed. The shell is stdlib only (argparse, shlex, readline
 # where the platform has it), which is what lets `pip install picklock` work on

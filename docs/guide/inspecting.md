@@ -81,18 +81,3 @@ same process get different numbers for the same threads, and neither is wrong.
 It is a handle, not a name. Do not carry it between tools, and do not expect it
 to match Activity Monitor.
 ```
-
-## Allocating inside the target
-
-```
-memory:alloc <size> [--permission N]
-memory:free <address> [size]
-```
-
-Somewhere to put a string or a structure the target does not have room for.
-`memory:alloc` prints the address it reserved.
-
-These do not track what you allocated, and freeing memory the target is using
-will crash it. They are here because the library exposes them and they are
-occasionally exactly what you need — not because you should reach for them
-first.

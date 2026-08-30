@@ -46,7 +46,7 @@ pip install "picklock[speed]"
 
 ```console
 $ picklock
-Welcome to Picklock 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
+Welcome to Picklock 0.1.0, a terminal client for PyMemoryEditor.
 Type 'help' for the command list, or 'help scanning' for a walkthrough.
 
 picklock> ps:list game

@@ -14,7 +14,7 @@ prepared before details become public.
 
 When reporting, please include:
 
-- Affected version(s) — the output of `picklock -e "version"` covers Picklock,
+- Affected version(s) — the output of `picklock --version` covers Picklock,
   PyMemoryEditor, Python and the platform.
 - The exact command line or shell session that triggers it.
 - A minimal reproducer, and the impact you observed.

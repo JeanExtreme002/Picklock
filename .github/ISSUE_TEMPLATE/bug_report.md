@@ -24,7 +24,7 @@ picklock> ...
 A clear and concise description of what you expected to happen instead.
 
 **Versions**
-Paste the output of `picklock -e "version"` — it covers Picklock, PyMemoryEditor,
+Paste the output of `picklock --version` — it covers Picklock, PyMemoryEditor,
 Python and the platform:
 
 ```

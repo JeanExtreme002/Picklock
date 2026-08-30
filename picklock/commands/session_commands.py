@@ -676,6 +676,26 @@ def cmd_clear(session: Session, args: List[str]) -> None:
     session.printer.clear_screen()
 
 
+def version_report() -> str:
+    """The four facts a bug report needs.
+
+    One function for both spellings: the 'version' command inside the shell and
+    'picklock --version' outside it should not be able to disagree about what
+    is installed.
+    """
+    return render_vertical(
+        [
+            ("Picklock", __version__),
+            ("PyMemoryEditor", PyMemoryEditor.__version__),
+            ("Python", platform.python_version()),
+            (
+                "Platform",
+                f"{platform.system()} {platform.release()} ({platform.machine()})",
+            ),
+        ]
+    )
+
+
 def _version_parser() -> CommandParser:
     return CommandParser("version")
 
@@ -693,20 +713,7 @@ def _version_parser() -> CommandParser:
 )
 def cmd_version(session: Session, args: List[str]) -> None:
     _version_parser().parse_args(args)
-    session.printer.write(
-        render_vertical(
-            [
-                ("Picklock", __version__),
-                ("PyMemoryEditor", PyMemoryEditor.__version__),
-                ("Python", platform.python_version()),
-                (
-                    "Platform",
-                    f"{platform.system()} {platform.release()} "
-                    f"({platform.machine()})",
-                ),
-            ]
-        )
-    )
+    session.printer.write(version_report())
     session.printer.write()
 
 

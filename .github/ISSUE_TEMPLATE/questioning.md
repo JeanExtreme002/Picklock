@@ -24,7 +24,7 @@ picklock> ...
 ```
 
 **Versions**
-Paste the output of `picklock -e "version"`, if applicable.
+Paste the output of `picklock --version`, if applicable.
 
 **Environment**
 - Were you running elevated (`sudo` / Administrator)? [yes / no]

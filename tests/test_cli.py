@@ -126,3 +126,29 @@ def test_help_lists_the_layers_not_every_command(capsys):
     assert "picklock help <command>" in text
     assert "memory:read" not in text, "the deeper layer is reached, not dumped"
     assert "namespace" not in text.lower()
+
+
+def test_version_flag_prints_the_whole_report():
+    """'picklock --version' is what goes in a bug report, so it needs all four."""
+    text = build_parser().format_usage()  # parser builds without error
+    assert text
+
+    with pytest.raises(SystemExit) as exit_info:
+        build_parser().parse_args(["--version"])
+    assert exit_info.value.code == 0
+
+
+def test_the_flag_and_the_command_cannot_disagree():
+    """Both spellings come from one function, and this pins that down."""
+    from picklock.commands.session_commands import version_report
+
+    status, out, _ = run(["-e", "version"])
+    assert status == 0
+    assert out.strip() == version_report().strip()
+
+    action = next(
+        item
+        for item in build_parser()._actions
+        if "--version" in item.option_strings
+    )
+    assert action.version == version_report()

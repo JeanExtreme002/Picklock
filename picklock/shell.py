@@ -250,7 +250,7 @@ class Shell:
 
         return (
             f"Welcome to Picklock {__version__}, a terminal client for "
-            f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
+            f"PyMemoryEditor.\n"
             "Type 'help' for the command list, or 'help scanning' for a "
             "walkthrough.\n"
         )

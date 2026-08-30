@@ -140,9 +140,11 @@ type-check:
 .PHONY: smoke
 smoke:
 	@echo "$(GREEN)Checking the console script...$(NC)"
-	$(PYTHON) -m $(PACKAGE_NAME) -e "version"
+	$(PYTHON) -m $(PACKAGE_NAME) --version
+	$(PYTHON) -m $(PACKAGE_NAME) -e "version" > /dev/null
 	$(PYTHON) -m $(PACKAGE_NAME) -e "help scan" > /dev/null
-	$(PYTHON) -m $(PACKAGE_NAME) ps --limit 5 > /dev/null
+	$(PYTHON) -m $(PACKAGE_NAME) ps:help > /dev/null
+	$(PYTHON) -m $(PACKAGE_NAME) ps:list --limit 5 > /dev/null
 	@echo "$(GREEN)Console script works!$(NC)"
 
 # Clean build artifacts

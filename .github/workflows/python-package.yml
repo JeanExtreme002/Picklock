@@ -94,11 +94,16 @@ jobs:
         fail_ci_if_error: false
     - name: Check the console script starts
       # The suite calls main() in-process; this proves the installed entry
-      # point resolves and that a batch run exits cleanly.
+      # point resolves and that a batch run exits cleanly. Both spellings of
+      # the version are here: --version is answered by argparse before a shell
+      # exists, 'version' by the shell's own dispatch, so one of them working
+      # says nothing about the other.
       run: |
+        picklock --version
         picklock -e "version"
         picklock -e "help scan"
-        picklock ps --limit 5
+        picklock ps:help
+        picklock ps:list --limit 5
 
   build:
     needs: [type-check, test]

@@ -196,7 +196,7 @@ the moment it is registered.
 
 Please include:
 
-- The output of `picklock -e "version"` — it names Picklock, PyMemoryEditor,
+- The output of `picklock --version` — it names Picklock, PyMemoryEditor,
   Python and the platform.
 - The exact command you typed and the exact output you got.
 - Whether you were running elevated (`sudo` / Administrator).

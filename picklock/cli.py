@@ -20,12 +20,11 @@ import shlex
 import sys
 from typing import List, Optional, Sequence
 
-import PyMemoryEditor
-
-from . import __version__, dependencies
+from . import dependencies
 from .commands import top_level_listing
 from .commands.alias_commands import restore as restore_aliases
 from .commands.session_commands import restore as restore_settings
+from .commands.session_commands import version_report
 from .errors import CommandError, PicklockError
 from .output import Printer
 from .session import Session
@@ -115,7 +114,11 @@ def build_parser() -> argparse.ArgumentParser:
         "-v",
         "--version",
         action="version",
-        version=f"picklock {__version__} (PyMemoryEditor {PyMemoryEditor.__version__})",
+        # The same block the 'version' command prints. Which PyMemoryEditor is
+        # underneath matters as much as which Picklock is on top, and someone
+        # pasting this into a bug report should not have to open the shell to
+        # get the useful half.
+        version=version_report(),
     )
     parser.add_argument(
         "command",

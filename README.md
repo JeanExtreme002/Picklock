@@ -29,6 +29,7 @@ permissions, and every command's arguments.
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/quickstart.html"><b>Quick start</b></a></td><td>Attach to a process, find a value, change it.</td></tr>
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/guide/scanning.html"><b>Scanning</b></a></td><td>The first-scan/refine cycle, AOB and regex scans.</td></tr>
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/guide/addresses.html"><b>Addresses</b></a></td><td><code>module+offset</code>, dereferences, and <code>#N</code> scan rows.</td></tr>
+<tr><td><a href="https://picklock.readthedocs.io/en/latest/guide/reading-writing.html"><b>Reading and writing</b></a></td><td>Value types, typed reads and writes, hex views and watches.</td></tr>
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/guide/pointers.html"><b>Pointers</b></a></td><td>Pointer scans, and the workflow that makes a path survive a restart.</td></tr>
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/guide/scripting.html"><b>Scripting</b></a></td><td>Non-interactive use, exit codes, JSON export.</td></tr>
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/reference/commands.html"><b>Command reference</b></a></td><td>Every command and flag, generated from the code.</td></tr>

@@ -1,0 +1,25 @@
+# Codecov is used for *visibility* only — the enforced coverage gate lives in
+# CI as pytest's `--cov-fail-under` (see .github/workflows/python-package.yml),
+# which is deterministic and needs no external service. Marking Codecov's
+# status checks informational keeps a flaky upload or a transient dip from
+# blocking the merge button while still surfacing the trend and per-PR diff
+# coverage.
+#
+# Coverage is uploaded from every OS/Python cell of the matrix. Picklock's own
+# code is platform-independent, but the shell behaves differently where
+# readline is missing (Windows), so the merged view is what shows those
+# branches covered.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# Group the per-cell uploads (flagged by OS + Python version) so the combined
+# report reflects the whole matrix rather than the last upload to land.
+comment:
+  layout: "reach, diff, flags, files"
+  require_changes: false

@@ -1,0 +1,325 @@
+# -*- coding: utf-8 -*-
+
+"""The ``ps:`` namespace — finding a target process, attaching, and what it is.
+
+Threads live here rather than under ``memory:`` because a thread is not
+memory: it has an id, a state and a priority, and no address. What is under
+``memory:`` is the address space — its regions, and the modules mapped into it.
+"""
+
+from typing import List
+
+from .. import processes
+from ..errors import CommandError
+from ..output import LEFT, RIGHT, Timer, format_size, render_vertical
+from ..session import Session
+from . import CommandParser, add_paging_arguments, command, paginate
+
+
+def _ps_parser() -> CommandParser:
+    parser = CommandParser("ps:list")
+    parser.add_argument(
+        "pattern",
+        nargs="?",
+        default=None,
+        help="keep processes whose name contains this text; an all-digit "
+        "pattern also matches that PID exactly",
+    )
+    parser.add_argument(
+        "--pid-sort",
+        action="store_true",
+        help="sort by PID instead of by name",
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="match the pattern case-sensitively",
+    )
+    return add_paging_arguments(parser)
+
+
+@command(
+    "ps:list",
+    parser=_ps_parser,
+    summary="List the processes visible to you.",
+    details=(
+        "Only processes your user can see are listed. Run Picklock elevated to "
+        "see (and open) processes belonging to other users."
+    ),
+    examples=("ps:list", "ps:list chrome", "ps:list --pid-sort --limit 50"),
+)
+def cmd_ps(session: Session, args: List[str]) -> None:
+    options = _ps_parser().parse_args(args)
+
+    with Timer() as timer:
+        entries = processes.list_processes(
+            options.pattern,
+            case_sensitive=options.case_sensitive,
+            sort_by="pid" if options.pid_sort else "name",
+        )
+
+    page = paginate(
+        session,
+        entries,
+        command="ps:list",
+        limit=options.limit,
+        page=options.page,
+        show_all=options.all,
+    )
+
+    session.printer.table(
+        ("PID", "NAME"),
+        # A blank name means the OS would not tell us — macOS does that for
+        # some system processes. Print a placeholder so the column is never
+        # mistaken for an empty string the process actually has.
+        [(pid, name or "?") for pid, name in page.rows],
+        (RIGHT, LEFT),
+        elapsed=timer.elapsed,
+        total=page.total,
+        page=page.number,
+        pages=page.count,
+        next_page=page.next_page,
+    )
+
+
+def _open_parser() -> CommandParser:
+    parser = CommandParser("ps:open")
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        metavar="pid|name",
+        help="the PID (all digits) or the process name to attach to",
+    )
+    parser.add_argument(
+        "--pid",
+        type=int,
+        default=None,
+        metavar="PID",
+        help="attach by PID, when the target could be read either way",
+    )
+    parser.add_argument(
+        "--name",
+        default=None,
+        metavar="NAME",
+        help="attach by process name, when the name is all digits",
+    )
+    parser.add_argument(
+        "-i",
+        "--ignore-case",
+        action="store_true",
+        help="match the name regardless of case",
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="match the name case-sensitively (the default on Linux and macOS)",
+    )
+    parser.add_argument(
+        "--partial",
+        action="store_true",
+        help="match the name as a substring ('chrome' finds 'chrome.exe'); "
+        "fails when more than one process matches, listing the candidates",
+    )
+    parser.add_argument(
+        "--strict-bitness",
+        action="store_true",
+        help="refuse to attach when the target's 32/64-bit width cannot be "
+        "determined, instead of guessing it from this interpreter",
+    )
+    return parser
+
+
+@command(
+    "ps:open",
+    parser=_open_parser,
+    summary="Attach to a process by PID or name.",
+    details=(
+        "An all-digits target is taken as a PID, anything else as a process "
+        "name; force either reading with --pid or --name.\n\n"
+        "--strict-bitness is worth using before a pointer scan, where a wrong "
+        "pointer width is silent rather than loud.\n\n"
+        "Attaching replaces any previous target and clears the scan results."
+    ),
+    examples=("ps:open 4242", "ps:open notepad.exe", "ps:open chrome --partial -i"),
+)
+def cmd_open(session: Session, args: List[str]) -> None:
+    options = _open_parser().parse_args(args)
+
+    pid, name = options.pid, options.name
+
+    if options.target is not None:
+        if pid is not None or name is not None:
+            raise CommandError("Give a target, or --pid/--name — not both.")
+        if options.target.isdigit():
+            pid = int(options.target)
+        else:
+            name = options.target
+
+    if pid is None and name is None:
+        raise CommandError("open needs a PID or a process name.")
+
+    case_sensitive = None
+    if options.ignore_case:
+        case_sensitive = False
+    elif options.case_sensitive:
+        case_sensitive = True
+
+    with Timer() as timer:
+        process = session.attach(
+            pid=pid,
+            name=name,
+            case_sensitive=case_sensitive,
+            exact_match=not options.partial,
+            strict_bitness=options.strict_bitness,
+        )
+
+    label = session.process_name or "?"
+    bitness = "64-bit" if process.is_64bit else "32-bit"
+    if not process.is_bitness_certain:
+        bitness += " (assumed)"
+
+    session.printer.ok(
+        f"Attached to {label} (PID {process.pid}, {bitness}).",
+        elapsed=timer.elapsed,
+    )
+
+
+def _close_parser() -> CommandParser:
+    return CommandParser("ps:close")
+
+
+@command(
+    "ps:close",
+    parser=_close_parser,
+    summary="Detach from the current process.",
+    details=(
+        "Takes no arguments.\n\n"
+        "Closes the OS handle and drops the scan results, the pointer paths "
+        "and the cached memory map. The target itself is untouched — nothing "
+        "Picklock wrote to it is undone."
+    ),
+)
+def cmd_close(session: Session, args: List[str]) -> None:
+    _close_parser().parse_args(args)
+    if not session.detach():
+        raise CommandError("No process attached.")
+    session.printer.ok("Detached.")
+
+
+def _info_parser() -> CommandParser:
+    return CommandParser("ps:info")
+
+
+@command(
+    "ps:info",
+    parser=_info_parser,
+    summary="Describe the attached process in detail.",
+    details=(
+        "Takes no arguments.\n\n"
+        "Enumerates the memory map to report how much of the address space is "
+        "mapped, so it is the slower of the two ways to look at a target."
+    ),
+)
+def cmd_info(session: Session, args: List[str]) -> None:
+    _info_parser().parse_args(args)
+    process = session.require_process("ps:info")
+
+    with Timer() as timer:
+        regions = session.regions(refresh=True)
+        accessible = sum(
+            region.size
+            for region in regions
+            if region.is_readable or region.is_writable or region.is_executable
+        )
+        reserved = sum(region.size for region in regions) - accessible
+        writable = sum(region.size for region in regions if region.is_writable)
+        executable = sum(region.size for region in regions if region.is_executable)
+
+    main_thread = process.main_thread
+
+    rows = [
+        ("PID", process.pid),
+        ("Name", session.process_name or "?"),
+        ("Architecture", "64-bit" if process.is_64bit else "32-bit"),
+        ("Bitness certain", "yes" if process.is_bitness_certain else "no (assumed)"),
+        ("Pointer size", f"{process.pointer_size} bytes"),
+        ("Regions", len(regions)),
+        # Accessible, not the sum of every region: a process reserves address
+        # space it cannot touch — on macOS often hundreds of gigabytes of it —
+        # and totalling that says nothing about the process.
+        ("Accessible", format_size(accessible)),
+        ("Writable", format_size(writable)),
+        ("Executable", format_size(executable)),
+        ("Reserved", format_size(reserved)),
+        ("Main thread", main_thread.tid if main_thread else "unknown"),
+    ]
+
+    session.printer.write(render_vertical(rows))
+    session.printer.write()
+    if session.printer.timing:
+        session.printer.ok(f"Memory map read in {timer.elapsed:.2f} sec.")
+        session.printer.write()
+
+
+def _threads_parser() -> CommandParser:
+    parser = CommandParser("ps:threads")
+    return add_paging_arguments(parser)
+
+
+@command(
+    "ps:threads",
+    parser=_threads_parser,
+    summary="List the target's threads.",
+    details=(
+        "STATE and PRIORITY are filled in only where the platform exposes them "
+        "cheaply (Linux does; Windows and macOS leave them empty).\n\n"
+        "What a TID *is* differs by platform, and only two of the three are a "
+        "property of the thread itself:\n\n"
+        "  Linux    the POSIX task id — the same number everything else reports\n"
+        "  Windows  the kernel thread id — likewise\n"
+        "  macOS    a Mach port name, which means something only to the "
+        "process that asked\n\n"
+        "That last one is the trap: on macOS two tools looking at the same "
+        "process get different numbers for the same threads, and neither is "
+        "wrong. It is a handle, not a name — do not carry it between tools, "
+        "and do not expect it to match Activity Monitor."
+    ),
+)
+def cmd_threads(session: Session, args: List[str]) -> None:
+    options = _threads_parser().parse_args(args)
+
+    process = session.require_process("ps:threads")
+
+    with Timer() as timer:
+        threads = list(process.get_threads())
+
+    page = paginate(
+        session,
+        threads,
+        command="ps:threads",
+        limit=options.limit,
+        page=options.page,
+        show_all=options.all,
+    )
+
+    session.printer.table(
+        ("TID", "STATE", "PRIORITY"),
+        [
+            (
+                thread.tid,
+                thread.state if thread.state is not None else "",
+                thread.priority if thread.priority is not None else "",
+            )
+            for thread in page.rows
+        ],
+        (RIGHT, LEFT, RIGHT),
+        elapsed=timer.elapsed,
+        total=page.total,
+        page=page.number,
+        pages=page.count,
+        next_page=page.next_page,
+    )
+
+
+__all__ = ()

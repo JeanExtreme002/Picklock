@@ -1,0 +1,187 @@
+/* Picklock docs — tweaks on top of the Read the Docs theme.
+   Goal: keep the familiar RTD look, add a persistent GitHub "star" CTA, and
+   make the landing-page content grids responsive.
+
+   Shared in spirit with PyMemoryEditor's sheet, since the two sets of docs are
+   meant to feel like one library and its client. */
+
+/* --- Persistent "Star on GitHub" CTA (injected in _templates/layout.html) --- */
+/* Sits at the top of the dark navigation menu, above the toctree.
+   Scoped under `.wy-menu-vertical a` so it beats the RTD theme's own
+   `.wy-menu-vertical a { display: block; color: ... }` rule on specificity —
+   otherwise `display: flex` (and the centering/gap it enables) is ignored. */
+.wy-menu-vertical a.github-star-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.75rem 1rem 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.4rem;
+  color: #fcfcfc;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.wy-menu-vertical a.github-star-cta:hover,
+.wy-menu-vertical a.github-star-cta:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #fff;
+}
+
+.github-star-cta svg {
+  flex-shrink: 0;
+}
+
+/* The RTD theme's JavaScript injects a `<button class="toctree-expand">` as the
+   first child of every link inside `.wy-menu-vertical` (the expand/collapse caret
+   for nav items with children). Our CTA isn't a nav item, so that button renders
+   as a stray white pill before the icon — hide it. */
+.github-star-cta button.toctree-expand {
+  display: none;
+}
+
+/* --- Landing page: "Why use it?" feature grid --------------------------- */
+.feature-grid {
+  border: 0;
+  width: 100%;
+}
+.feature-grid td {
+  box-sizing: border-box;
+  padding: 0 1.25rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.92rem;
+  vertical-align: top;
+}
+.feature-grid td:first-child {
+  padding-left: 0;
+}
+.feature-grid td:last-child {
+  padding-right: 0;
+}
+/* The two layout grids are columns, not data tables: kill any table chrome. */
+.feature-grid tr,
+.inside-grid tr {
+  background: transparent !important;
+}
+
+/* --- Data tables written as raw HTML ------------------------------------ */
+/* Markdown pipe tables get RTD's `.docutils` class and are styled by the
+   theme. Raw HTML tables (used across the guide for richer cells) don't, so
+   the theme leaves them unstyled. Give them the same RTD look — borders,
+   padding, an emphasised header row and zebra striping — while excluding the
+   borderless layout grids. */
+.rst-content
+  table:not(.docutils):not(.feature-grid):not(.inside-grid) {
+  border-collapse: collapse;
+  border: 1px solid #e1e4e5;
+  width: 100%;
+  margin-bottom: 24px;
+}
+.rst-content table:not(.docutils):not(.feature-grid):not(.inside-grid) th,
+.rst-content table:not(.docutils):not(.feature-grid):not(.inside-grid) td {
+  border: 1px solid #e1e4e5;
+  padding: 8px 16px;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+.rst-content table:not(.docutils):not(.feature-grid):not(.inside-grid) th {
+  font-weight: 700;
+  border-bottom: 2px solid #e1e4e5;
+}
+/* Zebra-stripe the body rows. The header is row 1 (odd), so striping the even
+   rows leaves it clean. */
+.rst-content
+  table:not(.docutils):not(.feature-grid):not(.inside-grid)
+  tr:nth-child(2n)
+  td {
+  background: #f3f6f6;
+}
+
+/* --- Mobile (RTD's grid-break breakpoint is 768px) ---------------------- */
+@media screen and (max-width: 768px) {
+  /* Layout grids: stack their columns vertically. */
+  .feature-grid,
+  .feature-grid tbody,
+  .feature-grid tr,
+  .inside-grid,
+  .inside-grid tbody,
+  .inside-grid tr {
+    display: flex;
+    flex-direction: column;
+  }
+  .feature-grid td,
+  .inside-grid td {
+    width: 100%;
+    padding: 0 0 1rem;
+  }
+
+  /* Data tables overflow a phone screen, so turn each row into a stacked card.
+     Cells re-attach their column header via the `data-label` attribute the
+     markup carries; an unlabelled first cell becomes the card title. */
+  .rst-content table:not(.docutils):not(.feature-grid):not(.inside-grid) {
+    border: 0;
+    margin-bottom: 24px;
+  }
+  .rst-content table:not(.docutils):not(.feature-grid):not(.inside-grid),
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  /* The header row is redundant once each cell carries its own label. */
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    tr:has(th) {
+    display: none;
+  }
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    tr {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    border: 1px solid #e1e4e5;
+    border-radius: 0.5rem;
+  }
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    td {
+    display: block;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: transparent !important;
+  }
+  /* The unlabelled first cell (the name / symbol / platform) is the title. */
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    td:first-child:not([data-label]) {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  /* Re-attach the column header inline before each labelled value. */
+  .rst-content
+    table:not(.docutils):not(.feature-grid):not(.inside-grid)
+    td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    color: #5a5a5a;
+  }
+
+  /* Markdown (.docutils) tables: let them scroll horizontally instead. */
+  .rst-content table.docutils {
+    display: block;
+    overflow-x: auto;
+  }
+}

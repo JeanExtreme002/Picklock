@@ -1,0 +1,131 @@
+[project]
+name = "picklock"
+dynamic = ["version"]
+description = "A terminal client for PyMemoryEditor — read, write and scan process memory from any shell on Windows, Linux and macOS."
+authors = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+maintainers = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+license = "MIT"
+license-files = ["LICENSE*"]
+readme = "README.md"
+keywords = [
+    "cli",
+    "shell",
+    "repl",
+    "terminal",
+    "memory-scanner",
+    "memory-editor",
+    "process-memory",
+    "cheat-engine",
+    "pointer-scan",
+    "aob-scan",
+    "game-hacking",
+    "reverse-engineering",
+    "debugging",
+]
+
+classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+
+# Picklock is a client, not a reimplementation: every memory operation is
+# PyMemoryEditor's.
+#
+# Nothing else is needed. The shell is stdlib only (argparse, shlex, readline
+# where the platform has it), which is what lets `pip install picklock` work on
+# a bare server with no compiler and no wheels to build.
+dependencies = [
+    "PyMemoryEditor>=2.2.0",
+]
+
+[project.optional-dependencies]
+# Vectorised scan acceleration. NumPy lights up the fast path inside
+# PyMemoryEditor automatically — Picklock needs no code change and behaves
+# identically without it, only slower on large regions.
+speed = [
+    "PyMemoryEditor[speed]>=2.2.0",
+]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "flake8",
+    "mypy",
+    "build",
+    "twine",
+]
+
+[project.scripts]
+picklock = "picklock.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/JeanExtreme002/Picklock"
+Repository = "https://github.com/JeanExtreme002/Picklock"
+Issues = "https://github.com/JeanExtreme002/Picklock/issues"
+Changelog = "https://github.com/JeanExtreme002/Picklock/releases"
+"PyMemoryEditor" = "https://github.com/JeanExtreme002/PyMemoryEditor"
+Funding = "https://github.com/sponsors/JeanExtreme002"
+
+[tool.hatch.version]
+path = "picklock/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["picklock"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"picklock/py.typed" = "picklock/py.typed"
+
+# The wheel carries the package alone. The sdist additionally drops the
+# repository furniture: CI config, the maintainer-only helpers, the images they
+# produce and the documentation sources — none of which a person installing
+# Picklock needs, and the docs are published at picklock.readthedocs.io.
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/scripts", "/assets", "/docs", "/.readthedocs.yaml"]
+
+[tool.mypy]
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The end-to-end tests attach to the test process itself and scan its address
+# space, which costs seconds rather than milliseconds. Everything else runs in
+# about two:
+#   pytest -m "not slow"   # the fast suite
+#   pytest                 # including the scans
+markers = [
+    "slow: end-to-end tests that scan the whole address space of a live process",
+]
+
+[tool.coverage.run]
+source = ["picklock"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+# hatchling>=1.27 understands the PEP 639 `license = "MIT"` expression and the
+# `license-files` glob above; older versions fail with a confusing error.
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"

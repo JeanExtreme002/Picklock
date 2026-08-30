@@ -1,0 +1,91 @@
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / packaging
+build/
+.build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+*.tar.gz
+pip-log.txt
+pip-delete-this-directory.txt
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+*.pytest_cache
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.tox/
+.nox/
+.hypothesis/
+
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# IDEs / editors
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-*
+.spyderproject
+.spyproject
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# OS-specific cruft
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+.directory
+
+# Toolchain / version pinning state
+.tool-versions
+.python-version
+
+# Local environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs / temporary
+*.log
+*.tmp
+
+# Sphinx / docs build output
+docs/_build/
+
+# Generated from the command registry at build time by
+# scripts/generate_command_reference.py — committing it would let a
+# stale copy outlive the code it describes.
+docs/reference/commands.md
+
+# Project-local
+.claude/
+
+# A throwaway alias store, if one is pointed here
+aliases.json

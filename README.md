@@ -4,8 +4,6 @@ A terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemor
 Read, write and scan the memory of a running process from any shell, on Windows,
 Linux and macOS.
 
-One dependency, pure Python, so it installs on a bare server as readily as on a desktop.
-
 ```
 pip install picklock
 picklock
@@ -18,8 +16,7 @@ picklock
 </p>
 
 <p align="center">
-  <i>A real session, captured by <a href="scripts/generate_terminal_image.py">a script that runs the commands</a>
-  against a process it stands up for the purpose — no numbers in it were typed by hand.</i>
+  <b>One dependency, pure Python, so it installs on a bare server as readily as on a desktop.</b>
 </p>
 
 ## Documentation

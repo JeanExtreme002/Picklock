@@ -3,8 +3,8 @@
 """
 Everything Picklock prints.
 
-The house style is the ``mysql`` client's: results in an ASCII box table,
-a footer line counting rows and timing the command, and nothing else. Colour
+The house style is a plain one: results in an ASCII box table, a footer line
+counting rows and timing the command, and nothing else. Colour
 is limited to a single highlight on ``ERROR`` and is dropped entirely when the
 stream is not a terminal, when ``NO_COLOR`` is set, or when ``--no-color`` was
 passed — so piping Picklock into ``grep`` or a log file yields plain text.
@@ -21,7 +21,7 @@ import textwrap
 import time
 from typing import Any, Iterable, List, Optional, Sequence, TextIO, Tuple
 
-#: Columns whose values are numbers are right-aligned, as in the mysql client.
+#: Columns whose values are numbers are right-aligned, so digits line up.
 RIGHT = "right"
 LEFT = "left"
 
@@ -111,7 +111,7 @@ def format_size(size: int) -> str:
 
 
 def format_duration(seconds: float) -> str:
-    """Render an elapsed time the way the mysql client does: ``0.01 sec``."""
+    """Render an elapsed time for a result footer: ``0.01 sec``."""
     return f"{seconds:.2f} sec"
 
 
@@ -127,7 +127,7 @@ def render_table(
     rows: Sequence[Sequence[Any]],
     aligns: Optional[Sequence[str]] = None,
 ) -> str:
-    """Build a mysql-style box table.
+    """Build an ASCII box table.
 
     ``rows`` cells are stringified with ``str`` and truncated by nothing —
     a long path is printed in full and the terminal wraps it, which beats
@@ -260,7 +260,7 @@ class Printer:
     :param stderr: stream for errors and for the transient progress line.
     :param color: ``None`` auto-detects from ``stdout``; ``True``/``False``
         force it.
-    :param timing: print the mysql-style ``N rows in set (0.01 sec)`` footer.
+    :param timing: print the ``N rows in set (0.01 sec)`` footer.
     """
 
     def __init__(
@@ -285,7 +285,7 @@ class Printer:
         self.stdout.flush()
 
     def error(self, message: str) -> None:
-        """Print a failed command's message. Goes to stderr, like mysql's."""
+        """Print a failed command's message. Goes to stderr, not stdout."""
         self.clear_progress()
         prefix = f"{_RED}ERROR{_RESET}" if self.color else "ERROR"
         self.stderr.write(f"{prefix}: {message}\n")
@@ -438,7 +438,7 @@ class Printer:
 
 
 class Timer:
-    """Context manager measuring a command, for the mysql-style footer."""
+    """Context manager measuring a command, for the result footer."""
 
     def __init__(self) -> None:
         self.elapsed = 0.0

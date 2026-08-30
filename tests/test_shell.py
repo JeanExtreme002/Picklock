@@ -157,7 +157,7 @@ def test_interactive_loop_reads_until_eof(shell, capture, monkeypatch):
 
 
 def test_ctrl_c_at_the_prompt_quits(shell, capture, monkeypatch):
-    """As in the mysql client: an interrupt at the prompt ends the session."""
+    """An interrupt at an empty prompt ends the session."""
 
     def fake_input(prompt=""):
         raise KeyboardInterrupt

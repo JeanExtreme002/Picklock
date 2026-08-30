@@ -9,8 +9,8 @@ raises can end the session by accident. Everything else — what the commands
 are, what they print — lives elsewhere.
 
 Line syntax is one command per line, arguments split with shell quoting rules,
-and a trailing ``;`` politely ignored for the muscle memory of anyone arriving
-from ``mysql``. Blank lines and lines starting with ``#`` or ``--`` are
+and a trailing ``;`` politely ignored, since fingers used to a database prompt
+will type one. Blank lines and lines starting with ``#`` or ``--`` are
 comments, which is what makes a file of commands runnable with ``source``.
 """
 
@@ -286,8 +286,8 @@ class Shell:
                 try:
                     line = input(self.prompt())
                 except KeyboardInterrupt:
-                    # Ctrl+C at the prompt quits, as it does in the mysql
-                    # client. During a *command* it means something else —
+                    # Ctrl+C at the prompt quits. During a *command* it
+                    # means something else —
                     # abandon that command and come back here (see run_line) —
                     # so interrupting a long scan still costs one keystroke
                     # and leaving costs two.

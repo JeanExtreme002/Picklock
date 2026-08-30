@@ -18,8 +18,8 @@
 Picklock is a terminal client for
 [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor). It puts the
 Cheat Engine workflow — scan, refine, write, follow a pointer chain — behind a
-shell modelled on the `mysql` client: ASCII tables, a row count and a timing on
-every result, and nothing else competing for your attention.
+plain shell: ASCII tables, a row count and a timing on every result, and
+nothing else competing for your attention.
 
 It exists because the library is a fine tool for a script you have already
 written and a poor one for the ten minutes before you write it, when you are

@@ -437,7 +437,7 @@ def test_a_setting_changes_what_a_command_prints(target, capture, block):
 
 
 def test_a_script_of_commands_runs_against_the_target(target, capture, block, tmp_path):
-    script = tmp_path / "setup.picklock"
+    script = tmp_path / "setup.txt"
     script.write_text(
         f"# a comment\nmemory:read 0x{block.ints_at:X} int32\nps:info\n"
     )

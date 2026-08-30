@@ -82,10 +82,10 @@ class Shell:
         The arguments are lexed with escaping switched off, for the same
         reason one level down. In a shell whose arguments are mostly paths, a
         backslash is a separator far more often than an escape, and POSIX
-        rules would turn ``source C:\\tools\\setup.picklock`` into
-        ``C:toolssetup.picklock`` — silently, and then blame the file for not
+        rules would turn ``source C:\\tools\\setup.txt`` into
+        ``C:toolssetup.txt`` — silently, and then blame the file for not
         existing. Quotes still group, so a path with spaces is written
-        ``"C:\\Program Files\\game\\setup.picklock"`` on every platform.
+        ``"C:\\Program Files\\game\\setup.txt"`` on every platform.
         """
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or stripped.startswith("--"):

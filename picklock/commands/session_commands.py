@@ -632,7 +632,7 @@ def _source_parser() -> CommandParser:
         "A failing line stops the script — a setup that half-ran is worse than "
         "one that says where it stopped."
     ),
-    examples=("source setup.peek",),
+    examples=("source setup.txt",),
 )
 def cmd_source(session: Session, args: List[str]) -> None:
     options = _source_parser().parse_args(args)

@@ -29,17 +29,17 @@ carry on against a target it never attached to.
 ## A file of commands
 
 ```bash
-picklock -f setup.picklock
+picklock -f setup.txt
 ```
 
 ```
-# setup.picklock — comments and blank lines are ignored
+# setup.txt — comments and blank lines are ignored
 ps:open game.exe
 config:set writable_only on
 scan:value int32 100
 ```
 
-The same file can be run from inside the shell with `source setup.picklock`,
+The same file can be run from inside the shell with `source setup.txt`,
 which is the usual way to keep a scan you repeat.
 
 ## A pipe

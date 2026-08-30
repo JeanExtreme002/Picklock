@@ -8,10 +8,10 @@ trailing command line, in a file, or on standard input — it runs them and
 exits with a status, so the same vocabulary works inside a script, an SSH
 session or a CI job:
 
-    picklock                                  # the shell
+    picklock                                          # the shell
     picklock ps:list chrome                           # one command, then exit
     picklock -p 4242 -e "memory:read game.exe+0x10"   # attach, read, exit
-    picklock -f setup.peek                            # a file of commands
+    picklock -f setup.txt                             # a file of commands
     echo "ps:list" | picklock                         # a pipe
 """
 

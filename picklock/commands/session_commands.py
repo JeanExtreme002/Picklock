@@ -286,7 +286,11 @@ def _print_overview(session: Session) -> None:
     _print_example(
         session,
         "picklock> ps:open 4242\n"
-        "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)",
+        "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)\n"
+        "\n"
+        "picklock> scan:value int32 100 --writable\n"
+        "Showing 20 of 3184 rows — page 1 of 160 (1.42 sec)\n"
+        "Next page: scan:results --page 2",
         indent=4,
     )
 

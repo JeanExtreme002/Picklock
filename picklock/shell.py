@@ -246,11 +246,9 @@ class Shell:
         return f"picklock {self.printer.dim(target, in_prompt=self._readline)}> "
 
     def banner(self) -> str:
-        import PyMemoryEditor
-
         return (
             f"Welcome to Picklock {__version__}, a terminal client for "
-            f"PyMemoryEditor.\n"
+            "PyMemoryEditor.\n"
             "Type 'help' for the command list, or 'help scanning' for a "
             "walkthrough.\n"
         )

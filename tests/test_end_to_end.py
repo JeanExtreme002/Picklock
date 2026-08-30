@@ -391,3 +391,69 @@ def test_a_script_of_commands_runs_against_the_target(target, capture, block, tm
     out = run(target, capture, f"source {script}")
     assert str(MARKER) in out
     assert "Pointer size" in out
+
+
+# -- a result row is read the way the scan read it ------------------------
+
+
+@pytest.fixture
+def byte_in_a_struct():
+    """A byte worth 5 with three 0xFF bytes after it.
+
+    Read as int32 that is -251, which looks nothing like the 5 a byte scan
+    matched — and nothing on screen would say why.
+    """
+    return (ctypes.c_uint8 * 8)(5, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0)
+
+
+def _one_int8_result(shell, address):
+    from picklock import valuetypes
+
+    shell.session.store_scan(
+        valuetypes.resolve("int8"), 1, [address], [5], "int8 eq 5"
+    )
+
+
+def test_a_row_is_read_with_the_scans_type(target, capture, byte_in_a_struct):
+    _one_int8_result(target, ctypes.addressof(byte_in_a_struct))
+
+    out = run(target, capture, "memory:read #1")
+    assert "int8" in out and "| 5 " in out
+    assert "-251" not in out, "that is the four-byte reading of the same address"
+
+
+def test_a_row_is_watched_with_the_scans_type(target, capture, byte_in_a_struct):
+    _one_int8_result(target, ctypes.addressof(byte_in_a_struct))
+
+    out = run(target, capture, "memory:watch #1 --count 2 --interval 0.01 --all")
+    assert "as int8" in out
+    assert out.count("  5") >= 2
+
+
+def test_a_named_type_still_wins_over_the_scans(target, capture, byte_in_a_struct):
+    _one_int8_result(target, ctypes.addressof(byte_in_a_struct))
+
+    out = run(target, capture, "memory:read #1 int32")
+    assert "-251" in out, "asked for four bytes, got four bytes"
+
+
+def test_a_plain_address_is_not_affected(target, capture, byte_in_a_struct):
+    """Only a '#N' row belongs to the scan; an address the user typed does not."""
+    _one_int8_result(target, ctypes.addressof(byte_in_a_struct))
+
+    out = run(target, capture, f"memory:read 0x{ctypes.addressof(byte_in_a_struct):X}")
+    assert "int32" in out and "-251" in out
+
+
+def test_counting_forward_steps_by_the_scans_width(target, capture):
+    """The step is the type's width, so an int8 row walks byte by byte."""
+    from picklock import valuetypes
+
+    block = (ctypes.c_int8 * 4)(1, 2, 3, 4)
+    target.session.store_scan(
+        valuetypes.resolve("int8"), 1, [ctypes.addressof(block)], [1], "int8 eq 1"
+    )
+
+    out = run(target, capture, "memory:read #1 --count 4")
+    for value in ("| 1 ", "| 2 ", "| 3 ", "| 4 "):
+        assert value in out

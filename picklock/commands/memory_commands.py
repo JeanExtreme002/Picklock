@@ -9,7 +9,7 @@ hand the target new pages.
 """
 
 import time
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 from .. import valuetypes
 from ..addressing import parse_address, parse_int
@@ -34,6 +34,30 @@ _LENGTH_HELP = "byte width, required for the 'string' and 'bytes' types"
 
 def _resolve_type(name: Optional[str]) -> ValueType:
     return valuetypes.DEFAULT_TYPE if name is None else valuetypes.resolve(name)
+
+
+def _type_and_width(
+    session: Session,
+    named: Optional[str],
+    address: str,
+    length: Optional[int],
+) -> Tuple[ValueType, int]:
+    """The type to read an address with, and how many bytes that takes.
+
+    A '#N' row belongs to the scan that found it, so with no type named it is
+    read the way that scan read it. Defaulting to int32 there answers a
+    question nobody asked: a byte holding 5 next to three 0xFF bytes reports
+    -251, which looks nothing like the value the scan matched, and the reader
+    has no reason to suspect the width.
+
+    Anywhere else, and whenever a type *is* named, nothing is inherited.
+    """
+    if named is None and address.strip().startswith("#") and session.scan is not None:
+        state = session.scan
+        return state.value_type, (length if length is not None else state.width)
+
+    value_type = _resolve_type(named)
+    return value_type, value_type.read_width(length)
 
 
 def _permissions(region) -> str:
@@ -290,8 +314,11 @@ def _read_parser() -> CommandParser:
     parser=_read_parser,
     summary="Read a typed value from an address.",
     details=(
-        "The type defaults to int32. 'string' and 'bytes' need a length in "
-        "bytes; the fixed-width types ignore one.\n\n"
+        "The type defaults to int32 — except for a '#N' row, which is read the "
+        "way the scan that found it read it. A byte the scan matched should "
+        "not come back as a four-byte number.\n\n"
+        "'string' and 'bytes' need a length in bytes; the fixed-width types "
+        "ignore one.\n\n"
         "The address is an expression — see 'help address' — so a pointer "
         "chain can be read in one go."
     ),
@@ -307,8 +334,9 @@ def cmd_read(session: Session, args: List[str]) -> None:
     options = _read_parser().parse_args(args)
 
     process = session.require_process("memory:read")
-    value_type = _resolve_type(options.type)
-    width = value_type.read_width(options.length)
+    value_type, width = _type_and_width(
+        session, options.type, options.address, options.length
+    )
 
     if options.count < 1:
         raise CommandError("--count must be at least 1.")
@@ -506,7 +534,10 @@ def _watch_parser() -> CommandParser:
     details=(
         "Reads the address on a timer and prints a line per sample. By default "
         "only samples whose value differs from the previous one are printed, "
-        "which turns the terminal into a change log.\n\n"
+        "which turns the terminal into a change log — so a value that is not "
+        "moving shows one line and then nothing, and '--all' is how you tell "
+        "that apart from a watch that has stopped.\n\n"
+        "A '#N' row is watched with the type the scan used, not int32.\n\n"
         "This is the terminal answer to a cheat table: leave it running in one "
         "window while the target does its thing."
     ),
@@ -520,8 +551,9 @@ def cmd_watch(session: Session, args: List[str]) -> None:
     options = _watch_parser().parse_args(args)
 
     process = session.require_process("memory:watch")
-    value_type = _resolve_type(options.type)
-    width = value_type.read_width(options.length)
+    value_type, width = _type_and_width(
+        session, options.type, options.address, options.length
+    )
     address = parse_address(options.address, session)
     interval = (
         options.interval

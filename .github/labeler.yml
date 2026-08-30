@@ -39,6 +39,12 @@ docs:
           - "CONTRIBUTING.md"
           - "SECURITY.md"
           - "CODE_OF_CONDUCT.md"
+          # The documentation site, the images it and the README show, and
+          # the maintainer-only scripts that generate both.
+          - "docs/**"
+          - "assets/**"
+          - "scripts/**"
+          - ".readthedocs.yaml"
 
 ci:
   - changed-files:

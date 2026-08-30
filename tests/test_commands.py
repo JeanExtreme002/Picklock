@@ -654,7 +654,7 @@ def test_example_blocks_are_greyed(capture, line):
     transcript = [row for row in body if "peekmem>" in row]
     assert transcript, f"{line!r} printed no example"
     for row in transcript:
-        assert "\033[90m" in row and "\033[0m" in row
+        assert "\033[38;5;252m" in row and "\033[0m" in row
 
 
 def test_the_example_label_is_not_styled(capture):
@@ -678,7 +678,7 @@ def test_a_commands_own_examples_are_greyed_too(capture):
     ]
     assert listed
     for row in listed:
-        assert "\033[90m" in row
+        assert "\033[38;5;252m" in row
 
 
 @pytest.mark.parametrize("line", ["help", "scan:help", "help memory:read"])
@@ -692,5 +692,5 @@ def test_examples_and_the_prompt_use_different_shades(capture):
     """A transcript is read; the prompt's target is only noticed."""
     capture.printer.color = True
     assert capture.printer.grey("x") != capture.printer.dim("x")
-    assert "\033[90m" in capture.printer.grey("x")
-    assert "\033[2m" in capture.printer.dim("x")
+    assert "\033[38;5;252m" in capture.printer.grey("x")
+    assert "\033[38;5;247m" in capture.printer.dim("x")

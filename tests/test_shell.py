@@ -87,7 +87,7 @@ def test_the_target_is_dimmed_when_colour_is_on(shell, capture):
     """A reminder that writes are going somewhere, not a thing to look at."""
     capture.printer.color = True
     _attach(shell)
-    assert shell.prompt() == "peekmem \033[2m[game.exe:4242]\033[0m> "
+    assert shell.prompt() == "peekmem \033[38;5;247m[game.exe:4242]\033[0m> "
 
 
 def test_an_empty_prompt_is_never_styled(shell, capture):

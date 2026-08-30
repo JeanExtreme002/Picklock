@@ -43,18 +43,6 @@ The same help is at the prompt: `help` lists the namespaces, typing a namespace
 lists its commands, and `help <command>` prints one command's arguments —
 generated from the parser that runs it, so the two cannot disagree.
 
-## Commands
-
-| Namespace | Commands |
-| --- | --- |
-| `ps:` | `list` `open` `close` `info` |
-| `memory:` | `read` `write` `hex` `watch` `regions` `modules` `threads` `alloc` `free` |
-| `scan:` | `value` `next` `aob` `regex` `results` `keep` `drop` `reset` |
-| `pointer:` | `scan` `deref` `read` `rescan` `paths` `save` `load` `diff` |
-| `alias:` | `add` `list` `remove` |
-| `config:` | `list` `set` `reset` |
-| top level | `help` `source` `version` `clear` `exit` |
-
 ## Development
 
 ```
@@ -76,7 +64,3 @@ Every read, write, scan and pointer walk is performed by
 cross-platform memory library Picklock is built on. If you find Picklock
 useful, star that one too — it is what makes any of this work on three
 operating systems at once.
-
-## License
-
-MIT — see [LICENSE](LICENSE).

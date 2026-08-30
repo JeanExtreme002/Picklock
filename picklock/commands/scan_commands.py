@@ -101,6 +101,28 @@ def _add_comparison_flags(parser: CommandParser, *, refine: bool) -> CommandPars
     return parser
 
 
+def _parse_range(value_type, operands: Sequence[str]) -> Tuple[Any, Any]:
+    """Parse ``--between A B``, refusing a range written backwards.
+
+    ``--between 5 1`` describes no value at all, and a scan for it comes back
+    empty — which looks exactly like "your value is not in this process" and
+    is the one answer a memory scanner must never give wrongly. Row ranges are
+    already checked this way (``scan:keep 3-1``); values were not.
+    """
+    low = value_type.parse(operands[0])
+    high = value_type.parse(operands[1])
+    try:
+        backwards = low > high
+    except TypeError:  # pragma: no cover - types whose values do not order
+        backwards = False
+    if backwards:
+        raise CommandError(
+            f"Range {operands[0]} to {operands[1]} runs backwards — "
+            f"write it as {operands[1]} {operands[0]}."
+        )
+    return low, high
+
+
 def _comparison(options, positional, *, refine: bool) -> Tuple[str, List[str]]:
     """Which comparison was asked for, and the words it was given.
 
@@ -444,8 +466,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
     session.regions(refresh=True)
 
     if comparison in ("between", "not-between"):
-        start = value_type.parse(operands[0])
-        end = value_type.parse(operands[1])
+        start, end = _parse_range(value_type, operands)
         width = max(
             value_type.width_for(start, options.length),
             value_type.width_for(end, options.length),
@@ -546,8 +567,7 @@ def cmd_next(session: Session, args: List[str]) -> None:
 
     low = high = target = None
     if comparison in ("between", "not-between"):
-        low = value_type.parse(operands[0])
-        high = value_type.parse(operands[1])
+        low, high = _parse_range(value_type, operands)
     elif operands:
         target = value_type.parse(operands[0])
 

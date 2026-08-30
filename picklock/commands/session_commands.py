@@ -648,11 +648,12 @@ def cmd_source(session: Session, args: List[str]) -> None:
     except OSError as error:
         raise CommandError(f"Cannot read {options.file!r}: {error}")
 
-    for number, line in enumerate(lines, start=1):
-        try:
-            session.shell.run_line(line, raise_errors=True)
-        except CommandError as error:
-            raise CommandError(f"{options.file}:{number}: {error}")
+    with session.sourcing(options.file):
+        for number, line in enumerate(lines, start=1):
+            try:
+                session.shell.run_line(line, raise_errors=True)
+            except CommandError as error:
+                raise CommandError(f"{options.file}:{number}: {error}")
 
 
 def _clear_parser() -> CommandParser:

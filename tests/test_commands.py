@@ -465,6 +465,14 @@ def test_reset_reports_what_it_discarded(shell, capture):
     assert shell.session.scan is None
 
 
+def test_a_script_cannot_source_itself(shell, capture, tmp_path):
+    script = tmp_path / "loop.txt"
+    script.write_text(f"source {script}\n")
+
+    assert not shell.run_line(f"source {script}")
+    assert "cannot source itself" in capture.err
+
+
 #: Every command that reports "Showing n of m rows" must offer a way to see
 #: the rest. Kept as a list so a new listing command has to join it.
 PAGED = [

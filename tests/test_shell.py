@@ -156,6 +156,33 @@ def test_interactive_loop_reads_until_eof(shell, capture, monkeypatch):
     assert capture.err == ""
 
 
+def test_a_bug_in_a_command_does_not_end_the_session(shell, capture, monkeypatch):
+    """An unexpected exception costs the command, not the scan behind it."""
+    lines = iter(["boom", "exit"])
+
+    def fake_input(prompt=""):
+        return next(lines)
+
+    def explode(session, args):
+        raise AttributeError("something the author did not think of")
+
+    real_resolve = shell._resolve
+
+    def resolve(word, args):
+        if word == "boom":
+            return type("E", (), {"name": "boom", "handler": staticmethod(explode)})
+        return real_resolve(word, args)
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    monkeypatch.setattr(shell, "_setup_readline", lambda: None)
+    monkeypatch.setattr(shell, "_save_history", lambda: None)
+    monkeypatch.setattr(shell, "_resolve", resolve)
+
+    assert shell.interact(banner=False) == 0, "the session survived to reach 'exit'"
+    assert "AttributeError" in capture.err
+    assert "bug in Picklock" in capture.err
+
+
 def test_ctrl_c_at_the_prompt_quits(shell, capture, monkeypatch):
     """An interrupt at an empty prompt ends the session."""
 

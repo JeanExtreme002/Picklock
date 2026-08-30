@@ -18,6 +18,7 @@ import os
 import re
 import shlex
 import sys
+import traceback
 from typing import Iterable, List, Optional, Sequence, TextIO, Tuple
 
 from PyMemoryEditor import PyMemoryEditorError
@@ -303,6 +304,27 @@ class Shell:
                 except ExitShell as exit_request:
                     status = exit_request.status
                     break
+                except Exception:  # noqa: BLE001 - see below
+                    # A bug in one command should not cost the session. By
+                    # this point the user may hold a scan that took minutes
+                    # and a pointer scan that took longer, none of which is
+                    # written down anywhere; exiting would throw all of it
+                    # away to report a fault they cannot act on until they
+                    # have it in front of them. The traceback is printed
+                    # because this is a tool for people who read tracebacks,
+                    # and it is what a bug report needs.
+                    #
+                    # Only here: `-e`, `source` and the tests run through
+                    # `run_line` and `run_lines`, where an unexpected
+                    # exception should still be loud and still fail the run.
+                    self.printer.clear_progress()
+                    traceback.print_exc(file=self.printer.stderr)
+                    self.printer.error(
+                        "That is a bug in Picklock, not in your command. The "
+                        "session is intact — please report it with the "
+                        "traceback above: "
+                        "https://github.com/JeanExtreme002/Picklock/issues"
+                    )
         finally:
             self._save_history()
             self.session.close()

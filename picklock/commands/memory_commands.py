@@ -639,6 +639,7 @@ def cmd_watch(session: Session, args: List[str]) -> None:
     stream = _input_stream(session)
     samples = 0
     printed = 0
+    failure: Optional[OSError] = None
     previous = object()  # A sentinel no read can equal, so sample 1 always prints.
 
     try:
@@ -648,7 +649,11 @@ def cmd_watch(session: Session, args: List[str]) -> None:
                     process.read_process_memory(address, value_type.pytype, width)
                 )
             except OSError as error:
-                printer.error(f"Read failed at 0x{address:X}: {error}")
+                # Remembered rather than printed here: the samples already
+                # collected are still worth showing, and the command still has
+                # to *fail*, so a script watching a target that died does not
+                # come back with a zero exit status.
+                failure = error
                 break
 
             samples += 1
@@ -670,6 +675,9 @@ def cmd_watch(session: Session, args: List[str]) -> None:
 
     printer.ok(f"{samples} sample(s), {printed} printed.")
     printer.write()
+
+    if failure is not None:
+        raise CommandError(f"Read failed at 0x{address:X}: {failure}")
 
 
 def _alloc_parser() -> CommandParser:

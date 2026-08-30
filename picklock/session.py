@@ -15,9 +15,11 @@ Every command receives the session and touches the target only through it, so
 answered in exactly one place.
 """
 
+import os
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from PyMemoryEditor import (
     AbstractProcess,
@@ -111,6 +113,9 @@ class Session:
         # script file back through the same dispatcher. None when the
         # session is driven programmatically instead of by a shell.
         self.shell: Optional[Any] = None
+        #: Script files currently being run by 'source', innermost last. A
+        #: file cannot appear twice: see :meth:`sourcing`.
+        self._sourcing: Tuple[str, ...] = ()
 
     # -- settings --------------------------------------------------------
 
@@ -157,6 +162,32 @@ class Session:
         if setting.name == "timing":
             self.printer.timing = bool(value)
         return value
+
+    # -- running script files ---------------------------------------------
+
+    @contextmanager
+    def sourcing(self, path: str) -> Iterator[None]:
+        """Mark a script file as running while its lines are dispatched.
+
+        A file that sources itself — or two that source each other — would
+        otherwise recurse until Python gives up, and a ``RecursionError`` is
+        not one of the failures the shell knows how to survive: it would take
+        the session, and whatever scan is held in it, down too.
+
+        :raises CommandError: when the file is already running.
+        """
+        key = os.path.realpath(path)
+        if key in self._sourcing:
+            raise CommandError(
+                f"{path} is already running — a script cannot source itself."
+            )
+        self._sourcing += (key,)
+        try:
+            yield
+        finally:
+            self._sourcing = tuple(
+                entry for entry in self._sourcing if entry != key
+            )
 
     def display_limit(self, override: Optional[int] = None) -> Optional[int]:
         """How many rows a table should print: ``None`` means all of them."""
@@ -264,8 +295,14 @@ class Session:
     def scan_regions(self, *, writable_only: Optional[bool] = None) -> List[MemoryRegion]:
         """The regions a scan will actually walk.
 
-        PyMemoryEditor applies ``default_scan_filter`` internally, so this is
-        purely so the progress line counts the same bytes the scan does.
+        Not advisory: the scan runner hands these to the search in batches, so
+        a region missing from this list is a region never looked at. (It also
+        makes the progress line count the same bytes the scan does.)
+
+        ``writable_only`` therefore has to be the answer ``--writable`` and
+        ``--all-regions`` arrived at, not the raw setting — passing the
+        setting is what made ``--all-regions`` a no-op while the setting was
+        on.
         """
         only_writable = (
             self.option("writable_only") if writable_only is None else writable_only
@@ -320,7 +357,12 @@ class Session:
         return True
 
     def module_base(self, name: str) -> int:
-        """Base address of a loaded module, matched by name then by prefix."""
+        """Base address of a loaded module, matched exactly, then loosely.
+
+        The loose pass accepts a prefix or any substring — ``ssl`` finds
+        ``libssl.so`` — and only resolves when exactly one module matches, so
+        a vague name is an error rather than a guess.
+        """
         self.require_process()
         table = self.modules()
         key = name.lower()

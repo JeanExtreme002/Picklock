@@ -302,6 +302,19 @@ def test_scan_then_refine_against_the_previous_reading(target, capture, block):
     assert len(kept) < before
 
 
+def test_a_range_written_backwards_is_refused(target, capture):
+    """An empty result set must never be the answer to a typo.
+
+    '--between 5 1' describes no value at all, so the scan used to come back
+    empty — indistinguishable from "your value is not in this process", which
+    is the one wrong answer a memory scanner must not give. Not marked slow:
+    the range is rejected before a single region is walked.
+    """
+    assert not target.run_line("scan:value int32 --between 5 1")
+    assert "runs backwards" in capture.err
+    assert "1 5" in capture.err, "and it says how to write it"
+
+
 @slow
 def test_a_writable_only_scan_says_so_and_keeps_saying_so(target, capture, block):
     """The restriction is easy to forget and expensive to forget."""

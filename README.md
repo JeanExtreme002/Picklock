@@ -56,7 +56,7 @@ itself, so the suite needs no privileges and no second program to launch.
 ## 🤝 Contributing
 
 Pull requests, bug reports and feature ideas are very welcome. Read
-[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, test layout and
+[CONTRIBUTING.md](https://github.com/JeanExtreme002/Picklock/blob/main/CONTRIBUTING.md) for the development setup, test layout and
 the small set of platform-specific quirks to be aware of.
 
 ## Related
@@ -69,4 +69,4 @@ operating systems at once.
 
 ## License
 
-Released under the [MIT License](LICENSE) — free for personal and commercial use.
+Released under the [MIT License](https://github.com/JeanExtreme002/Picklock/blob/main/LICENSE) — free for personal and commercial use.

@@ -224,10 +224,11 @@ Highlights:
 - **Progress you can trust.** Long scans report a percentage that advances
   whether or not anything is being found, and Ctrl+C stops a scan while keeping
   what it already found.
-- **Names of your own.** `alias:add r memory:read` makes `r` do the same
-  thing; `alias:add find-text scan:value string` carries arguments along, so
-  `find-text Peekmem` runs `scan:value string Peekmem`. A name already taken
-  by a command is refused rather than shadowing it.
+- **Names of your own, remembered.** `alias:add r memory:read` makes `r` do
+  the same thing; `alias:add find-text scan:value string` carries arguments
+  along, so `find-text Peekmem` runs `scan:value string Peekmem`. A name
+  already taken by a command is refused rather than shadowing it, and the
+  aliases are still there next time you open a terminal.
 - **Every listing pages the same way.** `--limit`, `--page` and `--all` on each
   of them, a footer that says where you are — `Showing 20 of 3184 rows — page
   1 of 160` — and the command for the next page spelled out underneath, so it
@@ -251,6 +252,18 @@ game.exe+0x1234         a module base plus a static offset — survives ASLR
 
 So the whole chain fits on one line:
 `memory:read [[game.exe+0x1a2b3c]+0x10]+0x8 float`.
+
+### Where things are kept
+
+Aliases are the one thing Peekmem stores between runs — a name you chose would
+be pointless if you had to choose it again every session. They live in
+`$XDG_CONFIG_HOME/peekmem/aliases.json` (`~/.config/peekmem/aliases.json` by
+default, `%APPDATA%\peekmem` on Windows); `alias:list` prints the path, and
+`PEEKMEM_CONFIG_DIR` moves it.
+
+Settings do not persist, on purpose: they tune one session's output, and a
+stale one would be a surprise on the next run. Put `config:set` lines in a file
+and `source` it to reuse a setup.
 
 ## Permissions
 

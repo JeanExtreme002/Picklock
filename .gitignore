@@ -81,3 +81,6 @@ docs/_build/
 
 # Project-local
 .claude/
+
+# A throwaway alias store, if one is pointed here
+aliases.json

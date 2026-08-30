@@ -2,8 +2,13 @@
 
 """User-defined aliases: creating them, using them, and refusing bad ones."""
 
+import pathlib
+import sys
+
 import pytest
 
+from peekmem import aliases as storage
+from peekmem.commands.alias_commands import restore
 from peekmem.errors import CommandError
 from peekmem.session import Session
 
@@ -143,11 +148,104 @@ def test_the_help_flag_works_through_an_alias(shell, capture):
     assert "memory:read — Read a typed value" in capture.out
 
 
-def test_aliases_belong_to_the_session(capture):
-    """They die with the shell, like the settings — there is no config file."""
+def test_a_bare_session_touches_no_file(capture):
+    """Loading is the shell's job, so a Session in a test or a script is inert."""
     assert Session(capture.printer).aliases == {}
 
 
 def test_aliases_complete(shell):
     shell.run_line("alias:add find-text scan:value string")
     assert "find-text" in shell.session.aliases
+
+
+# -- persistence ---------------------------------------------------------
+
+
+def test_adding_writes_the_file(shell):
+    shell.run_line("alias:add r memory:read")
+    assert storage.load() == {"r": ["memory:read"]}
+
+
+def test_removing_rewrites_the_file(shell):
+    shell.run_line("alias:add r memory:read")
+    shell.run_line("alias:add w memory:write")
+    shell.run_line("alias:remove r")
+    assert storage.load() == {"w": ["memory:write"]}
+
+
+def test_a_new_session_gets_them_back(shell, capture):
+    """The whole point: close the terminal, open it again, the name is there."""
+    shell.run_line("alias:add find-text scan:value string")
+
+    fresh = Session(capture.printer)
+    assert restore(fresh) == []
+    assert fresh.aliases == {"find-text": ["scan:value", "string"]}
+
+
+def test_restoring_drops_an_alias_whose_command_is_gone(capture):
+    """A command can be renamed between releases; the name should not linger."""
+    storage.save({"ok": ["memory:read"], "stale": ["memory:teleport"]})
+
+    session = Session(capture.printer)
+    assert restore(session) == ["stale"]
+    assert session.aliases == {"ok": ["memory:read"]}
+
+
+def test_a_missing_file_is_the_ordinary_first_run(capture):
+    session = Session(capture.printer)
+    assert restore(session) == []
+    assert session.aliases == {}
+
+
+@pytest.mark.parametrize("content", ["not json at all", "[]", '{"r": 7}', '{"r": []}'])
+def test_a_malformed_file_loses_the_aliases_but_not_the_shell(content, capture):
+    """Refusing to start over a stray character would be the worse bug."""
+    path = pathlib.Path(storage.path())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+    session = Session(capture.printer)
+    assert restore(session) == []
+    assert session.aliases == {}
+
+
+def test_a_hand_written_string_is_tolerated(capture):
+    """Someone will edit this file by hand; accept the obvious spelling."""
+    path = pathlib.Path(storage.path())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"f": "scan:value string"}', encoding="utf-8")
+
+    session = Session(capture.printer)
+    restore(session)
+    assert session.aliases == {"f": ["scan:value", "string"]}
+
+
+def test_a_write_failure_is_reported_but_not_fatal(shell, capture, monkeypatch):
+    """A read-only home is a reason to say so, not to refuse the alias."""
+
+    def refuse(_aliases):
+        raise OSError("read-only file system")
+
+    monkeypatch.setattr(storage, "save", refuse)
+    shell.run_line("alias:add r memory:read")
+
+    assert shell.session.aliases == {"r": ["memory:read"]}
+    assert "Could not save" in capture.out
+    assert "this session only" in capture.out
+
+
+def test_the_file_is_replaced_atomically(shell):
+    """An interrupted write must not leave a half-file for the next run."""
+    shell.run_line("alias:add r memory:read")
+    directory = pathlib.Path(storage.directory())
+    assert [item.name for item in directory.iterdir()] == ["aliases.json"]
+
+
+def test_the_location_follows_the_environment(monkeypatch, tmp_path):
+    monkeypatch.setenv(storage.ENV_DIR, str(tmp_path / "explicit"))
+    assert storage.directory() == str(tmp_path / "explicit")
+
+    monkeypatch.delenv(storage.ENV_DIR)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    if sys.platform != "win32":
+        assert storage.directory() == str(tmp_path / "xdg" / "peekmem")

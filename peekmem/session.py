@@ -94,9 +94,10 @@ class Session:
             setting.name: setting.default for setting in SETTINGS
         }
         #: User-defined aliases: the word typed, mapped to the words it stands
-        #: for. Kept here rather than in the command registry because they
-        #: belong to this session and die with it, exactly like the settings —
-        #: Peekmem writes no config file.
+        #: for. Kept here rather than in the command registry because they are
+        #: the user's, not the program's. A shell loads them from disk at
+        #: startup (see peekmem.aliases); a Session on its own starts with
+        #: none, so nothing built in a test or a script touches a file.
         self.aliases: Dict[str, List[str]] = {}
         self._regions: Optional[List[MemoryRegion]] = None
         self._modules: Optional[Dict[str, int]] = None

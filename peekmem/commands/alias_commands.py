@@ -8,13 +8,14 @@ it: ``r`` for ``memory:read``, or ``find-text`` for ``scan:value string``. When
 one is used, its words replace the alias and whatever else was typed follows
 them, so ``find-text Peekmem`` runs ``scan:value string Peekmem``.
 
-Aliases live for the session, like the settings — Peekmem writes no config
-file. Put the ``alias:add`` lines in a script and run it with ``source`` to
-get the same shell back.
+Aliases persist. They are the one thing Peekmem stores between runs — a name
+you chose would be pointless if you had to choose it again every session —
+and they are written to :mod:`peekmem.aliases`'s file the moment they change.
 """
 
 from typing import List
 
+from .. import aliases as storage
 from ..errors import CommandError
 from ..output import LEFT, render_vertical
 from ..session import Session
@@ -75,6 +76,43 @@ def _validate_target(words: List[str]) -> List[str]:
     return words
 
 
+def restore(session: Session) -> List[str]:
+    """Load the stored aliases into ``session``; return the ones dropped.
+
+    An alias whose command no longer exists is left out rather than kept: the
+    shell promises that expanding an alias lands on a real command, and a name
+    that quietly stopped working is worth one line of explanation the next time
+    you start up.
+    """
+    dropped = []
+    for name, words in sorted(storage.load().items()):
+        if words[0] in namespaces():
+            session.aliases[name] = words
+            continue
+        try:
+            lookup(words[0])
+        except CommandError:
+            dropped.append(name)
+        else:
+            session.aliases[name] = words
+    return dropped
+
+
+def _persist(session: Session) -> None:
+    """Write the aliases out, reporting a failure without raising.
+
+    A home directory that cannot be written to is a reason to say so, not a
+    reason to refuse the alias: it still works for this session.
+    """
+    try:
+        storage.save(session.aliases)
+    except OSError as error:
+        session.printer.note(
+            f"Could not save to {storage.path()}: {error}. "
+            "The alias works for this session only."
+        )
+
+
 def _alias_add_parser() -> CommandParser:
     parser = CommandParser("alias:add")
     parser.add_argument("name", help="the word you want to type")
@@ -100,8 +138,8 @@ def _alias_add_parser() -> CommandParser:
         "A name already taken by a command or another alias is refused rather "
         "than shadowing it, and the command an alias points at has to exist, "
         "so a typo is caught here rather than the next time you use it.\n\n"
-        "Aliases last for the session. Put these lines in a script and run it "
-        "with 'source' to get the same shell back."
+        "Aliases are remembered between runs — they are the one thing Peekmem "
+        "stores on disk. 'alias:list' says where."
     ),
     examples=(
         "alias:add r memory:read",
@@ -116,6 +154,7 @@ def cmd_alias_add(session: Session, args: List[str]) -> None:
     words = _validate_target(list(options.words))
 
     session.aliases[name] = words
+    _persist(session)
     session.printer.ok(f"{name} = {' '.join(words)}")
     session.printer.write()
 
@@ -132,7 +171,10 @@ def _alias_list_parser() -> CommandParser:
         "Takes no arguments.\n\n"
         "Only the ones you have added. The shell's own shortcuts — 'quit', "
         "'cls', '\\\\h', '\\\\.' — are part of the commands themselves and are "
-        "listed with them, in 'help <command>'."
+        "listed with them, in 'help <command>'.\n\n"
+        "They are stored in a file, whose path is printed under the table. "
+        "Setting PEEKMEM_CONFIG_DIR moves it — useful for keeping a throwaway "
+        "set apart from the one you rely on."
     ),
 )
 def cmd_alias_list(session: Session, args: List[str]) -> None:
@@ -149,6 +191,8 @@ def cmd_alias_list(session: Session, args: List[str]) -> None:
         (name, " ".join(words)) for name, words in sorted(session.aliases.items())
     ]
     session.printer.table(("ALIAS", "STANDS FOR"), rows, (LEFT, LEFT))
+    session.printer.write(f"Stored in {storage.path()}")
+    session.printer.write()
 
 
 def _alias_remove_parser() -> CommandParser:
@@ -176,6 +220,7 @@ def cmd_alias_remove(session: Session, args: List[str]) -> None:
         raise CommandError(f"No alias called {name!r}. Defined: {known}.")
 
     words = session.aliases.pop(name)
+    _persist(session)
     session.printer.write(render_vertical([("removed", f"{name} = {' '.join(words)}")]))
     session.printer.write()
 

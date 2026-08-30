@@ -24,6 +24,7 @@ import PyMemoryEditor
 
 from . import __version__, dependencies
 from .commands import top_level_listing
+from .commands.alias_commands import restore as restore_aliases
 from .errors import CommandError, PeekmemError
 from .output import Printer
 from .session import Session
@@ -185,8 +186,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if outdated is not None:
         printer.error(outdated)
         return 2
+
     session = Session(printer)
     shell = Shell(session, printer=printer)
+
+    # The aliases the user defined in an earlier run. Loaded here rather than
+    # in Session, so a Session built in a test or a script touches no files
+    # unless it asks to.
+    dropped = restore_aliases(session)
+    if dropped:
+        printer.note(
+            "Dropped %s, whose command no longer exists: %s."
+            % (
+                "an alias" if len(dropped) == 1 else "some aliases",
+                ", ".join(sorted(dropped)),
+            )
+        )
 
     if options.limit is not None:
         session.set_option("limit", str(options.limit))

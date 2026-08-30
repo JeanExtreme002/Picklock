@@ -12,6 +12,7 @@ import io
 
 import pytest
 
+from peekmem import aliases
 from peekmem.output import Printer
 from peekmem.session import Session
 from peekmem.shell import Shell
@@ -38,6 +39,17 @@ class Capture:
         self.stdout.truncate()
         self.stderr.seek(0)
         self.stderr.truncate()
+
+
+@pytest.fixture(autouse=True)
+def isolated_config(tmp_path, monkeypatch):
+    """Point the alias file at a throwaway directory, for every test.
+
+    Autouse and unconditional: the suite must never read or write the config
+    of whoever is running it, and remembering to opt in per test is exactly
+    the kind of thing that gets forgotten once.
+    """
+    monkeypatch.setenv(aliases.ENV_DIR, str(tmp_path / "config"))
 
 
 @pytest.fixture

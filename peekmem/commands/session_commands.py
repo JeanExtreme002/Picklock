@@ -437,10 +437,11 @@ def _config_list_parser() -> CommandParser:
     parser=_config_list_parser,
     summary="Show the session's settings and their current values.",
     details=(
-        "Settings live for the session only — Peekmem writes no config file, "
-        "so a fresh shell always starts from the documented defaults. Put the "
-        "'config:set' lines in a script and run it with 'source' to reuse a "
-        "setup."
+        "Settings live for the session only. They tune one session's output, "
+        "and a stale one would be a surprise on the next run, so a fresh shell "
+        "always starts from the documented defaults — unlike aliases, which "
+        "are remembered. Put the 'config:set' lines in a script and run it "
+        "with 'source' to reuse a setup."
     ),
     examples=("config:list", "config:list limit"),
 )

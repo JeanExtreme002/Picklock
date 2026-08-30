@@ -457,3 +457,46 @@ def test_counting_forward_steps_by_the_scans_width(target, capture):
     out = run(target, capture, "memory:read #1 --count 4")
     for value in ("| 1 ", "| 2 ", "| 3 ", "| 4 "):
         assert value in out
+
+
+# -- what a listing says about itself ------------------------------------
+
+
+def test_regions_reports_the_count_and_the_size(target, capture):
+    """A page of rows cannot answer "how much is mapped?"."""
+    out = run(target, capture, "memory:regions --limit 2")
+    match = re.search(r"(\d+) regions, ([\d.]+ \w+) mapped", out)
+    assert match, out
+    assert int(match.group(1)) > 2, "the whole set, not the page"
+
+
+def test_the_regions_total_follows_the_filter(target, capture):
+    """'the writable ones come to N' is the question a filter asks."""
+    everything = re.search(
+        r"(\d+) regions, ", run(target, capture, "memory:regions --limit 1")
+    )
+    writable = re.search(
+        r"(\d+) regions, ", run(target, capture, "memory:regions --writable --limit 1")
+    )
+    assert everything and writable
+    assert int(writable.group(1)) < int(everything.group(1))
+
+
+@pytest.mark.skipif(
+    __import__("sys").platform != "darwin", reason="the caveat is macOS-only"
+)
+def test_threads_says_the_tid_is_a_port_name(target, capture):
+    """Two tools report different numbers for the same thread on macOS.
+
+    That is the Mach port namespace, not a bug in either of them, and the
+    listing is where someone finds out.
+    """
+    out = run(target, capture, "memory:threads")
+    assert "Mach port names" in out
+    assert "help memory:threads" in out
+
+
+def test_the_threads_help_explains_all_three_platforms(shell, capture):
+    shell.run_line("help memory:threads")
+    for platform_name in ("Linux", "Windows", "macOS"):
+        assert platform_name in capture.out

@@ -8,6 +8,7 @@ Looking at, and changing, the target's memory.
 hand the target new pages.
 """
 
+import sys
 import time
 from typing import Any, List, Optional, Tuple
 
@@ -166,6 +167,16 @@ def cmd_regions(session: Session, args: List[str]) -> None:
         next_page=page.next_page,
     )
 
+    # The totals for what was listed, filters included — "the writable regions
+    # come to 1.6 GB" is the answer people are usually after, and counting the
+    # rows of one page cannot give it.
+    mapped = sum(region.size for region in regions)
+    session.printer.write(
+        f"{len(regions)} region{'' if len(regions) == 1 else 's'}, "
+        f"{format_size(mapped)} mapped"
+    )
+    session.printer.write()
+
 
 def _modules_parser() -> CommandParser:
     parser = CommandParser("memory:modules")
@@ -250,9 +261,17 @@ def _threads_parser() -> CommandParser:
     summary="List the target's threads.",
     details=(
         "STATE and PRIORITY are filled in only where the platform exposes them "
-        "cheaply (Linux does; Windows and macOS leave them empty). The meaning "
-        "of TID is platform-specific: a POSIX task id on Linux, a kernel "
-        "thread id on Windows, a Mach port name on macOS."
+        "cheaply (Linux does; Windows and macOS leave them empty).\n\n"
+        "What a TID *is* differs by platform, and only two of the three are a "
+        "property of the thread itself:\n\n"
+        "  Linux    the POSIX task id — the same number everything else reports\n"
+        "  Windows  the kernel thread id — likewise\n"
+        "  macOS    a Mach port name, which means something only to the "
+        "process that asked\n\n"
+        "That last one is the trap: on macOS two tools looking at the same "
+        "process get different numbers for the same threads, and neither is "
+        "wrong. It is a handle, not a name — do not carry it between tools, "
+        "and do not expect it to match Activity Monitor."
     ),
 )
 def cmd_threads(session: Session, args: List[str]) -> None:
@@ -289,6 +308,18 @@ def cmd_threads(session: Session, args: List[str]) -> None:
         pages=page.count,
         next_page=page.next_page,
     )
+
+    if sys.platform == "darwin":
+        # One line, every time, because this is where it bites: on macOS a
+        # thread is named by a Mach port, and a port name means something only
+        # inside the address space that asked for it. Two tools looking at the
+        # same process get different numbers for the same thread, and neither
+        # is wrong. The why is in 'help memory:threads'.
+        session.printer.write(
+            "These are Mach port names, not thread ids: another tool will "
+            "report different numbers. See 'help memory:threads'."
+        )
+        session.printer.write()
 
 
 def _read_parser() -> CommandParser:

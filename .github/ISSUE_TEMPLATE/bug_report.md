@@ -15,7 +15,8 @@ The exact commands you ran, and what happened:
 
 ```console
 $ picklock
-picklock> ps:open 1234
+picklock> ps:open 91434
+Attached to process.exe (PID 91434, 64-bit). (0.00 sec)
 picklock> ...
 ```
 
@@ -37,7 +38,7 @@ PyMemoryEditor: 2.2.0
 - Were you running elevated (`sudo` / Administrator)? [yes / no]
 - Terminal (e.g. Windows Terminal, iTerm2, GNOME Terminal, plain SSH):
 - On Linux, the value of `/proc/sys/kernel/yama/ptrace_scope`:
-- Target process (e.g. a game, another Python script), if that matters:
+- Target process (e.g. a game, browser, another script), if that matters:
 
 **Additional context**
 Add any other context about the problem here. If the target was a process you

@@ -274,7 +274,17 @@ FONT_SIZE = 13.5
 LINE_HEIGHT = 20
 PAD_X, PAD_Y = 22, 18
 TITLEBAR = 38
-MARGIN = 26
+
+#: The card's drop shadow: vertical offset, blur radius, opacity. Short and
+#: faint on purpose — the picture is dropped onto a white README, and a heavy
+#: shadow reads as a border there rather than as depth.
+SHADOW_OFFSET, SHADOW_BLUR, SHADOW_ALPHA = 4, 14, 0.16
+
+#: Transparent margin around the card. It has to clear the shadow on every
+#: side: a shadow wider than the margin is cut off at the edge of the image,
+#: and the picture then ends in a visible rectangle against the page behind it
+#: — the exact thing a soft shadow exists to avoid.
+MARGIN = SHADOW_OFFSET + SHADOW_BLUR + 4
 
 #: How much wider than tall the finished picture should be. A capture that is
 #: taller than it is wide swallows a README page, and a terminal is free to be
@@ -300,7 +310,7 @@ TEMPLATE = """<!doctype html>
     overflow: hidden;
     background: #12141a;
     border: 1px solid rgba(255, 255, 255, 0.09);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 {shadow_offset}px {shadow_blur}px rgba(0, 0, 0, {shadow_alpha});
   }}
   .titlebar {{
     height: {titlebar}px;
@@ -365,6 +375,9 @@ def build_page(lines: List[str]) -> Tuple[str, int, int]:
 
     page = TEMPLATE.format(
         margin=MARGIN,
+        shadow_offset=SHADOW_OFFSET,
+        shadow_blur=SHADOW_BLUR,
+        shadow_alpha=SHADOW_ALPHA,
         card_w=card_w,
         titlebar=TITLEBAR,
         pad_x=PAD_X,

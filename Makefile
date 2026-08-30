@@ -35,6 +35,8 @@ help:
 	@echo "  $(YELLOW)type-check$(NC)       - Run type checker (mypy)"
 	@echo "  $(YELLOW)smoke$(NC)            - Check the installed console script starts"
 	@echo "  $(YELLOW)screenshot$(NC)       - Regenerate the README terminal capture"
+	@echo "  $(YELLOW)docs$(NC)             - Build the documentation site"
+	@echo "  $(YELLOW)docs-serve$(NC)       - Build the docs and open them in a browser"
 	@echo "  $(YELLOW)clean$(NC)            - Clean build artifacts"
 	@echo "  $(YELLOW)build$(NC)            - Build package"
 	@echo "  $(YELLOW)build-wheel$(NC)      - Build wheel package"
@@ -157,6 +159,19 @@ screenshot:
 	$(PYTHON) scripts/generate_terminal_image.py
 	@echo "$(GREEN)Screenshot written to assets/screenshots/terminal.png$(NC)"
 
+# Build the documentation. conf.py regenerates the command reference from the
+# registry first, so the built site always matches the code in the tree.
+.PHONY: docs
+docs:
+	@echo "$(GREEN)Building the documentation...$(NC)"
+	$(PIP) install -q -r docs/requirements.txt
+	$(PYTHON) -m sphinx -b html docs docs/_build/html
+	@echo "$(GREEN)Docs built at docs/_build/html/index.html$(NC)"
+
+.PHONY: docs-serve
+docs-serve: docs
+	$(PYTHON) -c "import webbrowser, pathlib; webbrowser.open(pathlib.Path('docs/_build/html/index.html').resolve().as_uri())"
+
 # Clean build artifacts
 .PHONY: clean
 clean:
@@ -169,6 +184,7 @@ clean:
 	rm -rf .coverage
 	rm -rf coverage.xml
 	rm -rf .mypy_cache
+	rm -rf docs/_build
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete

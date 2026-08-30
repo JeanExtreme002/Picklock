@@ -204,7 +204,7 @@ Please include:
 
 ## Security
 
-If you find a security issue, please see [`SECURITY.md`](SECURITY.md).
+If you find a security issue, please see [`SECURITY.md`](https://github.com/JeanExtreme002/Picklock/blob/main/SECURITY.md).
 **Do not** report it via GitHub issues.
 
 [pyme]: https://github.com/JeanExtreme002/PyMemoryEditor

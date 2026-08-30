@@ -79,6 +79,11 @@ Desktop.ini
 # Sphinx / docs build output
 docs/_build/
 
+# Generated from the command registry at build time by
+# scripts/generate_command_reference.py — committing it would let a
+# stale copy outlive the code it describes.
+docs/reference/commands.md
+
 # Project-local
 .claude/
 

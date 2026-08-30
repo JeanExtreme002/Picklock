@@ -4,8 +4,8 @@
 
 import pytest
 
-from peekmem import valuetypes
-from peekmem.errors import CommandError
+from picklock import valuetypes
+from picklock.errors import CommandError
 
 
 def test_aliases_resolve_to_the_same_type():

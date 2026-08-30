@@ -6,11 +6,11 @@ The ``alias:`` namespace — giving a command a shorter name of your own.
 An alias stands for the first word of a line and, optionally, some words after
 it: ``r`` for ``memory:read``, or ``find-text`` for ``scan:value string``. When
 one is used, its words replace the alias and whatever else was typed follows
-them, so ``find-text Peekmem`` runs ``scan:value string Peekmem``.
+them, so ``find-text Picklock`` runs ``scan:value string Picklock``.
 
-Aliases persist. They are the one thing Peekmem stores between runs — a name
+Aliases persist. They are the one thing Picklock stores between runs — a name
 you chose would be pointless if you had to choose it again every session —
-and they are written to :mod:`peekmem.aliases`'s file the moment they change.
+and they are written to :mod:`picklock.aliases`'s file the moment they change.
 """
 
 from typing import List
@@ -133,12 +133,12 @@ def _alias_add_parser() -> CommandParser:
     details=(
         "The alias replaces the first word of a line, and anything else you "
         "type follows what it stands for — so with 'find-text' set to "
-        "'scan:value string', typing 'find-text Peekmem' runs "
-        "'scan:value string Peekmem'.\n\n"
+        "'scan:value string', typing 'find-text Picklock' runs "
+        "'scan:value string Picklock'.\n\n"
         "A name already taken by a command or another alias is refused rather "
         "than shadowing it, and the command an alias points at has to exist, "
         "so a typo is caught here rather than the next time you use it.\n\n"
-        "Aliases are remembered between runs — they are the one thing Peekmem "
+        "Aliases are remembered between runs — they are the one thing Picklock "
         "stores on disk. 'alias:list' says where."
     ),
     examples=(
@@ -173,7 +173,7 @@ def _alias_list_parser() -> CommandParser:
         "'cls', '\\\\h', '\\\\.' — are part of the commands themselves and are "
         "listed with them, in 'help <command>'.\n\n"
         "They are stored in a file, whose path is printed under the table. "
-        "Setting PEEKMEM_CONFIG_DIR moves it — useful for keeping a throwaway "
+        "Setting PICKLOCK_CONFIG_DIR moves it — useful for keeping a throwaway "
         "set apart from the one you rely on."
     ),
 )

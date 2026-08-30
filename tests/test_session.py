@@ -4,9 +4,9 @@
 
 import pytest
 
-from peekmem import valuetypes
-from peekmem.errors import CommandError, NoProcessError
-from peekmem.session import SETTINGS, Session
+from picklock import valuetypes
+from picklock.errors import CommandError, NoProcessError
+from picklock.session import SETTINGS, Session
 
 
 def test_defaults_match_the_documented_settings(session: Session):

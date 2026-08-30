@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 
 """
-Exception hierarchy for Peekmem.
+Exception hierarchy for Picklock.
 
 Every error a *command* can raise against the user's input derives from
 :class:`CommandError`. The shell catches that one class, prints it as a single
 ``ERROR: ...`` line and returns to the prompt — an interactive session must
 never die because an address was mistyped. Anything that is *not* a
-``CommandError`` (a bug in Peekmem itself) propagates with its traceback, which
+``CommandError`` (a bug in Picklock itself) propagates with its traceback, which
 is what you want when reporting an issue.
 """
 
 
-class PeekmemError(Exception):
-    """Base class for every Peekmem exception."""
+class PicklockError(Exception):
+    """Base class for every Picklock exception."""
 
 
-class CommandError(PeekmemError):
+class CommandError(PicklockError):
     """A command was given input it cannot act on.
 
     Raised for unknown commands, malformed arguments, unreadable addresses and
@@ -35,7 +35,7 @@ class NoProcessError(CommandError):
         )
 
 
-class ExitShell(PeekmemError):
+class ExitShell(PicklockError):
     """Raised by ``exit`` / ``quit`` to unwind the shell loop cleanly.
 
     Not an error in the user-facing sense — the shell catches it before the
@@ -47,4 +47,4 @@ class ExitShell(PeekmemError):
         self.status = status
 
 
-__all__ = ("CommandError", "ExitShell", "NoProcessError", "PeekmemError")
+__all__ = ("CommandError", "ExitShell", "NoProcessError", "PicklockError")

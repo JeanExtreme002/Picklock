@@ -342,7 +342,7 @@ def _scan_parser() -> CommandParser:
         "scan:value int32 100",
         "scan:value float 99.5 --writable",
         "scan:value int32 --between 100 200",
-        "scan:value string Peekmem",
+        "scan:value string Picklock",
         "scan:value int32 1000 --op gt",
     ),
 )

@@ -21,11 +21,11 @@ project.
 If it is a new command or a new flag, sketch the session:
 
 ```console
-peekmem> mycommand 0x1000 --flag
+picklock> mycommand 0x1000 --flag
 ```
 
-**Is this Peekmem or PyMemoryEditor?**
-Peekmem is a client — it parses commands and formats results, while
+**Is this Picklock or PyMemoryEditor?**
+Picklock is a client — it parses commands and formats results, while
 [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor) performs
 every read, write and scan. If the feature needs a memory capability that does
 not exist yet, it may belong upstream. Say which you think it is; being wrong

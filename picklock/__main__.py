@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Entry point for ``python -m peekmem``."""
+"""Entry point for ``python -m picklock``."""
 
 import sys
 

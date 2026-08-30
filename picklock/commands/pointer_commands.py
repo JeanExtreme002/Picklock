@@ -288,7 +288,7 @@ def _ptrscan_parser() -> CommandParser:
         "Builds a map of every pointer in the target and walks it backwards "
         "from ADDRESS until it reaches a static base inside a module. The "
         "paths found replace whatever 'pointer:paths' was showing.\n\n"
-        "This is the expensive command in Peekmem: minutes and hundreds of "
+        "This is the expensive command in Picklock: minutes and hundreds of "
         "megabytes on a large target. Ctrl+C stops it and keeps the paths "
         "found so far.\n\n"
         "A path is only worth trusting once it has survived a restart: save "

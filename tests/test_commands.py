@@ -4,7 +4,7 @@
 
 import pytest
 
-from peekmem.commands import (
+from picklock.commands import (
     NAMESPACES,
     all_commands,
     children,
@@ -14,7 +14,7 @@ from peekmem.commands import (
     namespaces,
     top_level,
 )
-from peekmem.errors import CommandError, NoProcessError
+from picklock.errors import CommandError, NoProcessError
 
 
 COMMANDS = all_commands()
@@ -66,7 +66,7 @@ def test_a_parent_command_never_runs_anything(shell, line):
 
 def test_clear_leaves_the_session_alone(shell, capture):
     """It wipes the screen, not the work: a cleared terminal is not a reset."""
-    from peekmem import valuetypes
+    from picklock import valuetypes
 
     shell.session.store_scan(valuetypes.resolve("int32"), 4, [0x10], [1], "t")
     shell.run_line("clear")
@@ -97,7 +97,7 @@ def test_names_go_at_most_one_level_deep(entry):
 
 
 def test_the_registry_refuses_a_third_level():
-    from peekmem.commands import CommandParser, command
+    from picklock.commands import CommandParser, command
 
     with pytest.raises(RuntimeError, match="one level deep"):
         command(
@@ -226,7 +226,7 @@ def test_a_namespace_listing_shows_argument_signatures(shell, capture):
 def test_a_namespace_listing_carries_a_worked_example(shell, capture):
     shell.run_line("ps:help")
     assert "Example:" in capture.out
-    assert "peekmem> ps:list chrome" in capture.out
+    assert "picklock> ps:list chrome" in capture.out
 
 
 def test_a_long_signature_is_cut_at_a_token_boundary(shell, capture):
@@ -346,7 +346,7 @@ def test_help_flag_wins_over_a_bad_argument(shell, capture):
 
 
 def test_option_words_come_from_the_parser():
-    from peekmem.commands import option_words
+    from picklock.commands import option_words
 
     assert "--writable" in option_words("scan:value")
     assert "--between" in option_words("scan:value")
@@ -423,9 +423,9 @@ def test_close_without_a_target_is_an_error(shell):
 
 
 def test_version_reports_both_halves(shell, capture):
-    """Peekmem is a client: which PyMemoryEditor is underneath is half the answer."""
+    """Picklock is a client: which PyMemoryEditor is underneath is half the answer."""
     shell.run_line("version")
-    for label in ("Peekmem", "PyMemoryEditor", "Python", "Platform"):
+    for label in ("Picklock", "PyMemoryEditor", "Python", "Platform"):
         assert f"{label}:" in capture.out
 
 
@@ -457,7 +457,7 @@ def test_unknown_option_is_reported_not_swallowed(shell):
 
 
 def test_reset_reports_what_it_discarded(shell, capture):
-    from peekmem import valuetypes
+    from picklock import valuetypes
 
     shell.session.store_scan(valuetypes.resolve("int32"), 4, [1, 2], [0, 0], "t")
     shell.run_line("scan:reset")
@@ -531,8 +531,8 @@ def test_a_truncated_listing_says_which_page_it_is(shell, capture):
 
 def test_a_scan_preview_pages_through_scan_results(session, capture):
     """Re-running a scan to see page two would be absurd; scan:results is the pager."""
-    from peekmem import valuetypes
-    from peekmem.commands.scan_commands import _print_results
+    from picklock import valuetypes
+    from picklock.commands.scan_commands import _print_results
 
     session.set_option("limit", "2")
     state = session.store_scan(
@@ -576,7 +576,7 @@ def test_the_word_namespace_never_reaches_the_reader(shell, capture):
         ("memory:read:help", "memory:read — Read a typed value"),
         ("scan:results:help", "scan:results — Show the current result set"),
         ("clear:help", "clear — Clear the terminal"),
-        ("version:help", "version — Print the Peekmem"),
+        ("version:help", "version — Print the Picklock"),
         ("help:help", "help — List the commands"),
     ],
 )
@@ -634,8 +634,8 @@ def test_an_unknown_setting_lists_the_real_ones(shell, capture, line):
 def _coloured_shell(capture):
     """A shell whose printer emits colour, as a terminal session would."""
     capture.printer.color = True
-    from peekmem.session import Session
-    from peekmem.shell import Shell
+    from picklock.session import Session
+    from picklock.shell import Shell
 
     return Shell(Session(capture.printer), printer=capture.printer)
 
@@ -651,7 +651,7 @@ def test_example_blocks_are_dimmed(capture, line):
         for row in capture.out.splitlines()
         if row.strip() and "Example:" not in row and row.startswith(" ")
     ]
-    transcript = [row for row in body if "peekmem>" in row]
+    transcript = [row for row in body if "picklock>" in row]
     assert transcript, f"{line!r} printed no example"
     for row in transcript:
         assert "\033[38;5;247m" in row and "\033[0m" in row
@@ -693,9 +693,9 @@ def test_examples_and_the_prompt_share_one_shade(capture, shell):
     capture.printer.color = True
     shell.run_line("scan:help")
     transcript = next(
-        row for row in capture.out.splitlines() if "peekmem>" in row
+        row for row in capture.out.splitlines() if "picklock>" in row
     )
-    assert capture.printer.dim("peekmem>").split("peekmem>")[0] in transcript
+    assert capture.printer.dim("picklock>").split("picklock>")[0] in transcript
 
 
 @pytest.mark.parametrize("line", ["help", "scan:help", "memory:help"])

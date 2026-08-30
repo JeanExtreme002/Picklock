@@ -380,7 +380,7 @@ def _write_parser() -> CommandParser:
         "memory:write 0x7ffee3a01000 int32 100",
         "memory:write game.exe+0x1234 float 99.5",
         "memory:write #2 bytes 'DE AD BE EF'",
-        "memory:write 0x7ffee3a01000 string Peekmem --null-terminated",
+        "memory:write 0x7ffee3a01000 string Picklock --null-terminated",
     ),
 )
 def cmd_write(session: Session, args: List[str]) -> None:

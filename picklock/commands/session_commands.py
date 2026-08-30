@@ -202,10 +202,10 @@ def _print_overview(session: Session) -> None:
 
     printer.write("usage: COMMAND[:SUBCOMMAND] [arguments]")
     printer.write()
-    printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
+    printer.write(f"Picklock {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    printer.write('peekmem commands: (get help with "help <command>")')
+    printer.write('picklock commands: (get help with "help <command>")')
     printer.write()
     printer.write(
         render_definitions(
@@ -222,7 +222,7 @@ def _print_overview(session: Session) -> None:
     # looks like, not a preamble to the page.
     _print_example(
         session,
-        "peekmem> ps:open 4242\n"
+        "picklock> ps:open 4242\n"
         "Attached to game.exe (PID 4242, 64-bit). (0.00 sec)",
         indent=4,
     )
@@ -587,11 +587,11 @@ def _version_parser() -> CommandParser:
 @command(
     "version",
     parser=_version_parser,
-    summary="Print the Peekmem, PyMemoryEditor, Python and platform versions.",
+    summary="Print the Picklock, PyMemoryEditor, Python and platform versions.",
     details=(
         "Takes no arguments.\n\n"
-        "The four lines to quote in a bug report. Peekmem is a client, so which "
-        "PyMemoryEditor is underneath matters as much as which Peekmem is on "
+        "The four lines to quote in a bug report. Picklock is a client, so which "
+        "PyMemoryEditor is underneath matters as much as which Picklock is on "
         "top — the two move independently."
     ),
 )
@@ -600,7 +600,7 @@ def cmd_version(session: Session, args: List[str]) -> None:
     session.printer.write(
         render_vertical(
             [
-                ("Peekmem", __version__),
+                ("Picklock", __version__),
                 ("PyMemoryEditor", PyMemoryEditor.__version__),
                 ("Python", platform.python_version()),
                 (

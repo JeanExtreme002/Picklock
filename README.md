@@ -1,4 +1,4 @@
-# Peekmem
+# Picklock
 
 A **terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor)** — read, write and scan the memory of a running process from any shell, on any machine, over any SSH session.
 
@@ -14,12 +14,12 @@ A **terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMem
 </p>
 
 <p align="center">
-  <a href="https://github.com/JeanExtreme002/Peekmem/actions/workflows/python-package.yml"><img src="https://github.com/JeanExtreme002/Peekmem/actions/workflows/python-package.yml/badge.svg" alt="Python Package" /></a>
-  <a href="https://pypi.org/project/peekmem/"><img src="https://img.shields.io/pypi/v/peekmem" alt="PyPI" /></a>
-  <a href="https://github.com/JeanExtreme002/Peekmem/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/peekmem" alt="License" /></a>
-  <a href="https://github.com/JeanExtreme002/Peekmem"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2" alt="Python Version" /></a>
-  <a href="https://codecov.io/gh/JeanExtreme002/Peekmem"><img src="https://codecov.io/gh/JeanExtreme002/Peekmem/branch/main/graph/badge.svg" alt="Coverage" /></a>
-  <a href="https://pypi.org/project/peekmem/"><img src="https://static.pepy.tech/personalized-badge/peekmem?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads" alt="Downloads" /></a>
+  <a href="https://github.com/JeanExtreme002/Picklock/actions/workflows/python-package.yml"><img src="https://github.com/JeanExtreme002/Picklock/actions/workflows/python-package.yml/badge.svg" alt="Python Package" /></a>
+  <a href="https://pypi.org/project/picklock/"><img src="https://img.shields.io/pypi/v/picklock" alt="PyPI" /></a>
+  <a href="https://github.com/JeanExtreme002/Picklock/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/picklock" alt="License" /></a>
+  <a href="https://github.com/JeanExtreme002/Picklock"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2" alt="Python Version" /></a>
+  <a href="https://codecov.io/gh/JeanExtreme002/Picklock"><img src="https://codecov.io/gh/JeanExtreme002/Picklock/branch/main/graph/badge.svg" alt="Coverage" /></a>
+  <a href="https://pypi.org/project/picklock/"><img src="https://static.pepy.tech/personalized-badge/picklock?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads" alt="Downloads" /></a>
 </p>
 
 ---
@@ -27,11 +27,11 @@ A **terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMem
 ## Install
 
 ```bash
-pip install peekmem
-peekmem
+pip install picklock
+picklock
 ```
 
-That is the whole setup. Peekmem's only dependency is PyMemoryEditor, which is
+That is the whole setup. Picklock's only dependency is PyMemoryEditor, which is
 pure Python — so it installs on a bare server with no wheels to build, no Qt,
 and no display.
 
@@ -39,17 +39,17 @@ For faster scans on large targets, add the `speed` extra. It pulls in NumPy,
 which PyMemoryEditor picks up automatically to vectorise the scan loop:
 
 ```bash
-pip install "peekmem[speed]"
+pip install "picklock[speed]"
 ```
 
 ## A session
 
 ```console
-$ peekmem
-Welcome to Peekmem 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
+$ picklock
+Welcome to Picklock 0.1.0, a terminal client for PyMemoryEditor 2.2.0.
 Type 'help' for the command list, or 'help scanning' for a walkthrough.
 
-peekmem> ps:list game
+picklock> ps:list game
 +-------+----------+
 | PID   | NAME     |
 +-------+----------+
@@ -57,13 +57,13 @@ peekmem> ps:list game
 +-------+----------+
 1 row in set (0.01 sec)
 
-peekmem> ps:open 41902
+picklock> ps:open 41902
 Attached to game.exe (PID 41902, 64-bit). (0.00 sec)
 
-peekmem [game.exe:41902]> scan:value int32 100 --writable
+picklock [game.exe:41902]> scan:value int32 100 --writable
 Showing 20 of 3184 rows (1.42 sec)
 
-peekmem [game.exe:41902]> scan:next 95
+picklock [game.exe:41902]> scan:next 95
 +-----+--------------------+-------+
 | ROW | ADDRESS            | VALUE |
 +-----+--------------------+-------+
@@ -72,7 +72,7 @@ peekmem [game.exe:41902]> scan:next 95
 +-----+--------------------+-------+
 2 rows in set (0.02 sec)
 
-peekmem [game.exe:41902]> scan:next decreased
+picklock [game.exe:41902]> scan:next decreased
 +-----+--------------------+-------+
 | ROW | ADDRESS            | VALUE |
 +-----+--------------------+-------+
@@ -80,7 +80,7 @@ peekmem [game.exe:41902]> scan:next decreased
 +-----+--------------------+-------+
 1 row in set (0.01 sec)
 
-peekmem [game.exe:41902]> memory:write #1 int32 9999
+picklock [game.exe:41902]> memory:write #1 int32 9999
 Wrote 4 byte(s) to 0x00000201A4C0F118. (0.00 sec)
 ```
 
@@ -88,7 +88,7 @@ Found the address, but it moves every launch? Find the pointer path to it, and
 keep it:
 
 ```console
-peekmem [game.exe:41902]> pointer:scan #1 --depth 3 --max 100
+picklock [game.exe:41902]> pointer:scan #1 --depth 3 --max 100
 +-----+------------------+-------------+--------------------+
 | ROW | BASE             | OFFSETS     | TARGET             |
 +-----+------------------+-------------+--------------------+
@@ -97,14 +97,14 @@ peekmem [game.exe:41902]> pointer:scan #1 --depth 3 --max 100
 +-----+------------------+-------------+--------------------+
 2 rows in set (6.18 sec)
 
-peekmem [game.exe:41902]> pointer:save health.json
+picklock [game.exe:41902]> pointer:save health.json
 Saved 2 path(s) to health.json.
 
 # ... restart the target, find the value again, then:
-peekmem [game.exe:52771]> pointer:rescan #1 health.json
+picklock [game.exe:52771]> pointer:rescan #1 health.json
 1 path(s) still reach 0x000001F73C20E118. (0.03 sec)
 
-peekmem [game.exe:52771]> pointer:read game.exe+0x3BA228 0x3E8 --write 9999
+picklock [game.exe:52771]> pointer:read game.exe+0x3BA228 0x3E8 --write 9999
 Wrote 4 byte(s) to 0x000001F73C20E118. (0.00 sec)
 ```
 
@@ -114,17 +114,17 @@ The same vocabulary works non-interactively, which is the point of a CLI on a
 server:
 
 ```bash
-peekmem ps:list chrome                               # one command, then exit
-peekmem -p 4242 -e "memory:read game.exe+0x1234"     # attach, read, exit
-peekmem -p 4242 -e "scan:value int32 100" -e "scan:results"  # several, in order
-peekmem -f setup.peek                               # a file of commands
-echo "ps:list" | peekmem                             # a pipe
+picklock ps:list chrome                               # one command, then exit
+picklock -p 4242 -e "memory:read game.exe+0x1234"     # attach, read, exit
+picklock -p 4242 -e "scan:value int32 100" -e "scan:results"  # several, in order
+picklock -f setup.peek                               # a file of commands
+echo "ps:list" | picklock                             # a pipe
 ```
 
 Results go to stdout and errors to stderr, tables are plain ASCII, colour is
 off whenever the output is not a terminal — in a terminal it amounts to a red
 `ERROR` and a dimmed target in the prompt, and nothing else — and a failing
-command exits non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave.
+command exits non-zero — so `picklock -e ... | grep`, `>> log.txt` and `&& deploy` all behave.
 
 ## What it can do
 
@@ -134,17 +134,17 @@ takes a subcommand documents itself with a usage line, a worked example, and
 its commands with the arguments they take.
 
 ```console
-peekmem> scan:help
+picklock> scan:help
 usage: scan[:SUBCOMMAND]
 
 Search memory for a value, then narrow what you found.
 
 Example:
 
-    peekmem> scan:value int32 100 --writable
+    picklock> scan:value int32 100 --writable
     Showing 20 of 3184 rows (1.42 sec)
 
-    peekmem> scan:next 95
+    picklock> scan:next 95
     +-----+--------------------+-------+
     | ROW | ADDRESS            | VALUE |
     +-----+--------------------+-------+
@@ -187,7 +187,7 @@ argument, every flag, and examples. That list is generated from the command's
 own parser, so it is always exactly what the command accepts:
 
 ```console
-peekmem> help dump
+picklock> help dump
 dump — Hex-dump a range of memory.
 
 Usage: dump <address> [length] [--width N]
@@ -226,7 +226,7 @@ Highlights:
   what it already found.
 - **Names of your own, remembered.** `alias:add r memory:read` makes `r` do
   the same thing; `alias:add find-text scan:value string` carries arguments
-  along, so `find-text Peekmem` runs `scan:value string Peekmem`. A name
+  along, so `find-text Picklock` runs `scan:value string Picklock`. A name
   already taken by a command is refused rather than shadowing it, and the
   aliases are still there next time you open a terminal.
 - **Every listing pages the same way.** `--limit`, `--page` and `--all` on each
@@ -255,11 +255,11 @@ So the whole chain fits on one line:
 
 ### Where things are kept
 
-Aliases are the one thing Peekmem stores between runs — a name you chose would
+Aliases are the one thing Picklock stores between runs — a name you chose would
 be pointless if you had to choose it again every session. They live in
-`$XDG_CONFIG_HOME/peekmem/aliases.json` (`~/.config/peekmem/aliases.json` by
-default, `%APPDATA%\peekmem` on Windows); `alias:list` prints the path, and
-`PEEKMEM_CONFIG_DIR` moves it.
+`$XDG_CONFIG_HOME/picklock/aliases.json` (`~/.config/picklock/aliases.json` by
+default, `%APPDATA%\picklock` on Windows); `alias:list` prints the path, and
+`PICKLOCK_CONFIG_DIR` moves it.
 
 Settings do not persist, on purpose: they tune one session's output, and a
 stale one would be a surprise on the next run. Put `config:set` lines in a file
@@ -271,35 +271,35 @@ Reading another process's memory is a privileged operation everywhere:
 
 - **Windows** — run your terminal as Administrator to touch processes you do
   not own.
-- **Linux** — `sudo peekmem`, or grant the capability once with
+- **Linux** — `sudo picklock`, or grant the capability once with
   `sudo setcap cap_sys_ptrace+ep $(readlink -f $(which python3))`. Some
   distributions also need `/proc/sys/kernel/yama/ptrace_scope` set to `0`.
-- **macOS** — SIP blocks reading most processes. `sudo peekmem` works for
+- **macOS** — SIP blocks reading most processes. `sudo picklock` works for
   processes you own; anything else needs a signed binary carrying the debugger
   entitlement.
 
-Peekmem says which of these applies when an `open` is refused.
+Picklock says which of these applies when an `open` is refused.
 
-## Peekmem vs. the PyMemoryEditor app
+## Picklock vs. the PyMemoryEditor app
 
 They are different front ends to the same library, and installing one does not
 install the other:
 
-|  | **Peekmem** | **PyMemoryEditor's app** |
+|  | **Picklock** | **PyMemoryEditor's app** |
 | --- | --- | --- |
 | Interface | terminal, ASCII | desktop GUI (Qt) |
-| Install | `pip install peekmem` | `pip install "PyMemoryEditor[app]"` |
+| Install | `pip install picklock` | `pip install "PyMemoryEditor[app]"` |
 | Needs a display | no | yes |
 | Scriptable | yes — `-e`, `-f`, pipes | no |
 | Good for | servers, SSH, CI, automation | interactive exploration on a desktop |
 
 ## Related
 
-Peekmem is a client. Every read, write, scan and pointer walk is performed by
+Picklock is a client. Every read, write, scan and pointer walk is performed by
 **[PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor)** — the
 cross-platform memory library it is built on.
 
-⭐ **If Peekmem is useful to you, star the repo — and
+⭐ **If Picklock is useful to you, star the repo — and
 [star PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor) too.**
 It is the engine underneath, and it is what makes any of this work on three
 operating systems at once.
@@ -309,8 +309,8 @@ operating systems at once.
 Issues and pull requests are welcome.
 
 ```bash
-git clone https://github.com/JeanExtreme002/Peekmem
-cd Peekmem
+git clone https://github.com/JeanExtreme002/Picklock
+cd Picklock
 make install-dev      # pip install -e ".[dev]"
 make pre-commit       # lint + type-check + tests
 ```
@@ -322,8 +322,8 @@ process, so it runs anywhere — including CI runners that would refuse.
 that keep its shape, and how to add a command (it is one decorator, and `help`
 plus the tests come along for free).
 
-- 🐛 [Report a bug](https://github.com/JeanExtreme002/Peekmem/issues/new?template=bug_report.md)
-- 💡 [Request a feature](https://github.com/JeanExtreme002/Peekmem/issues/new?template=feature_request.md)
+- 🐛 [Report a bug](https://github.com/JeanExtreme002/Picklock/issues/new?template=bug_report.md)
+- 💡 [Request a feature](https://github.com/JeanExtreme002/Picklock/issues/new?template=feature_request.md)
 - 🔒 [Security policy](SECURITY.md) — please do **not** open a public issue
 - 🤝 [Code of Conduct](CODE_OF_CONDUCT.md)
 

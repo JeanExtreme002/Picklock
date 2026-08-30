@@ -5,27 +5,27 @@
 commands:
   - changed-files:
       - any-glob-to-any-file:
-          - "peekmem/commands/**"
+          - "picklock/commands/**"
 
 # The shell itself: line parsing, dispatch, readline, the CLI front end.
 shell:
   - changed-files:
       - any-glob-to-any-file:
-          - "peekmem/shell.py"
-          - "peekmem/cli.py"
+          - "picklock/shell.py"
+          - "picklock/cli.py"
 
 # Everything that decides how a result looks on screen.
 output:
   - changed-files:
       - any-glob-to-any-file:
-          - "peekmem/output.py"
-          - "peekmem/valuetypes.py"
+          - "picklock/output.py"
+          - "picklock/valuetypes.py"
 
 # Any change inside the package.
 core:
   - changed-files:
       - any-glob-to-any-file:
-          - "peekmem/**"
+          - "picklock/**"
 
 tests:
   - changed-files:

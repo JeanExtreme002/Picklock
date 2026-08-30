@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Did you check the built-in help? If so, please describe**
-Peekmem documents itself: `help` lists every command, `help <command>` explains
+Picklock documents itself: `help` lists every command, `help <command>` explains
 one in full, and `help types`, `help address` and `help scanning` cover what
 several commands share. If one of those was confusing, say which and how — that
 is a documentation bug worth fixing.
@@ -20,11 +20,11 @@ A clear and concise description of what you are trying to do.
 The commands you ran and the output you got:
 
 ```console
-peekmem> ...
+picklock> ...
 ```
 
 **Versions**
-Paste the output of `peekmem -e "version"`, if applicable.
+Paste the output of `picklock -e "version"`, if applicable.
 
 **Environment**
 - Were you running elevated (`sudo` / Administrator)? [yes / no]

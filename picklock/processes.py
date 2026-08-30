@@ -6,9 +6,9 @@ Listing the processes on this machine.
 PyMemoryEditor implements process enumeration natively per platform — via
 ``CreateToolhelp32Snapshot`` on Windows, ``/proc`` on Linux and ``libproc`` on
 macOS — but only exposes it from the platform backend module, not from the
-package root. Importing the backend directly is what keeps Peekmem's dependency
+package root. Importing the backend directly is what keeps Picklock's dependency
 list at exactly one entry: the alternative is psutil, a compiled dependency
-that would have to build or ship a wheel on every server Peekmem is meant to
+that would have to build or ship a wheel on every server Picklock is meant to
 run on, to answer a question PyMemoryEditor can already answer.
 
 The import is deliberately narrow (one function per platform) and guarded, so
@@ -19,7 +19,7 @@ as a mysterious traceback.
 import sys
 from typing import Callable, Generator, Iterator, List, Optional, Tuple
 
-from .errors import CommandError, PeekmemError
+from .errors import CommandError, PicklockError
 
 #: ``(pid, name)`` as the platform backends yield it.
 ProcessEntry = Tuple[int, str]
@@ -41,13 +41,13 @@ def _load_enumerator() -> Callable[[], Generator[ProcessEntry, None, None]]:
 
             return get_processes
     except ImportError as error:  # pragma: no cover - depends on the installed lib
-        raise PeekmemError(
+        raise PicklockError(
             "This PyMemoryEditor build does not expose process enumeration "
-            f"where Peekmem expects it ({error}). Upgrade PyMemoryEditor."
+            f"where Picklock expects it ({error}). Upgrade PyMemoryEditor."
         )
 
-    raise PeekmemError(
-        f"Unsupported platform {sys.platform!r}. Peekmem runs on Windows, "
+    raise PicklockError(
+        f"Unsupported platform {sys.platform!r}. Picklock runs on Windows, "
         "Linux and macOS."
     )
 

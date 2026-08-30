@@ -7,10 +7,10 @@ import sys
 
 import pytest
 
-from peekmem import aliases as storage
-from peekmem.commands.alias_commands import restore
-from peekmem.errors import CommandError
-from peekmem.session import Session
+from picklock import aliases as storage
+from picklock.commands.alias_commands import restore
+from picklock.errors import CommandError
+from picklock.session import Session
 
 
 def test_an_alias_stands_for_a_command(shell, capture):
@@ -20,10 +20,10 @@ def test_an_alias_stands_for_a_command(shell, capture):
 
 
 def test_an_alias_can_carry_arguments_of_its_own(shell):
-    """'find-text Peekmem' has to run 'scan:value string Peekmem'."""
+    """'find-text Picklock' has to run 'scan:value string Picklock'."""
     shell.run_line("alias:add find-text scan:value string")
-    word, args = shell.session.expand_alias("find-text", ["Peekmem"])
-    assert (word, args) == ("scan:value", ["string", "Peekmem"])
+    word, args = shell.session.expand_alias("find-text", ["Picklock"])
+    assert (word, args) == ("scan:value", ["string", "Picklock"])
 
 
 def test_an_unknown_word_expands_to_itself(shell):
@@ -248,4 +248,4 @@ def test_the_location_follows_the_environment(monkeypatch, tmp_path):
     monkeypatch.delenv(storage.ENV_DIR)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     if sys.platform != "win32":
-        assert storage.directory() == str(tmp_path / "xdg" / "peekmem")
+        assert storage.directory() == str(tmp_path / "xdg" / "picklock")

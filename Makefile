@@ -1,7 +1,7 @@
-# Makefile for the Peekmem Python package
+# Makefile for the Picklock Python package
 
 # Variables
-PACKAGE_NAME = peekmem
+PACKAGE_NAME = picklock
 PYTHON = python3
 PIP = pip3
 BUILD_DIR = build
@@ -20,14 +20,14 @@ NC = \033[0m # No Color
 # Default target
 .PHONY: help
 help:
-	@echo "$(GREEN)Peekmem Python package Makefile$(NC)"
+	@echo "$(GREEN)Picklock Python package Makefile$(NC)"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  $(YELLOW)install$(NC)          - Install package in development mode"
 	@echo "  $(YELLOW)install-deps$(NC)     - Install runtime dependencies"
 	@echo "  $(YELLOW)install-dev$(NC)      - Install development dependencies"
 	@echo "  $(YELLOW)install-speed$(NC)    - Install with the NumPy scan accelerator"
-	@echo "  $(YELLOW)run$(NC)              - Launch the Peekmem shell"
+	@echo "  $(YELLOW)run$(NC)              - Launch the Picklock shell"
 	@echo "  $(YELLOW)test$(NC)             - Run tests"
 	@echo "  $(YELLOW)test-verbose$(NC)     - Run tests with verbose output"
 	@echo "  $(YELLOW)test-coverage$(NC)    - Run tests with coverage report"
@@ -94,7 +94,7 @@ install:
 # Launch the shell straight from the working tree
 .PHONY: run
 run:
-	@echo "$(GREEN)Starting the Peekmem shell...$(NC)"
+	@echo "$(GREEN)Starting the Picklock shell...$(NC)"
 	$(PYTHON) -m $(PACKAGE_NAME)
 
 # Run tests
@@ -136,7 +136,7 @@ type-check:
 # Check that the CLI starts and dispatches end to end. The test suite calls
 # main() in-process; this drives it as a real process, so argv parsing, batch
 # mode and the exit status are all exercised. CI additionally runs the
-# installed `peekmem` console script to prove the entry point resolves.
+# installed `picklock` console script to prove the entry point resolves.
 .PHONY: smoke
 smoke:
 	@echo "$(GREEN)Checking the console script...$(NC)"

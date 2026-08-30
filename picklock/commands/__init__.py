@@ -3,7 +3,7 @@
 """
 The command registry.
 
-Every Peekmem command is a plain function registered with :func:`command`.
+Every Picklock command is a plain function registered with :func:`command`.
 The registry owns the name, the aliases, the one-line summary, the usage line
 and — through :class:`CommandParser` — the full argument list, which means
 ``help`` is generated from the very definitions the dispatcher runs. A flag
@@ -48,7 +48,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "ps",
         "Process",
         "Find a target process and attach to it.",
-        "peekmem> ps:list chrome\n"
+        "picklock> ps:list chrome\n"
         "\n"
         "+-------+------------+\n"
         "| PID   | NAME       |\n"
@@ -61,7 +61,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "memory",
         "Memory",
         "Read, write and inspect the target's memory.",
-        "peekmem> memory:read game.exe+0x1234 int32\n"
+        "picklock> memory:read game.exe+0x1234 int32\n"
         "\n"
         "+--------------------+-------+-------+\n"
         "| ADDRESS            | TYPE  | VALUE |\n"
@@ -74,10 +74,10 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "scan",
         "Scanning",
         "Search memory for a value, then narrow what you found.",
-        "peekmem> scan:value int32 100 --writable\n"
+        "picklock> scan:value int32 100 --writable\n"
         "Showing 20 of 3184 rows (1.42 sec)\n"
         "\n"
-        "peekmem> scan:next 95\n"
+        "picklock> scan:next 95\n"
         "+-----+--------------------+-------+\n"
         "| ROW | ADDRESS            | VALUE |\n"
         "+-----+--------------------+-------+\n"
@@ -89,23 +89,23 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "alias",
         "Aliases",
         "Give a command a shorter name of your own.",
-        "peekmem> alias:add r memory:read\n"
+        "picklock> alias:add r memory:read\n"
         "r = memory:read\n"
         "\n"
-        "peekmem> alias:add find-text scan:value string\n"
+        "picklock> alias:add find-text scan:value string\n"
         "find-text = scan:value string\n"
         "\n"
-        "peekmem> find-text Peekmem\n"
-        "(runs 'scan:value string Peekmem')",
+        "picklock> find-text Picklock\n"
+        "(runs 'scan:value string Picklock')",
     ),
     Namespace(
         "config",
         "Configuration",
         "Show or change the session's settings.",
-        "peekmem> config:set writable_only on\n"
+        "picklock> config:set writable_only on\n"
         "writable_only = on\n"
         "\n"
-        "peekmem> config:list limit\n"
+        "picklock> config:list limit\n"
         "\n"
         "limit: 20",
     ),
@@ -113,7 +113,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "pointer",
         "Pointers",
         "Follow pointer chains, and find ones that survive a restart.",
-        "peekmem> pointer:scan #1 --depth 3\n"
+        "picklock> pointer:scan #1 --depth 3\n"
         "+-----+-------------------+---------+--------------------+\n"
         "| ROW | BASE              | OFFSETS | TARGET             |\n"
         "+-----+-------------------+---------+--------------------+\n"
@@ -142,7 +142,7 @@ class CommandParser(argparse.ArgumentParser):
 
     ``argparse`` calls ``sys.exit`` on a usage error, which is right for a
     program and fatal for a REPL. Every failure becomes a
-    :class:`~peekmem.errors.CommandError`, printed as one ``ERROR:`` line.
+    :class:`~picklock.errors.CommandError`, printed as one ``ERROR:`` line.
 
     It also keeps the actions it was given, in the order they were declared, so
     ``help`` can list a command's arguments without reaching into argparse's

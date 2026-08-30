@@ -2,7 +2,7 @@
 
 """Shared fixtures. Nothing here attaches to a process.
 
-The suite is deliberately target-free: it covers the parts of Peekmem that are
+The suite is deliberately target-free: it covers the parts of Picklock that are
 its own — parsing, formatting, dispatch, help — and leaves reading another
 process's memory to PyMemoryEditor's own tests. That keeps the suite runnable
 on any CI machine, where opening a second process is usually not permitted.
@@ -12,10 +12,10 @@ import io
 
 import pytest
 
-from peekmem import aliases
-from peekmem.output import Printer
-from peekmem.session import Session
-from peekmem.shell import Shell
+from picklock import aliases
+from picklock.output import Printer
+from picklock.session import Session
+from picklock.shell import Shell
 
 
 class Capture:

@@ -14,20 +14,20 @@ A clear and concise description of what the bug is.
 The exact commands you ran, and what happened:
 
 ```console
-$ peekmem
-peekmem> ps:open 1234
-peekmem> ...
+$ picklock
+picklock> ps:open 1234
+picklock> ...
 ```
 
 **Expected behavior**
 A clear and concise description of what you expected to happen instead.
 
 **Versions**
-Paste the output of `peekmem -e "version"` — it covers Peekmem, PyMemoryEditor,
+Paste the output of `picklock -e "version"` — it covers Picklock, PyMemoryEditor,
 Python and the platform:
 
 ```
-       Peekmem: 0.1.0
+       Picklock: 0.1.0
 PyMemoryEditor: 2.2.0
         Python: 3.12.0
       Platform: Linux 6.8.0 (x86_64)

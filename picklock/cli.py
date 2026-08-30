@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
 """
-The ``peekmem`` entry point.
+The ``picklock`` entry point.
 
 Run bare, it opens the interactive shell. Given commands — with ``-e``, as a
 trailing command line, in a file, or on standard input — it runs them and
 exits with a status, so the same vocabulary works inside a script, an SSH
 session or a CI job:
 
-    peekmem                                  # the shell
-    peekmem ps:list chrome                           # one command, then exit
-    peekmem -p 4242 -e "memory:read game.exe+0x10"   # attach, read, exit
-    peekmem -f setup.peek                            # a file of commands
-    echo "ps:list" | peekmem                         # a pipe
+    picklock                                  # the shell
+    picklock ps:list chrome                           # one command, then exit
+    picklock -p 4242 -e "memory:read game.exe+0x10"   # attach, read, exit
+    picklock -f setup.peek                            # a file of commands
+    echo "ps:list" | picklock                         # a pipe
 """
 
 import argparse
@@ -25,7 +25,7 @@ import PyMemoryEditor
 from . import __version__, dependencies
 from .commands import top_level_listing
 from .commands.alias_commands import restore as restore_aliases
-from .errors import CommandError, PeekmemError
+from .errors import CommandError, PicklockError
 from .output import Printer
 from .session import Session
 from .shell import Shell
@@ -40,20 +40,20 @@ def _format_commands() -> str:
     rows = top_level_listing()
     width = max(len(signature) for signature, _ in rows)
 
-    lines: List[str] = ["peekmem commands:", ""]
+    lines: List[str] = ["picklock commands:", ""]
     # Four spaces between the columns, as the shell's own listings use.
     lines += [f"  {signature.ljust(width)}    {summary}" for signature, summary in rows]
     lines += [
         "",
-        "Run 'peekmem help <command>' for what a command takes, or",
-        "'peekmem help' for the topics ('types', 'address', 'scanning').",
+        "Run 'picklock help <command>' for what a command takes, or",
+        "'picklock help' for the topics ('types', 'address', 'scanning').",
     ]
     return "\n".join(lines)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="peekmem",
+        prog="picklock",
         description=(
             "A terminal client for PyMemoryEditor: read, write and scan the "
             "memory of a running process from any shell, on Windows, Linux or "
@@ -114,12 +114,12 @@ def build_parser() -> argparse.ArgumentParser:
         "-v",
         "--version",
         action="version",
-        version=f"peekmem {__version__} (PyMemoryEditor {PyMemoryEditor.__version__})",
+        version=f"picklock {__version__} (PyMemoryEditor {PyMemoryEditor.__version__})",
     )
     parser.add_argument(
         "command",
         nargs=argparse.REMAINDER,
-        help="a single command to run, e.g. 'peekmem ps:list chrome'",
+        help="a single command to run, e.g. 'picklock ps:list chrome'",
     )
     return parser
 
@@ -147,8 +147,8 @@ def _batch_lines(options: argparse.Namespace, stdin) -> Optional[List[str]]:
     """The commands to run non-interactively, or ``None`` for the shell.
 
     Standard input counts only when it is *not* a terminal: a pipe or a
-    redirect is someone scripting Peekmem, while a terminal is someone who
-    typed ``peekmem`` and wants the prompt.
+    redirect is someone scripting Picklock, while a terminal is someone who
+    typed ``picklock`` and wants the prompt.
     """
     lines: List[str] = []
 
@@ -170,7 +170,7 @@ def _batch_lines(options: argparse.Namespace, stdin) -> Optional[List[str]]:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    """Run Peekmem. Returns the process exit status."""
+    """Run Picklock. Returns the process exit status."""
     parser = build_parser()
     options = parser.parse_args(argv)
 
@@ -230,7 +230,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         finally:
             session.close()
 
-    except PeekmemError as error:
+    except PicklockError as error:
         printer.error(str(error))
         return 1
     except KeyboardInterrupt:
@@ -238,7 +238,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         printer.write()
         return 130
     except BrokenPipeError:  # pragma: no cover - depends on the consumer
-        # 'peekmem ps | head' closes the pipe early; that is not an error.
+        # 'picklock ps | head' closes the pipe early; that is not an error.
         return 0
 
 

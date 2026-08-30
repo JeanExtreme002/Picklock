@@ -4,7 +4,7 @@
 Checking that the PyMemoryEditor underneath is new enough.
 
 ``pyproject.toml`` declares the floor, and pip enforces it on a normal
-install — but not for anyone running Peekmem out of a source tree, or in an
+install — but not for anyone running Picklock out of a source tree, or in an
 environment where an older PyMemoryEditor was already present. Those setups
 used to fail much later and much more cryptically: an older backend aborts a
 whole macOS scan on the first file-backed page whose pager declines to read,
@@ -20,7 +20,7 @@ from typing import Optional, Tuple
 
 import PyMemoryEditor
 
-#: The oldest PyMemoryEditor Peekmem supports. Keep in step with the floor in
+#: The oldest PyMemoryEditor Picklock supports. Keep in step with the floor in
 #: pyproject.toml — the two say the same thing to different audiences.
 REQUIRED_VERSION: Tuple[int, ...] = (2, 2, 0)
 
@@ -57,7 +57,7 @@ def check() -> Optional[str]:
 
     required = ".".join(str(part) for part in REQUIRED_VERSION)
     return (
-        f"Peekmem needs PyMemoryEditor {required} or newer, but "
+        f"Picklock needs PyMemoryEditor {required} or newer, but "
         f"{installed} is installed. Older versions abort a whole scan on the "
         "first page they cannot read, among other differences.\n"
         f'Upgrade with:  pip install -U "PyMemoryEditor>={required}"'

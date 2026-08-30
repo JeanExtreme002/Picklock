@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Everything Peekmem prints.
+Everything Picklock prints.
 
 The house style is the ``mysql`` client's: results in an ASCII box table,
 a footer line counting rows and timing the command, and nothing else. Colour
 is limited to a single highlight on ``ERROR`` and is dropped entirely when the
 stream is not a terminal, when ``NO_COLOR`` is set, or when ``--no-color`` was
-passed — so piping Peekmem into ``grep`` or a log file yields plain text.
+passed — so piping Picklock into ``grep`` or a log file yields plain text.
 
 Keeping every byte of output behind this module is what makes the shell
 testable: a test builds a :class:`Printer` over a ``StringIO`` and asserts on
@@ -25,7 +25,7 @@ RIGHT = "right"
 LEFT = "left"
 
 _RED = "\033[31m"
-#: The one shade Peekmem uses for text that is set apart from the rest: the
+#: The one shade Picklock uses for text that is set apart from the rest: the
 #: target in the prompt, and the contents of an example block. One shade
 #: because they mean the same thing — this is context, not output — and using
 #: two would have implied a difference that is not there.
@@ -382,7 +382,7 @@ class Printer:
         """Update the in-place progress line on stderr.
 
         Scans walk gigabytes and a silent terminal looks like a hang. The line
-        is written to stderr so a piped ``peekmem -e "scan ..."`` still yields
+        is written to stderr so a piped ``picklock -e "scan ..."`` still yields
         clean, parseable stdout, and is skipped entirely when stderr is not a
         terminal so a log file does not fill with carriage returns.
         """

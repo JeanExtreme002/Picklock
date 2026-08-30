@@ -4,8 +4,8 @@
 
 import pytest
 
-from peekmem.addressing import parse_address, parse_int
-from peekmem.errors import CommandError
+from picklock.addressing import parse_address, parse_int
+from picklock.errors import CommandError
 
 
 class FakeSession:

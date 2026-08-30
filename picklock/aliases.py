@@ -3,14 +3,14 @@
 """
 Where the aliases are kept between sessions.
 
-This is the only file Peekmem writes. Settings deliberately do not persist —
+This is the only file Picklock writes. Settings deliberately do not persist —
 they tune one session's output and a stale one would be a surprise on the next
 run — but an alias is a name you chose, and having to choose it again every
 time would make the feature pointless.
 
 The location follows the usual convention for the platform:
-``$XDG_CONFIG_HOME/peekmem`` (or ``~/.config/peekmem``) on Linux and macOS,
-``%APPDATA%\\peekmem`` on Windows. The readline history stays a dotfile in the
+``$XDG_CONFIG_HOME/picklock`` (or ``~/.config/picklock``) on Linux and macOS,
+``%APPDATA%\\picklock`` on Windows. The readline history stays a dotfile in the
 home directory, where readline's own convention puts it — that is an artefact
 of the line editor rather than configuration.
 
@@ -25,7 +25,7 @@ import tempfile
 from typing import Dict, List
 
 #: Overridable so a test — or a throwaway session — can use its own file.
-ENV_DIR = "PEEKMEM_CONFIG_DIR"
+ENV_DIR = "PICKLOCK_CONFIG_DIR"
 
 _FILENAME = "aliases.json"
 
@@ -33,7 +33,7 @@ Aliases = Dict[str, List[str]]
 
 
 def directory() -> str:
-    """The directory Peekmem keeps its configuration in."""
+    """The directory Picklock keeps its configuration in."""
     override = os.environ.get(ENV_DIR)
     if override:
         return override
@@ -44,7 +44,7 @@ def directory() -> str:
         base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
             os.path.expanduser("~"), ".config"
         )
-    return os.path.join(base, "peekmem")
+    return os.path.join(base, "picklock")
 
 
 def path() -> str:

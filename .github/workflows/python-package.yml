@@ -1,4 +1,4 @@
-# Lint, type-check and test Peekmem on every supported platform and Python.
+# Lint, type-check and test Picklock on every supported platform and Python.
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Python Package
@@ -31,7 +31,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8
     - name: Lint
-      run: flake8 peekmem tests
+      run: flake8 picklock tests
 
   type-check:
     needs: lint
@@ -47,11 +47,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     - name: Run mypy
-      run: mypy peekmem
+      run: mypy picklock
 
   test:
     needs: lint
-    # Peekmem is a terminal program with three platform backends underneath it,
+    # Picklock is a terminal program with three platform backends underneath it,
     # so the matrix is the whole point: the shell has to start and dispatch
     # identically on Windows (no readline), Linux and macOS.
     runs-on: ${{ matrix.os }}
@@ -77,7 +77,7 @@ jobs:
       # bodies that need a live target the suite deliberately never attaches
       # to. Ratchet it up as fake-target coverage grows.
       run: |
-        pytest -q --cov=peekmem --cov-report=term --cov-report=xml --cov-fail-under=55
+        pytest -q --cov=picklock --cov-report=term --cov-report=xml --cov-fail-under=55
     - name: Upload coverage to Codecov
       # Informational only — see codecov.yml — so a flaky upload never blocks
       # the merge; the hard gate is --cov-fail-under above. Runs even when the
@@ -93,9 +93,9 @@ jobs:
       # The suite calls main() in-process; this proves the installed entry
       # point resolves and that a batch run exits cleanly.
       run: |
-        peekmem -e "version"
-        peekmem -e "help scan"
-        peekmem ps --limit 5
+        picklock -e "version"
+        picklock -e "help scan"
+        picklock ps --limit 5
 
   build:
     needs: [type-check, test]

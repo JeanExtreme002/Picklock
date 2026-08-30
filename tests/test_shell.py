@@ -4,8 +4,8 @@
 
 import pytest
 
-from peekmem.errors import CommandError, ExitShell
-from peekmem.shell import Shell
+from picklock.errors import CommandError, ExitShell
+from picklock.shell import Shell
 
 
 @pytest.mark.parametrize(
@@ -45,7 +45,7 @@ def test_unknown_command_suggests_a_near_miss(shell, capture):
 def test_a_failing_command_does_not_end_the_session(shell, capture):
     assert shell.run_line("memory:read 0x10") is False
     assert shell.run_line("version") is True
-    assert "Peekmem" in capture.out
+    assert "Picklock" in capture.out
 
 
 def test_errors_can_be_raised_instead_of_printed(shell):
@@ -61,7 +61,7 @@ def test_exit_unwinds_the_loop(shell):
 def test_run_lines_stops_at_the_first_failure(shell, capture):
     status = shell.run_lines(["version", "nosuchcommand", "version"], raise_errors=True)
     assert status == 1
-    assert capture.out.count("Peekmem") == 1
+    assert capture.out.count("Picklock") == 1
 
 
 def test_run_lines_returns_the_exit_status(shell):
@@ -78,22 +78,22 @@ def _attach(shell):
 
 
 def test_prompt_names_the_target(shell):
-    assert shell.prompt() == "peekmem> "
+    assert shell.prompt() == "picklock> "
     _attach(shell)
-    assert shell.prompt() == "peekmem [game.exe:4242]> "
+    assert shell.prompt() == "picklock [game.exe:4242]> "
 
 
 def test_the_target_is_dimmed_when_colour_is_on(shell, capture):
     """A reminder that writes are going somewhere, not a thing to look at."""
     capture.printer.color = True
     _attach(shell)
-    assert shell.prompt() == "peekmem \033[38;5;247m[game.exe:4242]\033[0m> "
+    assert shell.prompt() == "picklock \033[38;5;247m[game.exe:4242]\033[0m> "
 
 
 def test_an_empty_prompt_is_never_styled(shell, capture):
     """Nothing is attached, so there is nothing to point at."""
     capture.printer.color = True
-    assert shell.prompt() == "peekmem> "
+    assert shell.prompt() == "picklock> "
     assert "\033" not in shell.prompt()
 
 
@@ -172,7 +172,7 @@ def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypat
     what leaves. Losing the shell — and the scan results in it — on the
     keystroke that stops a scan would make the results unreachable.
     """
-    from peekmem.commands import Command, lookup
+    from picklock.commands import Command, lookup
 
     def interrupted(session, args):
         raise KeyboardInterrupt
@@ -189,7 +189,7 @@ def test_ctrl_c_during_a_command_returns_to_the_prompt(shell, capture, monkeypat
             )
         return entry
 
-    monkeypatch.setattr("peekmem.shell.lookup", fake_lookup)
+    monkeypatch.setattr("picklock.shell.lookup", fake_lookup)
 
     lines = iter(["version", "exit"])
     monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))

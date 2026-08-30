@@ -1,29 +1,29 @@
 # -*- coding: utf-8 -*-
 
 """
-Peekmem — a plain-text terminal client for PyMemoryEditor.
+Picklock — a plain-text terminal client for PyMemoryEditor.
 
-Peekmem exposes PyMemoryEditor's process introspection, memory scanning and
+Picklock exposes PyMemoryEditor's process introspection, memory scanning and
 read/write features through an interactive shell modelled on the ``mysql``
 command-line client: ASCII result tables, a one-line prompt, no curses, no
 GUI toolkit, no colour beyond a single highlight for errors. It runs anywhere
 Python does — a desktop, a headless server, an SSH session, a CI job.
 
 The package is a *client*: every memory operation is performed by
-PyMemoryEditor, which Peekmem depends on but does not vendor.
+PyMemoryEditor, which Picklock depends on but does not vendor.
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
 __version__ = "0.1.0"
 
-from .errors import CommandError, NoProcessError, PeekmemError
+from .errors import CommandError, NoProcessError, PicklockError
 from .session import Session
 from .shell import Shell
 
 __all__ = (
     "CommandError",
     "NoProcessError",
-    "PeekmemError",
+    "PicklockError",
     "Session",
     "Shell",
     "__author__",

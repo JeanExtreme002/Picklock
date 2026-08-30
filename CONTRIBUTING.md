@@ -1,8 +1,8 @@
-# Contributing to Peekmem
+# Contributing to Picklock
 
 Thanks for your interest in contributing!
 
-Peekmem is a terminal client for [PyMemoryEditor][pyme]. If your change is
+Picklock is a terminal client for [PyMemoryEditor][pyme]. If your change is
 about *how memory is read, written or scanned*, it probably belongs upstream in
 PyMemoryEditor; if it is about *what you type and what you see*, it belongs
 here. When in doubt, open an issue and it will be routed.
@@ -26,7 +26,7 @@ make test                   # pytest tests -v
 ```
 
 The suite never attaches to a process. It covers parsing, formatting, dispatch
-and help — the parts that are Peekmem's own — and leaves reading another
+and help — the parts that are Picklock's own — and leaves reading another
 process's memory to PyMemoryEditor's tests. That is deliberate: it means the
 suite runs identically on any machine, including CI runners where opening a
 second process is not permitted.
@@ -38,8 +38,8 @@ transcript of the session is the ideal evidence.
 ## Linting and type checking
 
 ```bash
-make lint                   # flake8 peekmem tests
-make type-check             # mypy peekmem
+make lint                   # flake8 picklock tests
+make type-check             # mypy picklock
 ```
 
 ## Before you push
@@ -50,21 +50,21 @@ make pre-commit             # lint + type-check + test
 
 CI runs the same three, plus a build, on Ubuntu, Windows and macOS across
 Python 3.10–3.13. The matrix matters here: the shell has to start and dispatch
-identically where `readline` is missing (Windows), and `peekmem -e "version"`
+identically where `readline` is missing (Windows), and `picklock -e "version"`
 is smoke-tested from the installed console script on every cell.
 
 ## Project layout
 
 ```
-peekmem/
+picklock/
 ├── __init__.py        # Version and the public re-exports
-├── __main__.py        # python -m peekmem
+├── __main__.py        # python -m picklock
 ├── cli.py             # argparse front end: flags, batch mode, exit statuses
 ├── shell.py           # The REPL: line splitting, dispatch, readline, history
 ├── session.py         # Everything a session remembers: target, results, settings
 ├── addressing.py      # The address expression language ([...], module+offset, #N)
 ├── valuetypes.py      # The type vocabulary and the signed/unsigned bridge
-├── output.py          # Every byte Peekmem prints: tables, hexdump, footers
+├── output.py          # Every byte Picklock prints: tables, hexdump, footers
 ├── processes.py       # Cross-platform process enumeration
 ├── errors.py          # CommandError and friends
 └── commands/          # One module per group; each registers with @command
@@ -76,12 +76,12 @@ Two rules keep the shape:
   is what makes output testable against a `StringIO`.
 - **Anything the user got wrong raises `CommandError`.** The shell catches that
   one class, prints one `ERROR:` line and returns to the prompt. An exception
-  that is *not* a `CommandError` is a bug in Peekmem and is allowed to escape
+  that is *not* a `CommandError` is a bug in Picklock and is allowed to escape
   with its traceback.
 
 ## Adding a command
 
-1. Pick the module in `peekmem/commands/` that matches the namespace.
+1. Pick the module in `picklock/commands/` that matches the namespace.
 2. Register the handler. The name is a colon-separated path whose first
    segment is one of the groups in `NAMESPACES`; the heading in `help` follows
    from it, so there is nothing to keep in step. Do **not** give it a
@@ -165,7 +165,7 @@ builds its **Arguments** and **Options** sections from the parser itself, so
 the documentation cannot drift from what the command accepts — there is only
 one definition of either.
 
-`help` and `peekmem --help` are likewise generated from the registry, so a
+`help` and `picklock --help` are likewise generated from the registry, so a
 command cannot be added without also being documented. `tests/test_commands.py`
 enforces all of it: every command must declare a parser, every argument must
 carry help text, every flag must appear in the command's help, and a usage line
@@ -186,7 +186,7 @@ the moment it is registered.
 
 Please include:
 
-- The output of `peekmem -e "version"` — it names Peekmem, PyMemoryEditor,
+- The output of `picklock -e "version"` — it names Picklock, PyMemoryEditor,
   Python and the platform.
 - The exact command you typed and the exact output you got.
 - Whether you were running elevated (`sudo` / Administrator).

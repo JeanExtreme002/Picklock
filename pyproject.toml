@@ -1,5 +1,5 @@
 [project]
-name = "peekmem"
+name = "picklock"
 dynamic = ["version"]
 description = "A terminal client for PyMemoryEditor — read, write and scan process memory from any shell on Windows, Linux and macOS."
 authors = [
@@ -50,13 +50,13 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 
-# Peekmem is a client, not a reimplementation: every memory operation is
-# PyMemoryEditor's. The floor is 2.2.0 because Peekmem uses the region
+# Picklock is a client, not a reimplementation: every memory operation is
+# PyMemoryEditor's. The floor is 2.2.0 because Picklock uses the region
 # snapshot, the module/thread descriptors and the pointer-scan file format
 # introduced up to that release.
 #
 # Nothing else is needed. The shell is stdlib only (argparse, shlex, readline
-# where the platform has it), which is what lets `pip install peekmem` work on
+# where the platform has it), which is what lets `pip install picklock` work on
 # a bare server with no compiler and no wheels to build.
 dependencies = [
     "PyMemoryEditor>=2.2.0",
@@ -64,7 +64,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Vectorised scan acceleration. NumPy lights up the fast path inside
-# PyMemoryEditor automatically — Peekmem needs no code change and behaves
+# PyMemoryEditor automatically — Picklock needs no code change and behaves
 # identically without it, only slower on large regions.
 speed = [
     "PyMemoryEditor[speed]>=2.2.0",
@@ -79,24 +79,24 @@ dev = [
 ]
 
 [project.scripts]
-peekmem = "peekmem.cli:main"
+picklock = "picklock.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/JeanExtreme002/Peekmem"
-Repository = "https://github.com/JeanExtreme002/Peekmem"
-Issues = "https://github.com/JeanExtreme002/Peekmem/issues"
-Changelog = "https://github.com/JeanExtreme002/Peekmem/releases"
+Homepage = "https://github.com/JeanExtreme002/Picklock"
+Repository = "https://github.com/JeanExtreme002/Picklock"
+Issues = "https://github.com/JeanExtreme002/Picklock/issues"
+Changelog = "https://github.com/JeanExtreme002/Picklock/releases"
 "PyMemoryEditor" = "https://github.com/JeanExtreme002/PyMemoryEditor"
 Funding = "https://github.com/sponsors/JeanExtreme002"
 
 [tool.hatch.version]
-path = "peekmem/__init__.py"
+path = "picklock/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["peekmem"]
+packages = ["picklock"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"peekmem/py.typed" = "peekmem/py.typed"
+"picklock/py.typed" = "picklock/py.typed"
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/.github"]
@@ -109,7 +109,7 @@ warn_unused_ignores = true
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["peekmem"]
+source = ["picklock"]
 
 [tool.coverage.report]
 show_missing = true

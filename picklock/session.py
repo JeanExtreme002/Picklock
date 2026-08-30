@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-The state one Peekmem session carries.
+The state one Picklock session carries.
 
 A shell is only as useful as what it remembers between commands. A session
 holds the attached process, the addresses the last scan found (so ``next``
@@ -96,7 +96,7 @@ class Session:
         #: User-defined aliases: the word typed, mapped to the words it stands
         #: for. Kept here rather than in the command registry because they are
         #: the user's, not the program's. A shell loads them from disk at
-        #: startup (see peekmem.aliases); a Session on its own starts with
+        #: startup (see picklock.aliases); a Session on its own starts with
         #: none, so nothing built in a test or a script touches a file.
         self.aliases: Dict[str, List[str]] = {}
         self._regions: Optional[List[MemoryRegion]] = None
@@ -208,7 +208,7 @@ class Session:
             raise CommandError(str(error))
         except PermissionError as error:
             raise CommandError(
-                f"{error} Peekmem needs permission to open the target — try "
+                f"{error} Picklock needs permission to open the target — try "
                 "running it as an administrator (Windows), with sudo (Linux), "
                 "or with the debugger entitlement (macOS)."
             )

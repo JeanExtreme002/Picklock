@@ -10,8 +10,8 @@ import pytest
 
 from PyMemoryEditor import MemoryRegion
 
-from peekmem.commands.scan_commands import _BATCH_BYTES, _batch_regions, _run_scan
-from peekmem.session import Session
+from picklock.commands.scan_commands import _BATCH_BYTES, _batch_regions, _run_scan
+from picklock.session import Session
 
 
 def make_regions(count: int, size: int = _BATCH_BYTES):

@@ -38,7 +38,7 @@ def _ps_parser() -> CommandParser:
     parser=_ps_parser,
     summary="List the processes visible to you.",
     details=(
-        "Only processes your user can see are listed. Run Peekmem elevated to "
+        "Only processes your user can see are listed. Run Picklock elevated to "
         "see (and open) processes belonging to other users."
     ),
     examples=("ps:list", "ps:list chrome", "ps:list --pid-sort --limit 50"),
@@ -192,7 +192,7 @@ def _close_parser() -> CommandParser:
         "Takes no arguments.\n\n"
         "Closes the OS handle and drops the scan results, the pointer paths "
         "and the cached memory map. The target itself is untouched — nothing "
-        "Peekmem wrote to it is undone."
+        "Picklock wrote to it is undone."
     ),
 )
 def cmd_close(session: Session, args: List[str]) -> None:

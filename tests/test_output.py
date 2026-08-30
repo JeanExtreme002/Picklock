@@ -2,7 +2,7 @@
 
 """Table, hexdump and footer rendering."""
 
-from peekmem.output import (
+from picklock.output import (
     LEFT,
     RIGHT,
     render_definitions,

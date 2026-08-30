@@ -6,7 +6,7 @@ import io
 
 import pytest
 
-from peekmem.cli import build_parser, main
+from picklock.cli import build_parser, main
 
 
 def run(argv, stdin_text=None, monkeypatch=None):
@@ -30,7 +30,7 @@ def run(argv, stdin_text=None, monkeypatch=None):
 def test_execute_runs_a_command_and_exits():
     status, out, _ = run(["-e", "version"])
     assert status == 0
-    assert "Peekmem" in out
+    assert "Picklock" in out
 
 
 def test_execute_flags_run_in_order():
@@ -54,13 +54,13 @@ def test_a_failing_command_exits_non_zero():
 def test_commands_after_a_failure_do_not_run():
     status, out, _ = run(["-e", "nosuchcommand", "-e", "version"])
     assert status == 1
-    assert "Peekmem" not in out
+    assert "Picklock" not in out
 
 
 def test_commands_are_read_from_a_pipe():
     status, out, _ = run([], stdin_text="version\n# comment\n")
     assert status == 0
-    assert out.count("Peekmem") == 1
+    assert out.count("Picklock") == 1
 
 
 def test_pid_and_name_together_are_rejected():
@@ -72,7 +72,7 @@ def test_pid_and_name_together_are_rejected():
 def test_a_bad_pid_stops_before_the_commands():
     status, out, err = run(["-p", "2147483646", "-e", "version"])
     assert status == 1
-    assert "Peekmem" not in out
+    assert "Picklock" not in out
     # Specifically the PID's fault. Asserting only on the status let a real
     # bug hide here once: --pid built a command that no longer existed, so the
     # run failed for the right code and entirely the wrong reason.
@@ -81,8 +81,8 @@ def test_a_bad_pid_stops_before_the_commands():
 
 def test_the_target_flags_build_a_real_command():
     """--pid and --name are spelled as a command line; it has to be one."""
-    from peekmem.cli import _startup_lines
-    from peekmem.commands import lookup
+    from picklock.cli import _startup_lines
+    from picklock.commands import lookup
 
     for argv in (["-p", "42"], ["-n", "game.exe", "-i", "--partial"]):
         options = build_parser().parse_args(argv + ["-e", "version"])
@@ -100,7 +100,7 @@ def test_limit_flag_reaches_the_session():
 
 def test_an_outdated_pymemoryeditor_stops_the_run(monkeypatch):
     """The check must land before any command touches a process."""
-    from peekmem import dependencies
+    from picklock import dependencies
 
     monkeypatch.setattr(dependencies.PyMemoryEditor, "__version__", "2.1.0")
     status, out, err = run(["-e", "version"])
@@ -123,6 +123,6 @@ def test_help_lists_the_layers_not_every_command(capsys):
         assert name in text
     for name in ("help", "config", "version", "exit"):
         assert name in text
-    assert "peekmem help <command>" in text
+    assert "picklock help <command>" in text
     assert "memory:read" not in text, "the deeper layer is reached, not dumped"
     assert "namespace" not in text.lower()

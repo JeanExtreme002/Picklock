@@ -5,7 +5,7 @@
 # blocking the merge button while still surfacing the trend and per-PR diff
 # coverage.
 #
-# Coverage is uploaded from every OS/Python cell of the matrix. Peekmem's own
+# Coverage is uploaded from every OS/Python cell of the matrix. Picklock's own
 # code is platform-independent, but the shell behaves differently where
 # readline is missing (Windows), so the merged view is what shows those
 # branches covered.

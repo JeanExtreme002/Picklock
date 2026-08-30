@@ -3,7 +3,7 @@
 """
 The little address language every command shares.
 
-Anywhere Peekmem takes an address it takes an *expression*, so the workflows
+Anywhere Picklock takes an address it takes an *expression*, so the workflows
 that matter can be typed on one line instead of copied between commands:
 
 ===============================  =========================================

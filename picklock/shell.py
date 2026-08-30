@@ -35,7 +35,7 @@ from .output import Printer
 from .session import SETTINGS, Session
 
 #: Where the interactive shell remembers what you typed.
-HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".peekmem_history")
+HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".picklock_history")
 HISTORY_LENGTH = 1000
 
 _LEADING_WORD = re.compile(r"\s*(\S+)\s*(.*)", re.DOTALL)
@@ -50,7 +50,7 @@ class _Handled(Exception):
 
 
 class Shell:
-    """Dispatches command lines against a :class:`~peekmem.session.Session`."""
+    """Dispatches command lines against a :class:`~picklock.session.Session`."""
 
     def __init__(
         self,
@@ -240,16 +240,16 @@ class Shell:
         somewhere — not to compete with the output above it.
         """
         if self.session.process is None:
-            return "peekmem> "
+            return "picklock> "
         name = self.session.process_name or "?"
         target = f"[{name}:{self.session.process.pid}]"
-        return f"peekmem {self.printer.dim(target, in_prompt=self._readline)}> "
+        return f"picklock {self.printer.dim(target, in_prompt=self._readline)}> "
 
     def banner(self) -> str:
         import PyMemoryEditor
 
         return (
-            f"Welcome to Peekmem {__version__}, a terminal client for "
+            f"Welcome to Picklock {__version__}, a terminal client for "
             f"PyMemoryEditor {PyMemoryEditor.__version__}.\n"
             "Type 'help' for the command list, or 'help scanning' for a "
             "walkthrough.\n"

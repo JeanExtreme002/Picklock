@@ -4,7 +4,7 @@
 
 import pytest
 
-from peekmem import dependencies
+from picklock import dependencies
 
 
 @pytest.mark.parametrize(

@@ -12,11 +12,10 @@ program to launch — and records exactly what a user would have seen, escape
 codes included. The addresses, the row counts and the timings in the picture
 are whatever that run produced.
 
-The scan story it stages is real too: a value is planted in this process's
-memory, scanned for, then *changed* between the two scans, so the
-``--decreased`` refinement narrows a few hundred candidates to the one
-address that actually moved. That is the loop the README describes, executed rather than
-illustrated.
+The scan it stages is real too: a value is planted in this process's memory,
+scanned for across the writable regions, and the first address that comes
+back is then written to and read again as hex. Nothing is arranged so that
+the numbers agree — they agree because the commands ran.
 
 The transcript is then rendered as HTML and screenshotted with headless
 Chrome, the same way ``build_preview.py`` does it in PyMemoryEditor.
@@ -56,10 +55,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from picklock.shell import Shell  # noqa: E402  (must follow the env var above)
 
-#: The value planted in this process, and what it drops to before the refine.
-#: Both are arbitrary; what matters is that the second is smaller.
+#: The value planted in this process for the scan to find. Arbitrary, and
+#: ordinary enough in a live interpreter that the scan comes back with a few
+#: hundred candidates — which is the honest picture: a first scan narrows the
+#: field, it does not identify anything.
 HEALTH = 1337
-DAMAGED = 1200
 
 
 # -- the staged process ---------------------------------------------------
@@ -76,8 +76,10 @@ class Target:
         self.health = (ctypes.c_int32 * 4)(HEALTH, HEALTH, 0, 0)
         self.name = ctypes.create_string_buffer(b"PicklockDemo\x00")
 
-    def take_damage(self) -> None:
-        self.health[0] = DAMAGED
+    @property
+    def value(self) -> int:
+        """What the demo scans for — read back from the memory it planted."""
+        return int(self.health[0])
 
 
 # -- recording ------------------------------------------------------------
@@ -99,16 +101,15 @@ def record() -> List[str]:
 
     pid = os.getpid()
 
-    #: (line, hook) — the hook runs *before* the line, so the process really
-    #: has changed by the time the command that notices it runs. The display
+    #: (line, hook) — a hook runs *before* its line, for a step that needs the
+    #: process to have changed by the time the command looks. The display
     #: limit is turned down so the first scan's table stays a sample rather
     #: than twenty rows of the same number; the footer still reports the true
     #: total, and turning it down is itself a command worth showing.
     script: List[Tuple[str, object]] = [
         (f"ps:open {pid}", None),
         ("config:set limit 3", None),
-        (f"scan:value int32 {HEALTH} --writable", None),
-        ("scan:next --decreased", target.take_damage),
+        (f"scan:value int32 {target.value} --writable", None),
         ("memory:write #1 int32 9999", None),
         ("memory:hex #1 16", None),
     ]

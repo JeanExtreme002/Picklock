@@ -159,6 +159,16 @@ class CommandParser(argparse.ArgumentParser):
         self.arguments.append(action)
         return action
 
+    def add_mutually_exclusive_group(self, **kwargs):
+        """A group whose arguments the parser still knows about.
+
+        argparse hands a group its own ``add_argument``, which would bypass the
+        list above — and the help is built from that list, so a whole set of
+        flags would exist and be documented nowhere. The proxy records them as
+        the parser's own, which is what they are.
+        """
+        return _ExclusiveGroup(self, super().add_mutually_exclusive_group(**kwargs))
+
     def error(self, message: str) -> None:  # type: ignore[override]
         raise CommandError(f"{self.prog}: {message} (try 'help {self.prog}')")
 
@@ -166,6 +176,19 @@ class CommandParser(argparse.ArgumentParser):
         if message:
             raise CommandError(message.strip())
         raise CommandError(f"{self.prog}: invalid arguments (try 'help {self.prog}')")
+
+
+class _ExclusiveGroup:
+    """Records a mutually exclusive group's arguments on the parser."""
+
+    def __init__(self, parser: "CommandParser", group: Any):
+        self._parser = parser
+        self._group = group
+
+    def add_argument(self, *args, **kwargs) -> argparse.Action:
+        action = self._group.add_argument(*args, **kwargs)
+        self._parser.arguments.append(action)
+        return action
 
 
 def describe_action(action: argparse.Action) -> str:

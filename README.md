@@ -72,7 +72,7 @@ picklock [game.exe:41902]> scan:next 95
 +-----+--------------------+-------+
 2 rows in set (0.02 sec)
 
-picklock [game.exe:41902]> scan:next decreased
+picklock [game.exe:41902]> scan:next --decreased
 +-----+--------------------+-------+
 | ROW | ADDRESS            | VALUE |
 +-----+--------------------+-------+
@@ -157,11 +157,11 @@ scan subcommands: (get help with "help scan:SUBCOMMAND")
     scan:aob <pattern> [--max N]                   Scan for a byte pattern with wildcards (AOB).
     scan:drop <row> [row ...]                      Remove the named result rows.
     scan:keep <row> [row ...]                      Keep only the named result rows.
-    scan:next [op] [value ...]                     Narrow the results with another comparison.
+    scan:next [value] [--eq VALUE] [--ne...        Narrow the results with another comparison.
     scan:regex <pattern> [--length N] [--max N]    Scan for text matching a regular expression.
     scan:reset                                     Discard the current scan results.
     scan:results [--limit N] [--page N] [--all]    Show the current result set, re-read.
-    scan:value <type> [value] [--op OP]...         Search the whole address space for a value.
+    scan:value <type> [value] [--eq VALUE]...      Search the whole address space for a value.
 ```
 
 Every command answers `:help`, at any depth — `scan:help`, `scan:aob:help`,
@@ -207,10 +207,11 @@ share.
 
 Highlights:
 
-- **Every scan comparison PyMemoryEditor exposes** — exact, not-equal, greater,
-  smaller, and ranges — plus the refine-only ones that need no value at all:
-  `scan:next changed`, `scan:next unchanged`, `scan:next increased`,
-  `scan:next decreased`, `scan:next increased-by N`.
+- **Every scan comparison PyMemoryEditor exposes** — `--eq`, `--ne`, `--gt`,
+  `--lt`, `--ge`, `--le`, `--between` — plus the refine-only ones that need no
+  value at all: `scan:next --changed`, `--unchanged`, `--increased`,
+  `--decreased`, `--increased-by N`. Comparisons are flags, so the value slot
+  only ever holds a value: `scan:next changed` looks for the word.
 - **AOB and regex scans.** `scan:aob "48 8B ? ? 00"` finds a signature
   with wildcards; `scan:regex "Player[0-9]+"` finds text.
 - **Thirteen value types** — `int8` … `int64`, `uint8` … `uint64`, `float`,

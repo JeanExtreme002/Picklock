@@ -61,8 +61,15 @@ The scan / refine cycle, when you do not know the address:
 Repeat step 3 until a handful of rows remain. When you cannot see the value —
 a health bar with no number — compare against the previous reading instead:
 
-  scan:next changed / scan:next unchanged
-  scan:next increased / scan:next decreased
+  scan:next --changed / scan:next --unchanged
+  scan:next --increased / scan:next --decreased
+
+Every comparison is a flag, so the value slot only ever holds a value:
+'scan:next changed' looks for the word "changed", and '--changed' is the
+comparison. The rest take a value of their own:
+
+  scan:next --gt 50 / scan:next --between 10 20
+  scan:next --increased-by 5
 
 'scan:results' is how you look at where you are between rounds. It re-reads
 every address, so VALUE is what the target holds now rather than what the scan

@@ -118,7 +118,7 @@ def test_help_topics_are_reachable(shell, capture):
     assert "module+offset" in capture.out
     capture.reset()
     shell.run_line("help scanning")
-    assert "next changed" in capture.out
+    assert "scan:next --changed" in capture.out
 
 
 def test_source_runs_a_file(shell, capture, tmp_path):

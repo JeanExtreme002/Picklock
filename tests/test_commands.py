@@ -743,3 +743,99 @@ def test_the_scanning_topic_covers_the_whole_cycle(shell, capture):
     ):
         assert command in out, f"the walkthrough never mentions {command}"
     assert "--page" in out, "paging is how you reach past the first page"
+
+
+# -- comparisons are flags, never keywords in a value slot ----------------
+
+
+def test_a_value_that_spells_a_comparison_is_still_a_value(shell, capture):
+    """The whole reason the comparisons became flags.
+
+    'scan:next changed' used to be a comparison, so nobody could narrow a
+    string scan down to the word "changed".
+    """
+    from picklock import valuetypes
+
+    shell.session.store_scan(
+        valuetypes.resolve("string"), 7, [0x10, 0x20], ["changed", "other"], "t"
+    )
+    parsed = shell.split("scan:next changed")
+    options = lookup("scan:next").parser().parse_args(parsed[1])
+    assert options.value == "changed"
+    assert options.changed is False
+
+
+@pytest.mark.parametrize("name", ["scan:value", "scan:next"])
+def test_no_positional_names_a_comparison(name):
+    """A slot that holds either a keyword or data cannot tell them apart."""
+    for action in lookup(name).arguments():
+        if action.option_strings:
+            continue
+        assert action.dest not in ("op", "operator", "comparison")
+
+
+@pytest.mark.parametrize("name", ["scan:value", "scan:next"])
+def test_both_scans_offer_the_same_value_comparisons(name):
+    """Declared once for both, so they cannot drift apart."""
+    flags = {
+        flag for action in lookup(name).arguments() for flag in action.option_strings
+    }
+    assert {"--eq", "--ne", "--gt", "--lt", "--ge", "--le"} <= flags
+    assert {"--between", "--not-between"} <= flags
+
+
+def test_only_a_refine_offers_the_previous_value_comparisons():
+    """They compare against the last reading, which a first scan does not have."""
+    def flags_of(name):
+        return {
+            flag
+            for action in lookup(name).arguments()
+            for flag in action.option_strings
+        }
+
+    refine_only = {"--changed", "--unchanged", "--increased", "--decreased"}
+    assert refine_only <= flags_of("scan:next")
+    assert not (refine_only & flags_of("scan:value"))
+
+
+def test_two_comparisons_at_once_are_refused(shell):
+    with pytest.raises(CommandError):
+        shell.run_line("scan:next --changed --increased", raise_errors=True)
+
+
+def _ready_to_refine(shell):
+    """A session with results and a target, stopping short of reading memory.
+
+    scan:next checks for both before it looks at its arguments, so a test about
+    the arguments has to get past them.
+    """
+    from picklock import valuetypes
+
+    class FakeProcess:
+        pointer_size = 8
+
+    shell.session.process = FakeProcess()
+    shell.session.store_scan(valuetypes.resolve("int32"), 4, [0x10], [1], "t")
+
+
+def test_a_value_and_a_comparison_at_once_are_refused(shell, capture):
+    _ready_to_refine(shell)
+    assert shell.run_line("scan:next 95 --gt 50") is False
+    assert "not both" in capture.err
+
+
+def test_a_refine_with_nothing_to_compare_says_so(shell, capture):
+    _ready_to_refine(shell)
+    assert shell.run_line("scan:next") is False
+    assert "Nothing to compare against" in capture.err
+
+
+def test_a_grouped_flag_still_reaches_the_help(shell, capture):
+    """argparse gives a mutually exclusive group its own add_argument.
+
+    Left to itself that bypasses the parser's record of its arguments, and a
+    whole set of flags would exist while being documented nowhere.
+    """
+    shell.run_line("help scan:next")
+    for flag in ("--changed", "--between", "--increased-by"):
+        assert flag in capture.out

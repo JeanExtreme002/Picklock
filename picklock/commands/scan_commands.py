@@ -38,7 +38,37 @@ from . import CommandParser, add_paging_arguments, command, paginate
 _BATCH_BYTES = 64 * 1024 * 1024
 
 #: Command-line comparison names, and the symbols people type instead.
-_SCAN_OPS = {
+#: Comparisons that take a value you supply. Flags, not a keyword sitting in
+#: the same slot a value would: 'scan:next changed' could not tell a comparison
+#: from a search for the word "changed", and no amount of documentation fixes
+#: an ambiguity the grammar has.
+_VALUE_FLAGS = (
+    ("eq", "keep values equal to VALUE — the same as giving VALUE on its own"),
+    ("ne", "keep values different from VALUE"),
+    ("gt", "keep values greater than VALUE"),
+    ("lt", "keep values smaller than VALUE"),
+    ("ge", "keep values greater than or equal to VALUE"),
+    ("le", "keep values smaller than or equal to VALUE"),
+)
+
+#: The two that take a pair.
+_RANGE_FLAGS = (
+    ("between", "keep values inside the range A..B, inclusive"),
+    ("not-between", "keep values outside the range A..B"),
+)
+
+#: Comparisons only a refine can make, against the value the last scan read.
+_REFINE_FLAGS = (
+    ("changed", 0, "keep addresses whose value differs from the last reading"),
+    ("unchanged", 0, "keep addresses whose value equals the last reading"),
+    ("increased", 0, "keep addresses whose value grew since the last reading"),
+    ("decreased", 0, "keep addresses whose value shrank since the last reading"),
+    ("increased-by", 1, "keep addresses that grew by exactly VALUE"),
+    ("decreased-by", 1, "keep addresses that shrank by exactly VALUE"),
+)
+
+#: The library scan type each value comparison maps to.
+_SCAN_TYPE = {
     "eq": ScanTypesEnum.EXACT_VALUE,
     "ne": ScanTypesEnum.NOT_EXACT_VALUE,
     "gt": ScanTypesEnum.BIGGER_THAN,
@@ -46,28 +76,60 @@ _SCAN_OPS = {
     "ge": ScanTypesEnum.BIGGER_THAN_OR_EXACT_VALUE,
     "le": ScanTypesEnum.SMALLER_THAN_OR_EXACT_VALUE,
 }
-_OP_SYMBOLS = {
-    "=": "eq", "==": "eq", "!=": "ne", "<>": "ne",
-    ">": "gt", "<": "lt", ">=": "ge", "<=": "le",
-}
-
-#: Refine-only comparisons, which need the value recorded by the last scan.
-_REFINE_OPS = (
-    "changed",
-    "unchanged",
-    "increased",
-    "decreased",
-    "increased-by",
-    "decreased-by",
-    "between",
-)
 
 _MAX_HELP = "stop after N hits, overriding the 'max_results' setting"
 
 
-def _normalize_op(name: str) -> str:
-    key = name.strip().lower()
-    return _OP_SYMBOLS.get(key, key)
+def _add_comparison_flags(parser: CommandParser, *, refine: bool) -> CommandParser:
+    """Give a scan the comparison flags, declared once for both of them."""
+    group = parser.add_mutually_exclusive_group()
+    for name, help_text in _VALUE_FLAGS:
+        group.add_argument(f"--{name}", metavar="VALUE", default=None, help=help_text)
+    for name, help_text in _RANGE_FLAGS:
+        group.add_argument(
+            f"--{name}", nargs=2, metavar=("A", "B"), default=None, help=help_text
+        )
+    if refine:
+        for name, arity, help_text in _REFINE_FLAGS:
+            if arity:
+                group.add_argument(
+                    f"--{name}", metavar="VALUE", default=None, help=help_text
+                )
+            else:
+                group.add_argument(f"--{name}", action="store_true", help=help_text)
+    return parser
+
+
+def _comparison(options, positional, *, refine: bool) -> Tuple[str, List[str]]:
+    """Which comparison was asked for, and the words it was given.
+
+    A bare value means equality, which is what a scan almost always is. Every
+    other comparison is named by its flag, so the value slot only ever holds a
+    value.
+    """
+    names = [name for name, _ in _VALUE_FLAGS] + [name for name, _ in _RANGE_FLAGS]
+    if refine:
+        names += [name for name, _, _ in _REFINE_FLAGS]
+
+    for name in names:
+        given = getattr(options, name.replace("-", "_"))
+        if given is None or given is False:
+            continue
+        if positional is not None:
+            raise CommandError(
+                f"Give a value or --{name}, not both — '--{name}' already says "
+                "what to compare."
+            )
+        operands = [] if given is True else list(given) if isinstance(given, list) else [given]
+        return name, operands
+
+    if positional is None:
+        listed = ", ".join(f"--{name}" for name, _ in _VALUE_FLAGS[:3])
+        raise CommandError(
+            f"Nothing to compare against. Give a value, or one of {listed}, … "
+            "— the full list is in the help."
+        )
+    return "eq", [positional]
 
 
 def _batch_regions(
@@ -283,28 +345,9 @@ def _scan_parser() -> CommandParser:
         "value",
         nargs="?",
         default=None,
-        help="the value to search for; omit it when using --between",
+        help="the value to search for; the same as --eq VALUE",
     )
-    # Deliberately no `choices=`: argparse would reject the symbol spellings
-    # ('>' and friends) before _normalize_op ever sees them, and those are the
-    # ones people reach for first. The check below reports them itself.
-    parser.add_argument(
-        "--op",
-        default="eq",
-        metavar="OP",
-        help="comparison against the value: eq (default), ne, gt, lt, ge, le. "
-        "The symbols =, !=, >, <, >=, <= are accepted too",
-    )
-    parser.add_argument(
-        "--between",
-        nargs=2,
-        metavar=("A", "B"),
-        default=None,
-        help="keep values inside the range A..B, inclusive",
-    )
-    parser.add_argument(
-        "--outside", action="store_true", help="invert --between"
-    )
+    _add_comparison_flags(parser, refine=False)
     parser.add_argument(
         "--writable",
         action="store_true",
@@ -334,8 +377,10 @@ def _scan_parser() -> CommandParser:
     details=(
         "The first scan of a cycle. Every matching address is kept as the "
         "result set that 'scan:next', 'scan:results' and the '#N' address form "
-        "work "
-        "on.\n\n"
+        "work on.\n\n"
+        "A bare value means equality, which is what a scan almost always is; "
+        "every other comparison is named by its flag, so the value slot only "
+        "ever holds a value.\n\n"
         "Ctrl+C stops a scan and keeps what it had already found."
     ),
     examples=(
@@ -343,7 +388,7 @@ def _scan_parser() -> CommandParser:
         "scan:value float 99.5 --writable",
         "scan:value int32 --between 100 200",
         "scan:value string Picklock",
-        "scan:value int32 1000 --op gt",
+        "scan:value int32 --gt 1000",
     ),
 )
 def cmd_scan(session: Session, args: List[str]) -> None:
@@ -351,6 +396,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
 
     process = session.require_process("scan:value")
     value_type = valuetypes.resolve(options.type)
+    comparison, operands = _comparison(options, options.value, refine=False)
 
     if options.writable and options.all_regions:
         raise CommandError("--writable and --all-regions contradict each other.")
@@ -366,18 +412,17 @@ def cmd_scan(session: Session, args: List[str]) -> None:
     # since the last one, and a stale snapshot would silently skip new regions.
     session.regions(refresh=True)
 
-    if options.between is not None:
-        if options.value is not None:
-            raise CommandError("Give a value or --between, not both.")
-        start = value_type.parse(options.between[0])
-        end = value_type.parse(options.between[1])
+    if comparison in ("between", "not-between"):
+        start = value_type.parse(operands[0])
+        end = value_type.parse(operands[1])
         width = max(
             value_type.width_for(start, options.length),
             value_type.width_for(end, options.length),
         )
+        outside = comparison == "not-between"
         description = (
-            f"{value_type.name} {'outside' if options.outside else 'between'} "
-            f"{options.between[0]} and {options.between[1]}"
+            f"{value_type.name} {'outside' if outside else 'between'} "
+            f"{operands[0]} and {operands[1]}"
         )
 
         def search(batch: List[MemoryRegion]) -> Iterable[Any]:
@@ -386,25 +431,16 @@ def cmd_scan(session: Session, args: List[str]) -> None:
                 width,
                 value_type.encode(start),
                 value_type.encode(end),
-                not_between=options.outside,
+                not_between=outside,
                 writeable_only=writable_only,
                 memory_regions=batch,
             )
 
     else:
-        if options.value is None:
-            raise CommandError("scan needs a value, or --between A B.")
-        operation = _normalize_op(options.op)
-        if operation not in _SCAN_OPS:
-            raise CommandError(
-                f"Unknown comparison {options.op!r}. Use one of: "
-                + ", ".join(_SCAN_OPS)
-                + "."
-            )
-        value = value_type.parse(options.value)
+        value = value_type.parse(operands[0])
         width = value_type.width_for(value, options.length)
-        scan_type = _SCAN_OPS[operation]
-        description = f"{value_type.name} {operation} {options.value}"
+        scan_type = _SCAN_TYPE[comparison]
+        description = f"{value_type.name} {comparison} {operands[0]}"
 
         def search(batch: List[MemoryRegion]) -> Iterable[Any]:
             return process.search_by_value(
@@ -433,21 +469,12 @@ def cmd_scan(session: Session, args: List[str]) -> None:
 def _next_parser() -> CommandParser:
     parser = CommandParser("scan:next")
     parser.add_argument(
-        "op",
+        "value",
         nargs="?",
         default=None,
-        help="the comparison to apply: eq, ne, gt, lt, ge, le, between, "
-        "changed, unchanged, increased, decreased, increased-by, "
-        "decreased-by. Omit it to mean eq",
+        help="the value to keep; the same as --eq VALUE",
     )
-    parser.add_argument(
-        "value",
-        nargs="*",
-        default=[],
-        help="the value the comparison needs — two for 'between', one for the "
-        "six ordinary comparisons and the *-by pair, none for the rest",
-    )
-    return parser
+    return _add_comparison_flags(parser, refine=True)
 
 
 @command(
@@ -456,20 +483,23 @@ def _next_parser() -> CommandParser:
     summary="Narrow the results with another comparison.",
     details=(
         "Re-reads every address in the result set and keeps the ones that "
-        "still match. Bare 'scan:next 100' means 'scan:next eq 100'.\n\n"
-        "Comparisons against a value you supply:\n\n"
-        "  eq ne gt lt ge le VALUE      the usual six\n"
-        "  between A B                  inside the range, inclusive\n"
-        "  increased-by N               grew by exactly N since the last scan\n"
-        "  decreased-by N               shrank by exactly N since the last scan\n\n"
-        "Comparisons against the previous scan, for when you do not know the "
-        "value — the health bar moved, but to what?\n\n"
-        "  changed / unchanged          differs from / equals the last reading\n"
-        "  increased / decreased        moved in that direction\n\n"
+        "still match. A bare value means equality: 'scan:next 95' keeps the "
+        "addresses now holding 95.\n\n"
+        "The comparisons that need no value of their own are for when you "
+        "cannot see it — a health bar with no number. They measure each "
+        "address against what the last scan read there, so making the value "
+        "move in the target and then asking for '--decreased' narrows the set "
+        "without you ever knowing the number.\n\n"
         "Addresses that have become unreadable (the target freed them) are "
         "dropped."
     ),
-    examples=("scan:next 95", "scan:next changed", "scan:next decreased", "scan:next gt 50", "scan:next between 10 20"),
+    examples=(
+        "scan:next 95",
+        "scan:next --changed",
+        "scan:next --decreased",
+        "scan:next --gt 50",
+        "scan:next --between 10 20",
+    ),
 )
 def cmd_next(session: Session, args: List[str]) -> None:
     options = _next_parser().parse_args(args)
@@ -477,37 +507,15 @@ def cmd_next(session: Session, args: List[str]) -> None:
     state = session.require_scan()
     session.require_process("scan:next")
 
-    operation = _normalize_op(options.op) if options.op else "eq"
-    operands = list(options.value)
-
-    # "next 100" — no operation word, just a value. Recognised by the first
-    # word not naming a comparison, which is unambiguous: no comparison name
-    # is also a valid value spelling.
-    if operation not in _SCAN_OPS and operation not in _REFINE_OPS:
-        if options.op is None:
-            raise CommandError("next needs a comparison or a value.")
-        operands.insert(0, options.op)
-        operation = "eq"
-
+    comparison, operands = _comparison(options, options.value, refine=True)
     value_type = state.value_type
-    needs_value = operation in _SCAN_OPS or operation in (
-        "increased-by",
-        "decreased-by",
-    )
 
-    if operation == "between":
-        if len(operands) != 2:
-            raise CommandError(
-                "'scan:next between' takes two values: scan:next between A B."
-            )
+    low = high = target = None
+    if comparison in ("between", "not-between"):
         low = value_type.parse(operands[0])
         high = value_type.parse(operands[1])
-    elif needs_value:
-        if len(operands) != 1:
-            raise CommandError(f"'scan:next {operation}' takes exactly one value.")
-        target = value_type.parse(operands[0])
     elif operands:
-        raise CommandError(f"'scan:next {operation}' takes no value.")
+        target = value_type.parse(operands[0])
 
     with Timer() as timer:
         current = _read_values(session, value_type, state.width, state.addresses)
@@ -519,29 +527,31 @@ def cmd_next(session: Session, args: List[str]) -> None:
             if now is None:
                 continue  # The address is gone; it cannot match anything.
             try:
-                if operation == "eq":
+                if comparison == "eq":
                     keep = now == target
-                elif operation == "ne":
+                elif comparison == "ne":
                     keep = now != target
-                elif operation == "gt":
+                elif comparison == "gt":
                     keep = now > target
-                elif operation == "lt":
+                elif comparison == "lt":
                     keep = now < target
-                elif operation == "ge":
+                elif comparison == "ge":
                     keep = now >= target
-                elif operation == "le":
+                elif comparison == "le":
                     keep = now <= target
-                elif operation == "between":
+                elif comparison == "between":
                     keep = low <= now <= high
-                elif operation == "changed":
+                elif comparison == "not-between":
+                    keep = not (low <= now <= high)
+                elif comparison == "changed":
                     keep = now != previous
-                elif operation == "unchanged":
+                elif comparison == "unchanged":
                     keep = now == previous
-                elif operation == "increased":
+                elif comparison == "increased":
                     keep = previous is not None and now > previous
-                elif operation == "decreased":
+                elif comparison == "decreased":
                     keep = previous is not None and now < previous
-                elif operation == "increased-by":
+                elif comparison == "increased-by":
                     keep = previous is not None and now == previous + target
                 else:  # decreased-by
                     keep = previous is not None and now == previous - target
@@ -555,11 +565,9 @@ def cmd_next(session: Session, args: List[str]) -> None:
                 kept_addresses.append(address)
                 kept_values.append(now)
 
-        description = f"{state.description} → {operation}"
-        if operation == "between":
-            description += f" {operands[0]} {operands[1]}"
-        elif needs_value:
-            description += f" {operands[0]}"
+        description = f"{state.description} → {comparison}"
+        if operands:
+            description += " " + " ".join(operands)
 
         new_state = session.store_scan(
             value_type,

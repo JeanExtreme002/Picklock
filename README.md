@@ -51,8 +51,13 @@ make pre-commit        # lint, type-check, tests
 ```
 
 Every command is covered end-to-end against a real process — the test process
-itself, so the suite needs no privileges and no second program to launch. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+itself, so the suite needs no privileges and no second program to launch.
+
+## 🤝 Contributing
+
+Pull requests, bug reports and feature ideas are very welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, test layout and
+the small set of platform-specific quirks to be aware of.
 
 ## Related
 
@@ -61,3 +66,7 @@ Every read, write, scan and pointer walk is performed by
 cross-platform memory library Picklock is built on. If you find Picklock
 useful, star that one too — it is what makes any of this work on three
 operating systems at once.
+
+## License
+
+Released under the [MIT License](LICENSE) — free for personal and commercial use.

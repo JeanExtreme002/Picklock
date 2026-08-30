@@ -4,8 +4,7 @@ A terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemor
 Read, write and scan the memory of a running process from any shell, on Windows,
 Linux and macOS.
 
-No GUI toolkit, no display, no compiler. One dependency, pure Python, so it
-installs on a bare server as readily as on a desktop.
+One dependency, pure Python, so it installs on a bare server as readily as on a desktop.
 
 ```
 pip install picklock

@@ -165,6 +165,7 @@ def render_definitions(
     indent: int = 2,
     label_width: int = 22,
     total_width: int = 78,
+    gap: int = 2,
 ) -> str:
     """Render label/description pairs as an aligned, wrapped block.
 
@@ -172,13 +173,17 @@ def render_definitions(
     every command-line tool's ``--help`` has, so it needs no explaining. A
     label longer than ``label_width`` takes a line of its own rather than
     pushing every description out of alignment.
+
+    :param gap: spaces between the two columns. A listing of command names is
+        read down the left edge first, so it is given more room than an
+        argument list, where the two columns are read together.
     """
     if not items:
         return ""
 
     width = min(max(len(label) for label, _ in items), label_width)
     pad = " " * indent
-    continuation = pad + " " * (width + 2)
+    continuation = pad + " " * (width + gap)
     text_width = max(24, total_width - len(continuation))
     lines: List[str] = []
 
@@ -188,7 +193,7 @@ def render_definitions(
             lines.append(pad + label)
             continue
         if len(label) <= width:
-            lines.append(f"{pad}{label.ljust(width)}  {wrapped[0]}")
+            lines.append(f"{pad}{label.ljust(width)}{' ' * gap}{wrapped[0]}")
         else:
             lines.append(pad + label)
             lines.append(continuation + wrapped[0])

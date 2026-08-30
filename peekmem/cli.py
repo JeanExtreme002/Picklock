@@ -40,7 +40,8 @@ def _format_commands() -> str:
     width = max(len(signature) for signature, _ in rows)
 
     lines: List[str] = ["peekmem commands:", ""]
-    lines += [f"  {signature.ljust(width)}  {summary}" for signature, summary in rows]
+    # Four spaces between the columns, as the shell's own listings use.
+    lines += [f"  {signature.ljust(width)}    {summary}" for signature, summary in rows]
     lines += [
         "",
         "Run 'peekmem help <command>' for what a command takes, or",

@@ -696,3 +696,34 @@ def test_examples_and_the_prompt_share_one_shade(capture, shell):
         row for row in capture.out.splitlines() if "peekmem>" in row
     )
     assert capture.printer.dim("peekmem>").split("peekmem>")[0] in transcript
+
+
+@pytest.mark.parametrize("line", ["help", "scan:help", "memory:help"])
+def test_command_listings_breathe(shell, capture, line):
+    """Four spaces between the columns, not two.
+
+    A listing of commands is scanned down its left edge before any of it is
+    read, and the gap is what stops the two columns running together into one
+    sentence.
+    """
+    import re
+
+    shell.run_line(line)
+
+    # Listing rows only: the indented lines whose first word names a command.
+    # The example block sits at the same indent and must not be measured.
+    known = set(command_words()) | set(namespaces())
+    rows = [
+        row[4:]
+        for row in capture.out.splitlines()
+        if row.startswith("    ")
+        and not row.startswith("     ")
+        and row.split()
+        and row.split()[0] in known
+    ]
+    assert rows, f"{line!r} listed nothing"
+
+    for row in rows:
+        gap = re.search(r"\S(\s{2,})\S", row)
+        assert gap, f"no column separator in {row!r}"
+        assert len(gap.group(1)) >= 4, f"only {len(gap.group(1))} spaces in {row!r}"

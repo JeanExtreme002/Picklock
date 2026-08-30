@@ -5,6 +5,7 @@
 from peekmem.output import (
     LEFT,
     RIGHT,
+    render_definitions,
     format_address,
     format_size,
     render_hexdump,
@@ -115,3 +116,22 @@ def test_dim_brackets_its_escapes_for_readline(capture):
 def test_dim_leaves_empty_text_alone(capture):
     capture.printer.color = True
     assert capture.printer.dim("") == ""
+
+
+def test_definitions_default_to_a_two_space_gap(capture):
+    text = render_definitions([("name", "what it does")])
+    assert text == "  name  what it does"
+
+
+def test_the_gap_widens_both_the_first_line_and_the_wrapping(capture):
+    """A wider gap has to move the continuation indent too, or the wrapped
+    lines stop lining up under the first."""
+    text = render_definitions(
+        [("name", "a description long enough that it has to wrap somewhere")],
+        gap=4,
+        total_width=40,
+    )
+    first, second = text.splitlines()
+    assert first.startswith("  name    a description")
+    # The continuation sits under the description, not under the label.
+    assert second.index(second.strip()[0]) == first.index("a description")

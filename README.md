@@ -154,14 +154,14 @@ Example:
 
 scan subcommands: (get help with "help scan:SUBCOMMAND")
 
-    scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
-    scan:drop <row> [row ...]                    Remove the named result rows.
-    scan:keep <row> [row ...]                    Keep only the named result rows.
-    scan:next [op] [value ...]                   Narrow the results with another comparison.
-    scan:regex <pattern> [--length N] [--max N]  Scan for text matching a regular expression.
-    scan:reset                                   Discard the current scan results.
-    scan:results [--limit N] [--offset N]...     Show the current result set, re-read.
-    scan:value <type> [value] [--op OP]...       Search the whole address space for a value.
+    scan:aob <pattern> [--max N]                   Scan for a byte pattern with wildcards (AOB).
+    scan:drop <row> [row ...]                      Remove the named result rows.
+    scan:keep <row> [row ...]                      Keep only the named result rows.
+    scan:next [op] [value ...]                     Narrow the results with another comparison.
+    scan:regex <pattern> [--length N] [--max N]    Scan for text matching a regular expression.
+    scan:reset                                     Discard the current scan results.
+    scan:results [--limit N] [--page N] [--all]    Show the current result set, re-read.
+    scan:value <type> [value] [--op OP]...         Search the whole address space for a value.
 ```
 
 Every command answers `:help`, at any depth — `scan:help`, `scan:aob:help`,

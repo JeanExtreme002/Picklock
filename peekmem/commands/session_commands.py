@@ -134,6 +134,11 @@ _SIGNATURE_WIDTH = 44
 #: because a signature plus a summary genuinely needs the room.
 _LISTING_WIDTH = 106
 
+#: Spaces between a command and its description. Wider than the two an
+#: argument list uses: a listing of commands is scanned down its left edge
+#: first, and the gap is what stops the two columns reading as one sentence.
+_LISTING_GAP = 4
+
 
 def _signature(entry: Command, limit: int = _SIGNATURE_WIDTH) -> str:
     """The command's usage line, cut at a token boundary when it runs long."""
@@ -208,6 +213,7 @@ def _print_overview(session: Session) -> None:
             indent=4,
             label_width=12,
             total_width=_LISTING_WIDTH,
+            gap=_LISTING_GAP,
         )
     )
     printer.write()
@@ -256,6 +262,7 @@ def print_namespace(session: Session, prefix: str) -> bool:
             indent=4,
             label_width=_SIGNATURE_WIDTH,
             total_width=_LISTING_WIDTH,
+            gap=_LISTING_GAP,
         )
     )
     printer.write()

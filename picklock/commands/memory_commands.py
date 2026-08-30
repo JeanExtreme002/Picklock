@@ -491,6 +491,7 @@ def _watch_parser() -> CommandParser:
         help="stop after N samples; without it, watch runs until Ctrl+C",
     )
     parser.add_argument(
+        "-a",
         "--all",
         action="store_true",
         help="print every sample, not only the ones whose value changed",

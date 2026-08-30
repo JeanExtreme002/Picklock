@@ -231,9 +231,9 @@ Highlights:
   already taken by a command is refused rather than shadowing it, and the
   aliases are still there next time you open a terminal.
 - **Every listing pages the same way.** `--limit`, `--page` and `--all` on each
-  of them, a footer that says where you are — `Showing 20 of 3184 rows — page
-  1 of 160` — and the command for the next page spelled out underneath, so it
-  is a copy-paste rather than a puzzle.
+  of them — `-l`, `-p`, `-a` for short — a footer that says where you are:
+  `Showing 20 of 3184 rows — page 1 of 160`, and the command for the next page
+  spelled out underneath, so it is a copy-paste rather than a puzzle.
 - **Ctrl+C means the obvious thing.** During a command it abandons that command
   and returns to the prompt; at the prompt it quits. So stopping a scan costs
   one keystroke and leaving costs two, and neither one loses your results by

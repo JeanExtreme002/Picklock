@@ -487,6 +487,36 @@ def test_every_listing_command_pages_the_same_way(name):
 
 
 @pytest.mark.parametrize("name", PAGED)
+def test_every_listing_offers_the_short_forms(name):
+    """The three most-typed flags in the tool; paging means typing them again."""
+    flags = {
+        flag for action in lookup(name).arguments() for flag in action.option_strings
+    }
+    assert {"-l", "-p", "-a"} <= flags
+
+
+@pytest.mark.parametrize("name", PAGED)
+def test_the_short_and_long_forms_are_one_option(name):
+    parser = lookup(name).parser()
+    assert parser.parse_args(["-l", "5"]).limit == parser.parse_args(
+        ["--limit", "5"]
+    ).limit == 5
+    assert parser.parse_args(["-p", "3"]).page == 3
+    assert parser.parse_args(["-a"]).all is True
+
+
+def test_all_means_the_same_thing_wherever_it_appears():
+    """'-a' must not mean "every row" in six commands and nothing in a seventh."""
+    for name in PAGED + ["memory:watch"]:
+        flags = {
+            flag
+            for action in lookup(name).arguments()
+            for flag in action.option_strings
+        }
+        assert ("--all" in flags) == ("-a" in flags)
+
+
+@pytest.mark.parametrize("name", PAGED)
 def test_paging_flags_are_documented_identically(name):
     """The shared helper is the point: the help text must not drift per command."""
     reference = {

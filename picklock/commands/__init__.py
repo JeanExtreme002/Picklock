@@ -490,8 +490,13 @@ def add_paging_arguments(parser: CommandParser) -> CommandParser:
     Declared in one place so the wording, the behaviour and the help text
     cannot drift between commands — a listing that pages differently from its
     neighbour is a listing you have to learn twice.
+
+    Short forms because these three are the most-typed flags in the tool: every
+    listing has them, and paging through one means typing the same flag again
+    and again.
     """
     parser.add_argument(
+        "-l",
         "--limit",
         type=int,
         default=None,
@@ -499,6 +504,7 @@ def add_paging_arguments(parser: CommandParser) -> CommandParser:
         help="rows per page, overriding the 'limit' setting",
     )
     parser.add_argument(
+        "-p",
         "--page",
         type=int,
         default=1,
@@ -506,7 +512,10 @@ def add_paging_arguments(parser: CommandParser) -> CommandParser:
         help="which page to show, counting from 1",
     )
     parser.add_argument(
-        "--all", action="store_true", help="print every row, ignoring the limit"
+        "-a",
+        "--all",
+        action="store_true",
+        help="print every row, ignoring the limit",
     )
     return parser
 

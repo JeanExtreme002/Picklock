@@ -629,3 +629,60 @@ def test_an_unknown_setting_lists_the_real_ones(shell, capture, line):
     assert shell.run_line(line) is False
     assert "Unknown setting" in capture.err
     assert "max_results" in capture.err
+
+
+def _coloured_shell(capture):
+    """A shell whose printer emits colour, as a terminal session would."""
+    capture.printer.color = True
+    from peekmem.session import Session
+    from peekmem.shell import Shell
+
+    return Shell(Session(capture.printer), printer=capture.printer)
+
+
+@pytest.mark.parametrize("line", ["help", "config:help", "scan:help", "ps:help"])
+def test_example_blocks_are_dimmed(capture, line):
+    """A transcript inside a help page should read as a transcript at a glance."""
+    shell = _coloured_shell(capture)
+    shell.run_line(line)
+
+    body = [
+        row
+        for row in capture.out.splitlines()
+        if row.strip() and "Example:" not in row and row.startswith(" ")
+    ]
+    transcript = [row for row in body if "peekmem>" in row]
+    assert transcript, f"{line!r} printed no example"
+    for row in transcript:
+        assert "\033[2m" in row and "\033[0m" in row
+
+
+def test_the_example_label_is_not_dimmed(capture):
+    """It stays at full strength so the block is findable when skimming."""
+    shell = _coloured_shell(capture)
+    shell.run_line("scan:help")
+    label = next(
+        row for row in capture.out.splitlines() if row.strip() == "Example:"
+    )
+    assert "\033" not in label
+
+
+def test_a_commands_own_examples_are_dimmed_too(capture):
+    shell = _coloured_shell(capture)
+    shell.run_line("help memory:read")
+    # The escape comes before the text, so match on the content, not the start.
+    listed = [
+        row
+        for row in capture.out.splitlines()
+        if row.startswith("  ") and "memory:read 0x" in row
+    ]
+    assert listed
+    for row in listed:
+        assert "\033[2m" in row
+
+
+@pytest.mark.parametrize("line", ["help", "scan:help", "help memory:read"])
+def test_examples_stay_plain_when_colour_is_off(shell, capture, line):
+    """Redirected output must not carry escapes into a file."""
+    shell.run_line(line)
+    assert "\033" not in capture.out

@@ -544,6 +544,30 @@ def test_results_export_writes_every_row(target, capture, block, tmp_path):
     assert document["results"][0]["value"] == MARKER
 
 
+def test_results_export_is_written_as_utf8(target, capture, block, tmp_path):
+    """A refine's description carries an arrow; the file should show one.
+
+    Python escapes non-ASCII by default, which is valid JSON and unreadable —
+    "int32 eq 100 \\u2192 changed" in a file whose whole job is to say what its
+    numbers mean.
+    """
+    from picklock import valuetypes
+
+    target.session.store_scan(
+        valuetypes.resolve("int32"),
+        4,
+        [block.ints_at],
+        [MARKER],
+        "int32 eq 100 → changed",
+    )
+    path = tmp_path / "arrow.json"
+    run(target, capture, f"scan:results --export {path}")
+
+    raw = path.read_text(encoding="utf-8")
+    assert "→ changed" in raw
+    assert "\\u2192" not in raw
+
+
 def test_results_export_spells_bytes_as_hex(target, capture, block, tmp_path):
     """JSON has no form for bytes, so they take the spelling the table shows."""
     import json

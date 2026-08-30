@@ -754,7 +754,11 @@ def _export_results(session: Session, state: ScanState, path: str) -> int:
 
     try:
         with open(path, "w", encoding="utf-8") as handle:
-            json.dump(document, handle, indent=2)
+            # ensure_ascii=False: the file is UTF-8 and meant to be read, and
+            # a description like "int32 eq 100 → changed" should say that
+            # rather than "\u2192". Every JSON parser handles both; only one
+            # of them is legible.
+            json.dump(document, handle, indent=2, ensure_ascii=False)
             handle.write("\n")
     except OSError as error:
         raise CommandError(f"Cannot write {path!r}: {error}")

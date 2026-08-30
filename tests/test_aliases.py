@@ -249,3 +249,16 @@ def test_the_location_follows_the_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     if sys.platform != "win32":
         assert store.directory() == str(tmp_path / "xdg" / "picklock")
+
+
+def test_the_alias_file_is_written_as_utf8(shell):
+    """It is documented as hand-editable, so it should look like what it holds."""
+    shell.run_line("alias:add ler memory:read")
+    shell.session.aliases["café"] = ["memory:read"]
+    from picklock.commands.alias_commands import _persist
+
+    _persist(shell.session)
+
+    raw = pathlib.Path(store.path("aliases.json")).read_text(encoding="utf-8")
+    assert "café" in raw
+    assert "\\u00e9" not in raw

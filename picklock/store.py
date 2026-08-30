@@ -89,7 +89,10 @@ def save(filename: str, data: Dict[str, Any]) -> None:
     )
     try:
         with handle:
-            json.dump(data, handle, indent=2, sort_keys=True)
+            # UTF-8 out, not escape sequences: this file is documented as
+            # hand-editable, and an alias with an accent in it should look
+            # like itself.
+            json.dump(data, handle, indent=2, sort_keys=True, ensure_ascii=False)
             handle.write("\n")
         os.replace(handle.name, target)
     except BaseException:

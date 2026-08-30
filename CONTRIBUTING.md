@@ -23,7 +23,6 @@ parentheses if you would rather run it directly.
 
 ```bash
 make test                   # pytest tests -v
-pytest -m "not slow"        # ~2 s, skipping the scans
 ```
 
 The suite has two halves.
@@ -38,11 +37,11 @@ values in memory with `ctypes`, types the command, and asserts on the table
 that comes back. What is under test is the command, not the library: a failure
 there means Picklock is wrong.
 
-The scans walk a live address space, so they are marked `slow` and add about
-thirty seconds. Run them before pushing anything that touches a command body —
-`make test` includes them, and CI runs the lot. The `target` fixture skips
-itself if the platform refuses to open its own process, so a hostile runner
-degrades to the fast half rather than failing.
+The scans walk a live address space, so they add about thirty seconds.
+`make test` includes them and CI runs the lot, which is the point: a command
+body is not covered until it has run against a real process. The `target`
+fixture skips itself if the platform refuses to open its own process, so a
+hostile runner degrades to the fast half rather than failing.
 
 ## Linting and type checking
 

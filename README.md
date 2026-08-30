@@ -48,7 +48,6 @@ git clone https://github.com/JeanExtreme002/Picklock
 cd Picklock
 make install-dev
 make pre-commit        # lint, type-check, tests
-pytest -m "not slow"   # ~2 s, skipping the live scans
 ```
 
 Every command is covered end-to-end against a real process — the test process

@@ -184,7 +184,7 @@ def _print_overview(session: Session) -> None:
     printer.write(f"Peekmem {__version__} — a terminal client for PyMemoryEditor.")
     printer.write()
 
-    printer.write("peekmem commands: (get help with <command>:help)")
+    printer.write('peekmem commands: (get help with "help <command>")')
     printer.write()
     printer.write(
         render_definitions(

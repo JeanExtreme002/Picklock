@@ -148,7 +148,7 @@ def test_the_overview_shows_layers_not_every_command(shell, capture):
     # names ones that do not.
     for hidden in ("memory:regions", "scan:keep", "pointer:save"):
         assert hidden not in out
-    assert "<command>:help" in out
+    assert 'get help with "help <command>"' in out
     # Parents and leaves sit in one list, spelled the same way.
     for word in ("memory", "pointer", "ps", "scan", "clear", "version"):
         assert word in out

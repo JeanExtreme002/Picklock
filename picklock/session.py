@@ -49,7 +49,7 @@ class Setting:
 #: Every session setting, in the order ``set`` prints them.
 SETTINGS: Tuple[Setting, ...] = (
     Setting("limit", 20, int, "Rows printed per result table (0 = no limit)."),
-    Setting("max_results", 100000, int, "Scan hits kept in memory (0 = no cap)."),
+    Setting("max_results", 1000000, int, "Scan hits kept in memory (0 = no cap)."),
     Setting("hex", False, bool, "Print integer values in hexadecimal."),
     Setting("timing", True, bool, "Print the elapsed time after each command."),
     Setting("progress", True, bool, "Show a progress line while scanning."),

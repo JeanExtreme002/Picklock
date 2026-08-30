@@ -23,8 +23,9 @@ picklock> ps:list chrome
 ```
 
 Matching is case-insensitive by default (`--case-sensitive` turns that off) and
-the list is sorted by name; `--pid-sort` sorts by PID instead, which is the
-better order when several processes share a name and you want the oldest.
+the list is sorted by name; `--pid-sort` sorts by PID instead, lowest first —
+usually, though not guaranteed, oldest first, which is the order you want when
+several processes share a name.
 
 Long lists page rather than scroll away — see [Paging](#paging) below.
 

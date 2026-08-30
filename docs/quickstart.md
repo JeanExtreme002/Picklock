@@ -24,16 +24,24 @@ Three layers, so you never face forty commands at once.
 
 ```
 picklock> ps:list game
-+-------+----------+
-| PID   | NAME     |
-+-------+----------+
-| 41902 | game.exe |
-+-------+----------+
-1 row in set (0.01 sec)
++-------+-------------------+
+| PID   | NAME              |
++-------+-------------------+
+| 42117 | game-launcher.exe |
+| 41902 | game.exe          |
+| 43004 | gamehelper.exe    |
+| 42130 | GameOverlayUI.exe |
++-------+-------------------+
+4 rows in set (0.01 sec)
 ```
 
-`ps:list` takes a substring, so `ps:list game` is enough. Then attach, by PID
-or by name:
+`ps:list` matches a substring, case-insensitively, so `game` finds all four —
+the game, its launcher, and two helpers that came along with it. Rows are
+sorted by name; `--pid-sort` sorts by PID instead, lowest first, which is
+usually — though not guaranteed — oldest first.
+
+Now attach. A PID is unambiguous, and here it has to be: `ps:open game` would
+match four processes and Picklock would refuse rather than guess.
 
 ```
 picklock> ps:open 41902

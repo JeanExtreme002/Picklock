@@ -378,12 +378,12 @@ def test_examples_parse_as_commands(entry, shell):
 @pytest.mark.parametrize(
     "line",
     [
+        "ps:threads",
         "memory:read 0x10",
         "memory:write 0x10 int32 1",
         "memory:hex 0x10",
         "memory:regions",
         "memory:modules",
-        "memory:threads",
         "scan:value int32 1",
         "scan:aob 'DE AD'",
         "scan:regex abc",
@@ -469,9 +469,9 @@ def test_reset_reports_what_it_discarded(shell, capture):
 #: the rest. Kept as a list so a new listing command has to join it.
 PAGED = [
     "ps:list",
+    "ps:threads",
     "memory:regions",
     "memory:modules",
-    "memory:threads",
     "scan:results",
     "pointer:paths",
 ]

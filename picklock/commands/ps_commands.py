@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 
-"""The ``ps:`` namespace — finding a target process and attaching to it."""
+"""The ``ps:`` namespace — finding a target process, attaching, and what it is.
+
+Threads live here rather than under ``memory:`` because a thread is not
+memory: it has an id, a state and a priority, and no address. What is under
+``memory:`` is the address space — its regions, and the modules mapped into it.
+"""
 
 from typing import List
 
@@ -255,6 +260,66 @@ def cmd_info(session: Session, args: List[str]) -> None:
     if session.printer.timing:
         session.printer.ok(f"Memory map read in {timer.elapsed:.2f} sec.")
         session.printer.write()
+
+
+def _threads_parser() -> CommandParser:
+    parser = CommandParser("ps:threads")
+    return add_paging_arguments(parser)
+
+
+@command(
+    "ps:threads",
+    parser=_threads_parser,
+    summary="List the target's threads.",
+    details=(
+        "STATE and PRIORITY are filled in only where the platform exposes them "
+        "cheaply (Linux does; Windows and macOS leave them empty).\n\n"
+        "What a TID *is* differs by platform, and only two of the three are a "
+        "property of the thread itself:\n\n"
+        "  Linux    the POSIX task id — the same number everything else reports\n"
+        "  Windows  the kernel thread id — likewise\n"
+        "  macOS    a Mach port name, which means something only to the "
+        "process that asked\n\n"
+        "That last one is the trap: on macOS two tools looking at the same "
+        "process get different numbers for the same threads, and neither is "
+        "wrong. It is a handle, not a name — do not carry it between tools, "
+        "and do not expect it to match Activity Monitor."
+    ),
+)
+def cmd_threads(session: Session, args: List[str]) -> None:
+    options = _threads_parser().parse_args(args)
+
+    process = session.require_process("ps:threads")
+
+    with Timer() as timer:
+        threads = list(process.get_threads())
+
+    page = paginate(
+        session,
+        threads,
+        command="ps:threads",
+        limit=options.limit,
+        page=options.page,
+        show_all=options.all,
+    )
+
+    session.printer.table(
+        ("TID", "STATE", "PRIORITY"),
+        [
+            (
+                thread.tid,
+                thread.state if thread.state is not None else "",
+                thread.priority if thread.priority is not None else "",
+            )
+            for thread in page.rows
+        ],
+        (RIGHT, LEFT, RIGHT),
+        elapsed=timer.elapsed,
+        total=page.total,
+        page=page.number,
+        pages=page.count,
+        next_page=page.next_page,
+    )
 
 
 __all__ = ()

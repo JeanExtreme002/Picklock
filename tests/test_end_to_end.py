@@ -121,6 +121,12 @@ def test_ps_close_detaches(target, capture):
     target.run_line(f"ps:open {os.getpid()}")  # so the fixture can close it
 
 
+def test_ps_threads_lists_at_least_this_one(target, capture):
+    out = run(target, capture, "ps:threads --limit 5")
+    assert "TID" in out
+    assert "Empty set" not in out
+
+
 # -- memory --------------------------------------------------------------
 
 
@@ -228,12 +234,6 @@ def test_memory_modules_lists_loaded_modules(target, capture):
     out = run(target, capture, "memory:modules --limit 5")
     assert "BASE" in out
     assert re.search(r"0x[0-9A-F]{8,}", out), "a real base address"
-
-
-def test_memory_threads_lists_at_least_this_one(target, capture):
-    out = run(target, capture, "memory:threads --limit 5")
-    assert "TID" in out
-    assert "Empty set" not in out
 
 
 def test_a_module_name_resolves_in_an_address(target, capture):
@@ -553,7 +553,7 @@ def test_ps_info_separates_accessible_from_reserved(target, capture):
 
 
 def test_the_threads_help_explains_all_three_platforms(shell, capture):
-    shell.run_line("help memory:threads")
+    shell.run_line("help ps:threads")
     for platform_name in ("Linux", "Windows", "macOS"):
         assert platform_name in capture.out
 

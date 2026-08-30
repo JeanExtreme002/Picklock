@@ -28,8 +28,8 @@ session rather than about a target:
 
 | Namespace | What it is for |
 | --- | --- |
-| `ps:` | finding a process and attaching to it |
-| `memory:` | reading, writing and looking at memory |
+| `ps:` | finding a process, attaching to it, and seeing what it is |
+| `memory:` | reading, writing and looking at the address space |
 | `scan:` | searching for values, and narrowing the results |
 | `pointer:` | pointer chains and pointer scans |
 | `alias:` | your own names for commands |

@@ -56,8 +56,12 @@ Two reasons to run it:
 ## Threads
 
 ```
-memory:threads
+ps:threads
 ```
+
+This is the one command on this page from the `ps:` namespace rather than
+`memory:`, because a thread is not memory: it has an id, a state and a
+priority, and no address.
 
 `STATE` and `PRIORITY` are filled in only where the platform exposes them
 cheaply — Linux does; Windows and macOS leave them empty.

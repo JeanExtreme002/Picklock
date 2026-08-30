@@ -47,7 +47,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
     Namespace(
         "ps",
         "Process",
-        "Find a target process and attach to it.",
+        "Find a target process, attach to it, and see what it is.",
         "picklock> ps:list chrome\n"
         "\n"
         "+-------+------------+\n"

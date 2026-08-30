@@ -212,7 +212,11 @@ def test_memory_watch_samples_the_value(target, capture, block):
 
 def test_memory_regions_lists_the_map(target, capture):
     out = run(target, capture, "memory:regions --limit 5")
-    assert "PERMS" in out and "rw" in out
+    assert "PERMS" in out
+    # Ask for writable regions rather than hoping the first five happen to
+    # include one: which regions come first is the platform's business, and on
+    # Windows the first five are not writable.
+    assert "rw" in run(target, capture, "memory:regions --writable --limit 5")
 
 
 def test_memory_regions_finds_the_one_holding_an_address(target, capture, block):
@@ -300,8 +304,7 @@ def test_scan_then_refine_against_the_previous_reading(target, capture, block):
 
 @slow
 def test_scan_a_string(target, capture, block):
-    out = run(target, capture, "scan:value string PicklockMarker42")
-    assert "Empty set" not in out
+    run(target, capture, "scan:value string PicklockMarker42")
     assert block.text_at in target.session.scan.addresses
 
 
@@ -317,15 +320,13 @@ def test_scan_a_range(target, capture, block):
 
 @slow
 def test_aob_finds_the_signature(target, capture, block):
-    out = run(target, capture, 'scan:aob "DE AD BE EF ? ? BA BE"')
-    assert "Empty set" not in out
+    run(target, capture, 'scan:aob "DE AD BE EF ? ? BA BE"')
     assert block.blob_at in target.session.scan.addresses
 
 
 @slow
 def test_regex_finds_the_text(target, capture, block):
-    out = run(target, capture, 'scan:regex "PicklockMarker[0-9]+" --length 24')
-    assert "Empty set" not in out
+    run(target, capture, 'scan:regex "PicklockMarker[0-9]+" --length 24')
     assert block.text_at in target.session.scan.addresses
 
 

@@ -2,6 +2,11 @@
 
 """Table, hexdump and footer rendering."""
 
+import os
+import sys
+
+import pytest
+
 from picklock.output import (
     LEFT,
     RIGHT,
@@ -82,8 +87,19 @@ def test_clear_screen_is_a_no_op_without_a_terminal(capture):
     assert capture.out == ""
 
 
-def test_clear_screen_wipes_screen_and_scrollback(capture):
+def test_clear_screen_wipes_screen_and_scrollback(capture, monkeypatch):
     capture.printer.stdout.isatty = lambda: True  # type: ignore[method-assign]
+
+    if sys.platform == "win32":
+        # Not every Windows console has VT processing enabled, so the printer
+        # shells out to `cls` rather than writing escapes nothing may read.
+        ran = []
+        monkeypatch.setattr(os, "system", lambda command: ran.append(command))
+        assert capture.printer.clear_screen() is True
+        assert ran == ["cls"]
+        assert capture.out == ""
+        return
+
     assert capture.printer.clear_screen() is True
     # 2J the screen, 3J the scrollback, H the cursor — what `clear` itself does.
     assert capture.out == "\033[2J\033[3J\033[H"
@@ -149,9 +165,15 @@ def test_waiting_for_enter_just_sleeps_without_a_terminal():
     assert time.monotonic() - started >= 0.04, "it waited rather than returning at once"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason=(
+        "on Windows wait_for_enter polls the console through msvcrt, which a "
+        "pipe cannot stand in for — there is no file descriptor to write to"
+    ),
+)
 def test_waiting_for_enter_sees_a_keypress():
     """A real file descriptor, pretending to be a terminal."""
-    import os
 
     read_fd, write_fd = os.pipe()
     reader = os.fdopen(read_fd)

@@ -78,6 +78,14 @@ class Shell:
         The command word is taken verbatim rather than through ``shlex`` so
         the backslash aliases (``\\h``, ``\\.``) survive: POSIX
         quoting would eat the backslash and leave a command nobody registered.
+
+        The arguments are lexed with escaping switched off, for the same
+        reason one level down. In a shell whose arguments are mostly paths, a
+        backslash is a separator far more often than an escape, and POSIX
+        rules would turn ``source C:\\tools\\setup.picklock`` into
+        ``C:toolssetup.picklock`` — silently, and then blame the file for not
+        existing. Quotes still group, so a path with spaces is written
+        ``"C:\\Program Files\\game\\setup.picklock"`` on every platform.
         """
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or stripped.startswith("--"):
@@ -95,7 +103,14 @@ class Shell:
 
         word, remainder = match.group(1), match.group(2)
         try:
-            args = shlex.split(remainder)
+            lexer = shlex.shlex(remainder, posix=True)
+            lexer.whitespace_split = True
+            # '#' starts a scan-result row, not a comment. (A whole line that
+            # begins with '#' is still a comment; that is handled above, before
+            # the line is lexed.)
+            lexer.commenters = ""
+            lexer.escape = ""
+            args = list(lexer)
         except ValueError as error:
             raise CommandError(f"Cannot parse the arguments: {error}.")
         return word, args

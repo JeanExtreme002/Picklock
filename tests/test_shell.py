@@ -20,7 +20,19 @@ from picklock.shell import Shell
             ("memory:write", ["0x10", "bytes", "DE AD"]),
         ),
         ("\\h", ("\\h", [])),
-        ("source \\.", ("source", ["."])),
+        # '#' introduces a scan-result row and must not read as a comment.
+        ("memory:read #3 int32", ("memory:read", ["#3", "int32"])),
+        # A backslash in an argument is a path separator, not an escape. This
+        # is the whole reason a Windows path can be typed at the prompt.
+        (
+            "source C:\\tools\\setup.picklock",
+            ("source", ["C:\\tools\\setup.picklock"]),
+        ),
+        # Quotes are still how a path with spaces is written, on every platform.
+        (
+            'source "C:\\Program Files\\setup.picklock"',
+            ("source", ["C:\\Program Files\\setup.picklock"]),
+        ),
     ],
 )
 def test_split(line, expected):

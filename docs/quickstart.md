@@ -17,9 +17,8 @@ picklock>
 ```
 
 When you do not know what to type, type `help`. It lists the namespaces —
-`ps`, `memory`, `scan` and so on. Typing one of those on its own, like `scan`,
-lists the commands in it. And `help scan:value` says what that one command
-takes.
+`ps`, `memory`, `scan` and so on. `help scan` lists the commands in one of
+them, and `help scan:value` says what that one command takes.
 
 ## 2. Find the process
 

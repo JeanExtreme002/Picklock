@@ -43,14 +43,15 @@ When you do not know what to type, type `help`.
 | Type this | You get |
 | --- | --- |
 | `help` | the namespaces above |
-| `scan` | the commands in that namespace |
+| `help scan` | the commands in that namespace |
 | `help scan:value` | what that one command takes |
 
 So you go from "what can this do?" to "how do I run this?" in two steps,
 without ever being shown forty commands at once.
 
-`scan:value --help` prints the same page as `help scan:value`, if that is the
-habit your fingers have.
+There are shorter ways to reach the same pages, if they suit your fingers
+better: a namespace on its own (`scan`) prints its commands, and any command
+takes `--help`.
 
 Those pages are built from the command itself, so they cannot be out of date:
 if a command accepts a flag, the flag is on its help page.

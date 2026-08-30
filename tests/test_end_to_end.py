@@ -27,6 +27,13 @@ MARKER = 0x5C0FFEE1
 
 #: The scans walk a real address space, which takes about a second each. Run
 #: the fast suite with `pytest -m "not slow"`.
+#:
+#: None of them pass ``--max``. Each asserts that the block it planted is among
+#: the results, and a cap can stop the scan before it reaches that block: the
+#: marker text also exists in this file's own source, which the interpreter is
+#: holding in memory, and on Linux those copies sit at lower addresses than the
+#: planted one. What ``--max`` does is covered in tests/test_scanning.py, where
+#: it can be tested for what it is rather than as a side effect.
 slow = pytest.mark.slow
 
 
@@ -293,7 +300,7 @@ def test_scan_then_refine_against_the_previous_reading(target, capture, block):
 
 @slow
 def test_scan_a_string(target, capture, block):
-    out = run(target, capture, "scan:value string PicklockMarker42 --max 20")
+    out = run(target, capture, "scan:value string PicklockMarker42")
     assert "Empty set" not in out
     assert block.text_at in target.session.scan.addresses
 
@@ -303,21 +310,21 @@ def test_scan_a_range(target, capture, block):
     run(
         target,
         capture,
-        f"scan:value int32 --between {MARKER - 1} {MARKER + 1} --writable --max 50",
+        f"scan:value int32 --between {MARKER - 1} {MARKER + 1} --writable",
     )
     assert block.ints_at in target.session.scan.addresses
 
 
 @slow
 def test_aob_finds_the_signature(target, capture, block):
-    out = run(target, capture, 'scan:aob "DE AD BE EF ? ? BA BE" --max 20')
+    out = run(target, capture, 'scan:aob "DE AD BE EF ? ? BA BE"')
     assert "Empty set" not in out
     assert block.blob_at in target.session.scan.addresses
 
 
 @slow
 def test_regex_finds_the_text(target, capture, block):
-    out = run(target, capture, 'scan:regex "PicklockMarker[0-9]+" --length 24 --max 20')
+    out = run(target, capture, 'scan:regex "PicklockMarker[0-9]+" --length 24')
     assert "Empty set" not in out
     assert block.text_at in target.session.scan.addresses
 

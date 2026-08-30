@@ -40,13 +40,14 @@ substring instead:
 
 ```
 picklock> ps:list chrome
-+-------+------------+
-| PID   | NAME       |
-+-------+------------+
-| 41902 | chrome.exe |
-| 41903 | chrome.exe |
-+-------+------------+
-2 rows in set (0.02 sec)
++------+------------+
+| PID  | NAME       |
++------+------------+
+| 1204 | chrome.exe |
+| 1288 | chrome.exe |
+| 1355 | chrome.exe |
++------+------------+
+3 rows in set (0.02 sec)
 ```
 
 Matching is case-insensitive by default (`--case-sensitive` turns that off) and
@@ -59,10 +60,10 @@ Long lists page rather than scroll away — see [Paging](#paging) below.
 ## Attaching
 
 ```
-picklock> ps:open 41902
-Attached to chrome.exe (PID 41902, 64-bit). (0.00 sec)
+picklock> ps:open 1204
+Attached to chrome.exe (PID 1204, 64-bit). (0.00 sec)
 
-picklock [chrome.exe:41902]>
+picklock [chrome.exe:1204]>
 ```
 
 The argument is a PID when it is all digits and a name otherwise, so
@@ -71,7 +72,7 @@ rather than picking one:
 
 ```
 picklock> ps:open chrome.exe
-ERROR: More than one process matches the name "chrome.exe": [41902, 41903].
+ERROR: More than one process matches the name "chrome.exe": [1204, 1288, 1355].
 ```
 
 `--partial` matches a name as a substring, and `--pid` / `--name` force the
@@ -87,8 +88,8 @@ Picklock reports whether the target is 32- or 64-bit, and `ps:info` says
 whether it is *certain*:
 
 ```
-picklock [chrome.exe:41902]> ps:info
-            PID: 41902
+picklock [chrome.exe:1204]> ps:info
+            PID: 1204
            Name: chrome.exe
    Architecture: 64-bit
 Bitness certain: yes
@@ -113,7 +114,7 @@ you can read — see [Inspecting a target](inspecting.md#regions).
 ## Detaching
 
 ```
-picklock [chrome.exe:41902]> ps:close
+picklock [chrome.exe:1204]> ps:close
 Detached. (0.00 sec)
 ```
 

@@ -16,7 +16,7 @@ picklock
 </p>
 
 <p align="center">
-  <b>One dependency, pure Python, so it installs on a bare server as readily as on a desktop.</b>
+  One dependency, pure Python, so it installs on a bare server as readily as on a desktop.
 </p>
 
 ## Documentation

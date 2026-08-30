@@ -58,7 +58,7 @@ def cmd_ps(session: Session, args: List[str]) -> None:
         entries,
         command="ps:list",
         limit=options.limit,
-        offset=options.offset,
+        page=options.page,
         show_all=options.all,
     )
 
@@ -71,6 +71,8 @@ def cmd_ps(session: Session, args: List[str]) -> None:
         (RIGHT, LEFT),
         elapsed=timer.elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 

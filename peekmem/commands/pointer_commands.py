@@ -54,7 +54,7 @@ def _print_paths(
     paths: Sequence[PointerPath],
     *,
     limit: Optional[int] = None,
-    offset: int = 0,
+    number: int = 1,
     show_all: bool = False,
     elapsed: Optional[float] = None,
 ) -> None:
@@ -65,12 +65,12 @@ def _print_paths(
         paths,
         command="pointer:paths",
         limit=limit,
-        offset=offset,
+        page=number,
         show_all=show_all,
     )
 
     rows = []
-    for index, path in enumerate(page.rows, start=offset):
+    for index, path in enumerate(page.rows, start=page.offset):
         try:
             target = format_address(path.resolve(process), pointer_size)
         except (OSError, ValueError):
@@ -87,6 +87,8 @@ def _print_paths(
         (RIGHT, LEFT, LEFT, LEFT),
         elapsed=elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 
@@ -372,7 +374,7 @@ def cmd_paths(session: Session, args: List[str]) -> None:
         session,
         session.pointer_paths,
         limit=options.limit,
-        offset=options.offset,
+        number=options.page,
         show_all=options.all,
     )
 

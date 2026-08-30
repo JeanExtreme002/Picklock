@@ -418,10 +418,17 @@ def option_words(name: str) -> List[str]:
 
 @dataclass(frozen=True)
 class Page:
-    """One screen of a longer listing, plus the way to ask for the next."""
+    """One page of a longer listing, and where it sits in the whole."""
 
     rows: List[Any]
+    #: Rows in the full listing, not just this page.
     total: int
+    #: Which page this is, counting from 1.
+    number: int = 1
+    #: How many pages the listing has in total.
+    count: int = 1
+    #: Index of the first row on this page, for numbering result rows.
+    offset: int = 0
     #: The command line that shows the following page, or ``None`` at the end.
     next_page: Optional[str] = None
 
@@ -441,11 +448,11 @@ def add_paging_arguments(parser: CommandParser) -> CommandParser:
         help="rows per page, overriding the 'limit' setting",
     )
     parser.add_argument(
-        "--offset",
+        "--page",
         type=int,
-        default=0,
+        default=1,
         metavar="N",
-        help="skip the first N rows — how you reach the second page",
+        help="which page to show, counting from 1",
     )
     parser.add_argument(
         "--all", action="store_true", help="print every row, ignoring the limit"
@@ -459,28 +466,41 @@ def paginate(
     *,
     command: str,
     limit: Optional[int] = None,
-    offset: int = 0,
+    page: int = 1,
     show_all: bool = False,
 ) -> Page:
-    """Cut ``entries`` down to one page, and name the command for the next one.
+    """Cut ``entries`` down to one page, and say where that page sits.
 
-    ``command`` is what the reader would type to page on; it is spelled out in
-    the footer so the next page is a copy-paste rather than a puzzle.
+    Pages rather than offsets, because "page 3 of 12" is a place a reader can
+    hold in their head and ``--offset 40`` is arithmetic they have to do.
+    ``command`` is what they would type to move on; it is spelled out in the
+    footer so the next page is a copy-paste rather than a puzzle.
     """
-    if offset < 0:
-        raise CommandError("--offset cannot be negative.")
-
     total = len(entries)
     size = None if show_all else session.display_limit(limit)
-    if size is None:
-        return Page(list(entries[offset:]), total)
 
+    if size is None:
+        return Page(list(entries), total, 1, 1, 0)
+
+    pages = max(1, -(-total // size))  # Ceiling division: a part page counts.
+    if page < 1:
+        raise CommandError("--page counts from 1.")
+    if page > pages:
+        raise CommandError(
+            f"Page {page} does not exist — this listing has "
+            f"{pages} page{'' if pages == 1 else 's'}."
+        )
+
+    offset = (page - 1) * size
     window = list(entries[offset : offset + size])
-    following = offset + size
-    next_page = f"{command} --offset {following}" if following < total else None
-    if next_page is not None and limit is not None:
-        next_page += f" --limit {limit}"
-    return Page(window, total, next_page)
+
+    next_page = None
+    if page < pages:
+        next_page = f"{command} --page {page + 1}"
+        if limit is not None:
+            next_page += f" --limit {limit}"
+
+    return Page(window, total, page, pages, offset, next_page)
 
 
 from . import memory_commands  # noqa: E402,F401  (registration side effect)

@@ -221,10 +221,10 @@ Highlights:
 - **Progress you can trust.** Long scans report a percentage that advances
   whether or not anything is being found, and Ctrl+C stops a scan while keeping
   what it already found.
-- **Every listing pages the same way.** `--limit`, `--offset` and `--all` on
-  each of them, and a truncated table ends with the command that shows the
-  next page — `Next page: memory:regions --offset 20` — so it is a copy-paste,
-  not a puzzle.
+- **Every listing pages the same way.** `--limit`, `--page` and `--all` on each
+  of them, a footer that says where you are — `Showing 20 of 3184 rows — page
+  1 of 160` — and the command for the next page spelled out underneath, so it
+  is a copy-paste rather than a puzzle.
 - **Ctrl+C means the obvious thing.** During a command it abandons that command
   and returns to the prompt; at the prompt it quits. So stopping a scan costs
   one keystroke and leaving costs two, and neither one loses your results by

@@ -132,15 +132,16 @@ Two rules keep the shape:
 
    page = paginate(
        session, rows, command="memory:mycommand",
-       limit=options.limit, offset=options.offset, show_all=options.all,
+       limit=options.limit, page=options.page, show_all=options.all,
    )
    session.printer.table(headers, page.rows, total=page.total,
+                         page=page.number, pages=page.count,
                          next_page=page.next_page)
    ```
 
-   That gives the same three flags, the same wording and the same
-   `Next page: ...` footer as every other listing — and a test enforces that
-   the wording does not drift.
+   That gives the same three flags, the same wording, the same
+   `page N of M` footer and the same `Next page: ...` line as every other
+   listing — and a test enforces that the wording does not drift.
 
    Names go **two levels at most** — `scan:keep`, never `scan:results:keep`.
    The registry rejects a third level, and a test pins that down: a deeper name

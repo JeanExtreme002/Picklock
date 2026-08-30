@@ -268,6 +268,8 @@ class Printer:
         *,
         elapsed: Optional[float] = None,
         total: Optional[int] = None,
+        page: Optional[int] = None,
+        pages: Optional[int] = None,
         next_page: Optional[str] = None,
     ) -> None:
         """Print a result table plus its footer.
@@ -280,7 +282,14 @@ class Printer:
         self.clear_progress()
         if rows:
             self.write(render_table(headers, rows, aligns))
-        self.footer(len(rows), elapsed=elapsed, total=total, next_page=next_page)
+        self.footer(
+            len(rows),
+            elapsed=elapsed,
+            total=total,
+            page=page,
+            pages=pages,
+            next_page=next_page,
+        )
 
     def footer(
         self,
@@ -288,15 +297,21 @@ class Printer:
         *,
         elapsed: Optional[float] = None,
         total: Optional[int] = None,
+        page: Optional[int] = None,
+        pages: Optional[int] = None,
         next_page: Optional[str] = None,
     ) -> None:
         """Print the ``N rows in set (0.01 sec)`` line, and how to see more."""
         if count == 0 and not total:
             text = "Empty set"
         elif total is not None and total != count:
-            # The table was cut to the display limit; say so plainly rather
-            # than reporting a row count that is not the answer to the query.
+            # The table was cut to one page; say so plainly rather than
+            # reporting a row count that is not the answer to the query, and
+            # say which page it is — "page 3 of 12" is a place you can hold in
+            # your head.
             text = f"Showing {count} of {total} rows"
+            if pages and pages > 1:
+                text += f" — page {page} of {pages}"
         else:
             text = f"{count} row{'' if count == 1 else 's'} in set"
         if self.timing and elapsed is not None:

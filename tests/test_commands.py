@@ -484,7 +484,7 @@ def test_every_listing_command_pages_the_same_way(name):
     flags = {
         flag for action in lookup(name).arguments() for flag in action.option_strings
     }
-    assert {"--limit", "--offset", "--all"} <= flags
+    assert {"--limit", "--page", "--all"} <= flags
 
 
 @pytest.mark.parametrize("name", PAGED)
@@ -493,12 +493,12 @@ def test_paging_flags_are_documented_identically(name):
     reference = {
         action.dest: action.help
         for action in lookup("scan:results").arguments()
-        if action.dest in ("limit", "offset", "all")
+        if action.dest in ("limit", "page", "all")
     }
     actual = {
         action.dest: action.help
         for action in lookup(name).arguments()
-        if action.dest in ("limit", "offset", "all")
+        if action.dest in ("limit", "page", "all")
     }
     assert actual == reference
 
@@ -506,7 +506,7 @@ def test_paging_flags_are_documented_identically(name):
 def test_a_truncated_listing_names_the_next_page(shell, capture):
     shell.run_line("ps:list --limit 2")
     assert "Showing 2 of" in capture.out
-    assert "Next page: ps:list --offset 2 --limit 2" in capture.out
+    assert "Next page: ps:list --page 2 --limit 2" in capture.out
 
 
 def test_the_last_page_offers_no_next(shell, capture):
@@ -514,9 +514,20 @@ def test_the_last_page_offers_no_next(shell, capture):
     assert "Next page:" not in capture.out
 
 
-def test_offset_cannot_be_negative(shell):
-    with pytest.raises(CommandError, match="offset"):
-        shell.run_line("ps:list --offset -1", raise_errors=True)
+def test_pages_count_from_one(shell):
+    with pytest.raises(CommandError, match="counts from 1"):
+        shell.run_line("ps:list --page 0", raise_errors=True)
+
+
+def test_a_page_past_the_end_says_how_many_there_are(shell):
+    """Better than an empty table, which reads like "no results"."""
+    with pytest.raises(CommandError, match="does not exist"):
+        shell.run_line("ps:list --limit 5 --page 99999", raise_errors=True)
+
+
+def test_a_truncated_listing_says_which_page_it_is(shell, capture):
+    shell.run_line("ps:list --limit 2 --page 2")
+    assert "— page 2 of " in capture.out
 
 
 def test_a_scan_preview_pages_through_scan_results(session, capture):
@@ -536,7 +547,7 @@ def test_a_scan_preview_pages_through_scan_results(session, capture):
     _print_results(session, state)
 
     assert "Showing 2 of 3 rows" in capture.out
-    assert "Next page: scan:results --offset 2" in capture.out
+    assert "Next page: scan:results --page 2" in capture.out
 
 
 def test_the_word_namespace_never_reaches_the_reader(shell, capture):

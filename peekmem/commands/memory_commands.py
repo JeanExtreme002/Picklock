@@ -118,7 +118,7 @@ def cmd_regions(session: Session, args: List[str]) -> None:
         regions,
         command="memory:regions",
         limit=options.limit,
-        offset=options.offset,
+        page=options.page,
         show_all=options.all,
     )
     pointer_size = process.pointer_size
@@ -137,6 +137,8 @@ def cmd_regions(session: Session, args: List[str]) -> None:
         (LEFT, RIGHT, LEFT, LEFT),
         elapsed=timer.elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 
@@ -188,7 +190,7 @@ def cmd_modules(session: Session, args: List[str]) -> None:
         modules,
         command="memory:modules",
         limit=options.limit,
-        offset=options.offset,
+        page=options.page,
         show_all=options.all,
     )
     pointer_size = process.pointer_size
@@ -207,6 +209,8 @@ def cmd_modules(session: Session, args: List[str]) -> None:
         (LEFT, LEFT, RIGHT, LEFT),
         elapsed=timer.elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 
@@ -240,7 +244,7 @@ def cmd_threads(session: Session, args: List[str]) -> None:
         threads,
         command="memory:threads",
         limit=options.limit,
-        offset=options.offset,
+        page=options.page,
         show_all=options.all,
     )
 
@@ -257,6 +261,8 @@ def cmd_threads(session: Session, args: List[str]) -> None:
         (RIGHT, LEFT, RIGHT),
         elapsed=timer.elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 

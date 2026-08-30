@@ -241,7 +241,7 @@ def _print_results(
     *,
     limit: Optional[int] = None,
     elapsed: Optional[float] = None,
-    offset: int = 0,
+    number: int = 1,
 ) -> None:
     """Print the result set, one page at a time.
 
@@ -252,7 +252,7 @@ def _print_results(
     hex_output = bool(session.option("hex"))
     indexes = range(len(state.addresses))
     page = paginate(
-        session, indexes, command="scan:results", limit=limit, offset=offset
+        session, indexes, command="scan:results", limit=limit, page=number
     )
 
     rows = [
@@ -270,6 +270,8 @@ def _print_results(
         (RIGHT, LEFT, LEFT),
         elapsed=elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 
@@ -722,9 +724,14 @@ def _results_parser() -> CommandParser:
         "shows the value the last scan recorded — the one 'scan:next changed' and "
         "friends compare against — and is filled in only where the two "
         "differ.\n\n"
-        "Row numbers are what '#N' refers to in an address."
+        "Row numbers are what '#N' refers to in an address, and they keep "
+        "counting across pages: row #21 is the first on page 2 of twenty."
     ),
-    examples=("scan:results", "scan:results --all", "scan:results --offset 20 --limit 10"),
+    examples=(
+        "scan:results",
+        "scan:results --all",
+        "scan:results --page 3 --limit 10",
+    ),
 )
 def cmd_results(session: Session, args: List[str]) -> None:
     options = _results_parser().parse_args(args)
@@ -738,7 +745,7 @@ def cmd_results(session: Session, args: List[str]) -> None:
         range(len(state.addresses)),
         command="scan:results",
         limit=options.limit,
-        offset=options.offset,
+        page=options.page,
         show_all=options.all,
     )
     window = list(page.rows)
@@ -772,6 +779,8 @@ def cmd_results(session: Session, args: List[str]) -> None:
         (RIGHT, LEFT, LEFT, LEFT),
         elapsed=timer.elapsed,
         total=page.total,
+        page=page.number,
+        pages=page.count,
         next_page=page.next_page,
     )
 

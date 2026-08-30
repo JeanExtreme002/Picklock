@@ -254,7 +254,12 @@ class Session:
 
         self.detach()
         self.process = process
-        self.process_name = name or processes.process_name(process.pid) or ""
+        # Asked of the OS rather than taken from what was typed. The prompt
+        # carries this name so a write goes where you think it goes, and
+        # 'ps:open --partial chr' would otherwise leave it reading 'chr' —
+        # the fragment matched, not the process matched. The typed name is
+        # the fallback for the systems that decline to give one.
+        self.process_name = processes.process_name(process.pid) or name or ""
         return process
 
     def detach(self) -> bool:

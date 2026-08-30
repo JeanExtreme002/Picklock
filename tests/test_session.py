@@ -73,3 +73,40 @@ def test_result_reference_is_one_based(session: Session):
 
 def test_detaching_without_a_target_is_not_an_error(session: Session):
     assert session.detach() is False
+
+
+def test_the_prompt_name_comes_from_the_os_not_from_what_was_typed(
+    session, monkeypatch
+):
+    """'ps:open --partial chr' must not leave the prompt reading 'chr'.
+
+    The prompt names the target so a write goes where you think it goes; a
+    fragment of the name is not the name.
+    """
+    class FakeProcess:
+        pid = 4242
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("picklock.session.OpenProcess", lambda **kwargs: FakeProcess())
+    monkeypatch.setattr(
+        "picklock.processes.process_name", lambda pid: "chrome.exe"
+    )
+
+    session.attach(name="chr", exact_match=False)
+    assert session.process_name == "chrome.exe"
+
+
+def test_the_typed_name_is_the_fallback_when_the_os_declines(session, monkeypatch):
+    class FakeProcess:
+        pid = 4242
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("picklock.session.OpenProcess", lambda **kwargs: FakeProcess())
+    monkeypatch.setattr("picklock.processes.process_name", lambda pid: None)
+
+    session.attach(name="chrome.exe")
+    assert session.process_name == "chrome.exe"

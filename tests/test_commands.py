@@ -613,18 +613,27 @@ def test_the_help_only_ever_advertises_one_spelling(shell, capture):
         assert '"help ' in hint, f"{line!r} advertises something else: {hint!r}"
 
 
-def test_config_reads_one_setting_back(shell, capture):
-    shell.run_line("config:list limit")
-    assert "limit: 20" in capture.out
+def test_config_list_always_shows_everything(shell, capture):
+    """Eight settings fit on a screen; filtering a list that short is noise."""
+    from picklock.session import SETTINGS
+
+    shell.run_line("config:list")
+    for setting in SETTINGS:
+        assert setting.name in capture.out
+
+
+def test_config_list_takes_no_arguments(shell, capture):
+    assert shell.run_line("config:list limit") is False
+    assert "unrecognized arguments" in capture.err
 
 
 def test_config_set_without_a_value_points_at_the_reader(shell, capture):
-    """Setting and reading are different commands now; say which is which."""
+    """Setting and reading are different commands; say which is which."""
     assert shell.run_line("config:set limit") is False
-    assert "config:list limit" in capture.err
+    assert "config:list" in capture.err
 
 
-@pytest.mark.parametrize("line", ["config:list nosuch", "config:set nosuch on"])
+@pytest.mark.parametrize("line", ["config:set nosuch on", "config:reset nosuch"])
 def test_an_unknown_setting_lists_the_real_ones(shell, capture, line):
     assert shell.run_line(line) is False
     assert "Unknown setting" in capture.err

@@ -485,14 +485,7 @@ def command_words_set() -> set:
 
 
 def _config_list_parser() -> CommandParser:
-    parser = CommandParser("config:list")
-    parser.add_argument(
-        "name",
-        nargs="?",
-        default=None,
-        help="show just this one setting; omit it for all of them",
-    )
-    return parser
+    return CommandParser("config:list")
 
 
 @command(
@@ -500,26 +493,18 @@ def _config_list_parser() -> CommandParser:
     parser=_config_list_parser,
     summary="Show the settings and their current values.",
     details=(
+        "Takes no arguments — the whole table, every time. There are eight of "
+        "them and they fit on a screen, so picking one out would be a filter "
+        "for a list that does not need filtering.\n\n"
         "A change is remembered between runs, so the shell comes back the way "
         "you left it. Only what you changed is stored, so a default that moves "
         "in a later release still reaches you — and 'config:reset' puts one "
         "back, which restarting no longer does.\n\n"
         "The path is printed under the table."
     ),
-    examples=("config:list", "config:list limit"),
 )
 def cmd_config_list(session: Session, args: List[str]) -> None:
-    options = _config_list_parser().parse_args(args)
-
-    if options.name is not None:
-        setting = _find_setting(options.name)
-        session.printer.write(
-            render_vertical(
-                [(setting.name, _format_setting(session.option(setting.name)))]
-            )
-        )
-        session.printer.write()
-        return
+    _config_list_parser().parse_args(args)
 
     rows = [
         (setting.name, _format_setting(session.option(setting.name)), setting.summary)
@@ -567,7 +552,7 @@ def cmd_config_set(session: Session, args: List[str]) -> None:
         if "=" not in name:
             raise CommandError(
                 f"config:set needs a value: 'config:set {name} <value>'. "
-                f"To read one back, use 'config:list {name}'."
+                f"To see what {name} is now, use 'config:list'."
             )
         name, _, value = name.partition("=")
 

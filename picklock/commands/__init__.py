@@ -105,9 +105,13 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "picklock> config:set writable_only on\n"
         "writable_only = on\n"
         "\n"
-        "picklock> config:list limit\n"
+        "picklock> config:list\n"
         "\n"
-        "limit: 20",
+        "+---------+-------+------------------------------------+\n"
+        "| SETTING | VALUE | DESCRIPTION                        |\n"
+        "+---------+-------+------------------------------------+\n"
+        "| limit   |    20 | Rows printed per result table ...  |\n"
+        "+---------+-------+------------------------------------+",
     ),
     Namespace(
         "pointer",

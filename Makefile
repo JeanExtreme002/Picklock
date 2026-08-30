@@ -34,6 +34,7 @@ help:
 	@echo "  $(YELLOW)lint$(NC)             - Run linter (flake8)"
 	@echo "  $(YELLOW)type-check$(NC)       - Run type checker (mypy)"
 	@echo "  $(YELLOW)smoke$(NC)            - Check the installed console script starts"
+	@echo "  $(YELLOW)screenshot$(NC)       - Regenerate the README terminal capture"
 	@echo "  $(YELLOW)clean$(NC)            - Clean build artifacts"
 	@echo "  $(YELLOW)build$(NC)            - Build package"
 	@echo "  $(YELLOW)build-wheel$(NC)      - Build wheel package"
@@ -146,6 +147,15 @@ smoke:
 	$(PYTHON) -m $(PACKAGE_NAME) ps:help > /dev/null
 	$(PYTHON) -m $(PACKAGE_NAME) ps:list --limit 5 > /dev/null
 	@echo "$(GREEN)Console script works!$(NC)"
+
+# Regenerate the terminal capture in the README. Runs the real commands
+# against a real process and screenshots the transcript, so it needs a
+# Chrome/Chromium/Edge on the machine (set BROWSER to point at a specific one).
+.PHONY: screenshot
+screenshot:
+	@echo "$(GREEN)Regenerating the README terminal capture...$(NC)"
+	$(PYTHON) scripts/generate_terminal_image.py
+	@echo "$(GREEN)Screenshot written to assets/screenshots/terminal.png$(NC)"
 
 # Clean build artifacts
 .PHONY: clean

@@ -98,8 +98,11 @@ packages = ["picklock"]
 [tool.hatch.build.targets.wheel.force-include]
 "picklock/py.typed" = "picklock/py.typed"
 
+# The wheel carries the package alone. The sdist additionally drops the
+# repository furniture: CI config, the maintainer-only screenshot helper and
+# the image it produces, none of which a person installing Picklock needs.
 [tool.hatch.build.targets.sdist]
-exclude = ["/.github"]
+exclude = ["/.github", "/scripts", "/assets"]
 
 [tool.mypy]
 ignore_missing_imports = true

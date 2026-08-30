@@ -13,13 +13,16 @@ you chose would be pointless if you had to choose it again every session —
 and they are written to :mod:`picklock.aliases`'s file the moment they change.
 """
 
-from typing import List
+from typing import Dict, List
 
-from .. import aliases as storage
+from .. import store
 from ..errors import CommandError
 from ..output import LEFT, render_vertical
 from ..session import Session
 from . import CommandParser, command, command_words, lookup, namespaces
+
+#: The file the aliases live in, inside Picklock's config directory.
+_FILE = "aliases.json"
 
 #: Characters that would make an alias unusable or ambiguous. A colon is the
 #: separator the command hierarchy is built on, and a leading dash would read
@@ -76,6 +79,24 @@ def _validate_target(words: List[str]) -> List[str]:
     return words
 
 
+def _stored() -> Dict[str, List[str]]:
+    """The aliases as they are on disk, with anything unusable left out.
+
+    Hand-editing this file is expected, so a single string is accepted where a
+    list of words belongs — ``"f": "scan:value string"`` means what it looks
+    like.
+    """
+    aliases: Dict[str, List[str]] = {}
+    for name, words in store.load(_FILE).items():
+        if not isinstance(name, str):
+            continue
+        if isinstance(words, str):
+            words = words.split()
+        if isinstance(words, list) and words and all(isinstance(w, str) for w in words):
+            aliases[name] = list(words)
+    return aliases
+
+
 def restore(session: Session) -> List[str]:
     """Load the stored aliases into ``session``; return the ones dropped.
 
@@ -85,7 +106,7 @@ def restore(session: Session) -> List[str]:
     you start up.
     """
     dropped = []
-    for name, words in sorted(storage.load().items()):
+    for name, words in sorted(_stored().items()):
         if words[0] in namespaces():
             session.aliases[name] = words
             continue
@@ -105,10 +126,10 @@ def _persist(session: Session) -> None:
     reason to refuse the alias: it still works for this session.
     """
     try:
-        storage.save(session.aliases)
+        store.save(_FILE, session.aliases)
     except OSError as error:
         session.printer.note(
-            f"Could not save to {storage.path()}: {error}. "
+            f"Could not save to {store.path(_FILE)}: {error}. "
             "The alias works for this session only."
         )
 
@@ -191,7 +212,7 @@ def cmd_alias_list(session: Session, args: List[str]) -> None:
         (name, " ".join(words)) for name, words in sorted(session.aliases.items())
     ]
     session.printer.table(("ALIAS", "STANDS FOR"), rows, (LEFT, LEFT))
-    session.printer.write(f"Stored in {storage.path()}")
+    session.printer.write(f"Stored in {store.path(_FILE)}")
     session.printer.write()
 
 

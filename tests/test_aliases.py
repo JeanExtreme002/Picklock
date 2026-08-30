@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from picklock import aliases as storage
+from picklock import store
 from picklock.commands.alias_commands import restore
 from picklock.errors import CommandError
 from picklock.session import Session
@@ -163,14 +163,14 @@ def test_aliases_complete(shell):
 
 def test_adding_writes_the_file(shell):
     shell.run_line("alias:add r memory:read")
-    assert storage.load() == {"r": ["memory:read"]}
+    assert store.load("aliases.json") == {"r": ["memory:read"]}
 
 
 def test_removing_rewrites_the_file(shell):
     shell.run_line("alias:add r memory:read")
     shell.run_line("alias:add w memory:write")
     shell.run_line("alias:remove r")
-    assert storage.load() == {"w": ["memory:write"]}
+    assert store.load("aliases.json") == {"w": ["memory:write"]}
 
 
 def test_a_new_session_gets_them_back(shell, capture):
@@ -184,7 +184,7 @@ def test_a_new_session_gets_them_back(shell, capture):
 
 def test_restoring_drops_an_alias_whose_command_is_gone(capture):
     """A command can be renamed between releases; the name should not linger."""
-    storage.save({"ok": ["memory:read"], "stale": ["memory:teleport"]})
+    store.save("aliases.json", {"ok": ["memory:read"], "stale": ["memory:teleport"]})
 
     session = Session(capture.printer)
     assert restore(session) == ["stale"]
@@ -200,7 +200,7 @@ def test_a_missing_file_is_the_ordinary_first_run(capture):
 @pytest.mark.parametrize("content", ["not json at all", "[]", '{"r": 7}', '{"r": []}'])
 def test_a_malformed_file_loses_the_aliases_but_not_the_shell(content, capture):
     """Refusing to start over a stray character would be the worse bug."""
-    path = pathlib.Path(storage.path())
+    path = pathlib.Path(store.path("aliases.json"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
@@ -211,7 +211,7 @@ def test_a_malformed_file_loses_the_aliases_but_not_the_shell(content, capture):
 
 def test_a_hand_written_string_is_tolerated(capture):
     """Someone will edit this file by hand; accept the obvious spelling."""
-    path = pathlib.Path(storage.path())
+    path = pathlib.Path(store.path("aliases.json"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text('{"f": "scan:value string"}', encoding="utf-8")
 
@@ -223,10 +223,10 @@ def test_a_hand_written_string_is_tolerated(capture):
 def test_a_write_failure_is_reported_but_not_fatal(shell, capture, monkeypatch):
     """A read-only home is a reason to say so, not to refuse the alias."""
 
-    def refuse(_aliases):
+    def refuse(_filename, _data):
         raise OSError("read-only file system")
 
-    monkeypatch.setattr(storage, "save", refuse)
+    monkeypatch.setattr(store, "save", refuse)
     shell.run_line("alias:add r memory:read")
 
     assert shell.session.aliases == {"r": ["memory:read"]}
@@ -237,15 +237,15 @@ def test_a_write_failure_is_reported_but_not_fatal(shell, capture, monkeypatch):
 def test_the_file_is_replaced_atomically(shell):
     """An interrupted write must not leave a half-file for the next run."""
     shell.run_line("alias:add r memory:read")
-    directory = pathlib.Path(storage.directory())
+    directory = pathlib.Path(store.directory())
     assert [item.name for item in directory.iterdir()] == ["aliases.json"]
 
 
 def test_the_location_follows_the_environment(monkeypatch, tmp_path):
-    monkeypatch.setenv(storage.ENV_DIR, str(tmp_path / "explicit"))
-    assert storage.directory() == str(tmp_path / "explicit")
+    monkeypatch.setenv(store.ENV_DIR, str(tmp_path / "explicit"))
+    assert store.directory() == str(tmp_path / "explicit")
 
-    monkeypatch.delenv(storage.ENV_DIR)
+    monkeypatch.delenv(store.ENV_DIR)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     if sys.platform != "win32":
-        assert storage.directory() == str(tmp_path / "xdg" / "picklock")
+        assert store.directory() == str(tmp_path / "xdg" / "picklock")

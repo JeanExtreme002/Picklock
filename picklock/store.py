@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 """
-Where the aliases are kept between sessions.
+Where Picklock keeps what it remembers between runs.
 
-This is the only file Picklock writes. Settings deliberately do not persist —
-they tune one session's output and a stale one would be a surprise on the next
-run — but an alias is a name you chose, and having to choose it again every
-time would make the feature pointless.
+Plain JSON files, one per kind of thing — the aliases you defined, the settings
+you changed. This module knows how to find them, read them and replace them
+safely; what belongs inside each one is the business of the command that owns
+it.
 
 The location follows the usual convention for the platform:
 ``$XDG_CONFIG_HOME/picklock`` (or ``~/.config/picklock``) on Linux and macOS,
@@ -14,22 +14,19 @@ The location follows the usual convention for the platform:
 home directory, where readline's own convention puts it — that is an artefact
 of the line editor rather than configuration.
 
-Nothing here validates what it reads: a name that no longer points at a real
-command is the caller's problem to report, not this module's to silently fix.
+Nothing here validates what it reads: a setting that no longer exists, or a
+name that no longer points at a real command, is the caller's problem to report
+— not this module's to silently fix.
 """
 
 import json
 import os
 import sys
 import tempfile
-from typing import Dict, List
+from typing import Any, Dict
 
-#: Overridable so a test — or a throwaway session — can use its own file.
+#: Overridable so a test — or a throwaway session — can use its own files.
 ENV_DIR = "PICKLOCK_CONFIG_DIR"
-
-_FILENAME = "aliases.json"
-
-Aliases = Dict[str, List[str]]
 
 
 def directory() -> str:
@@ -47,13 +44,13 @@ def directory() -> str:
     return os.path.join(base, "picklock")
 
 
-def path() -> str:
-    """The alias file itself."""
-    return os.path.join(directory(), _FILENAME)
+def path(filename: str) -> str:
+    """The full path of one of Picklock's files."""
+    return os.path.join(directory(), filename)
 
 
-def load() -> Aliases:
-    """Read the stored aliases, or return none.
+def load(filename: str) -> Dict[str, Any]:
+    """Read one file as a mapping, or return an empty one.
 
     A missing file is the ordinary case on a first run. An unreadable or
     malformed one returns nothing as well: a shell that refuses to start
@@ -61,27 +58,16 @@ def load() -> Aliases:
     than the one it is reporting.
     """
     try:
-        with open(path(), "r", encoding="utf-8") as handle:
+        with open(path(filename), "r", encoding="utf-8") as handle:
             stored = json.load(handle)
     except (OSError, ValueError):
         return {}
 
-    if not isinstance(stored, dict):
-        return {}
-
-    aliases: Aliases = {}
-    for name, words in stored.items():
-        if not isinstance(name, str):
-            continue
-        if isinstance(words, str):  # Tolerate a hand-edited single string.
-            words = words.split()
-        if isinstance(words, list) and words and all(isinstance(w, str) for w in words):
-            aliases[name] = list(words)
-    return aliases
+    return stored if isinstance(stored, dict) else {}
 
 
-def save(aliases: Aliases) -> None:
-    """Write the aliases, replacing whatever was there.
+def save(filename: str, data: Dict[str, Any]) -> None:
+    """Write one file, replacing whatever was there.
 
     Written to a temporary file in the same directory and moved into place, so
     an interrupted write cannot leave a half-file behind — the next run would
@@ -90,20 +76,20 @@ def save(aliases: Aliases) -> None:
     :raises OSError: when the file cannot be written. The caller decides
         whether that is worth interrupting them over.
     """
-    target = path()
+    target = path(filename)
     os.makedirs(os.path.dirname(target), exist_ok=True)
 
     handle = tempfile.NamedTemporaryFile(
         "w",
         encoding="utf-8",
         dir=os.path.dirname(target),
-        prefix=_FILENAME,
+        prefix=filename,
         suffix=".tmp",
         delete=False,
     )
     try:
         with handle:
-            json.dump(aliases, handle, indent=2, sort_keys=True)
+            json.dump(data, handle, indent=2, sort_keys=True)
             handle.write("\n")
         os.replace(handle.name, target)
     except BaseException:
@@ -114,4 +100,4 @@ def save(aliases: Aliases) -> None:
         raise
 
 
-__all__ = ("ENV_DIR", "Aliases", "directory", "load", "path", "save")
+__all__ = ("ENV_DIR", "directory", "load", "path", "save")

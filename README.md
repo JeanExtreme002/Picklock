@@ -178,7 +178,7 @@ and `help scan` all produce the same output.
 | **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
 | **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
-| **`config:`** | `list` · `set` |
+| **`config:`** | `list` · `set` · `reset` |
 | **`alias:`** | `add` · `list` · `remove` |
 | Top level | `help` · `source` · `version` · `clear` · `exit` |
 
@@ -255,15 +255,15 @@ So the whole chain fits on one line:
 
 ### Where things are kept
 
-Aliases are the one thing Picklock stores between runs — a name you chose would
-be pointless if you had to choose it again every session. They live in
-`$XDG_CONFIG_HOME/picklock/aliases.json` (`~/.config/picklock/aliases.json` by
-default, `%APPDATA%\picklock` on Windows); `alias:list` prints the path, and
-`PICKLOCK_CONFIG_DIR` moves it.
+Picklock remembers your aliases and your settings, so the shell comes back the
+way you left it. Both live in `$XDG_CONFIG_HOME/picklock/` — by default
+`~/.config/picklock/`, or `%APPDATA%\picklock` on Windows — as
+`aliases.json` and `settings.json`. `alias:list` and `config:list` print their
+paths, and `PICKLOCK_CONFIG_DIR` moves both.
 
-Settings do not persist, on purpose: they tune one session's output, and a
-stale one would be a surprise on the next run. Put `config:set` lines in a file
-and `source` it to reuse a setup.
+Only the settings you actually changed are stored, so a default that moves in a
+later release still reaches you. `config:reset` puts one back, or all of them —
+which is what restarting used to do.
 
 ## Permissions
 

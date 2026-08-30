@@ -25,6 +25,7 @@ import PyMemoryEditor
 from . import __version__, dependencies
 from .commands import top_level_listing
 from .commands.alias_commands import restore as restore_aliases
+from .commands.session_commands import restore as restore_settings
 from .errors import CommandError, PicklockError
 from .output import Printer
 from .session import Session
@@ -200,6 +201,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             % (
                 "an alias" if len(dropped) == 1 else "some aliases",
                 ", ".join(sorted(dropped)),
+            )
+        )
+
+    # Settings come back too. Restored before --limit is applied, so a flag
+    # given on this run still wins over what was stored on the last one.
+    forgotten = restore_settings(session)
+    if forgotten:
+        printer.note(
+            "Ignored %s no longer recognised: %s."
+            % (
+                "a stored setting" if len(forgotten) == 1 else "stored settings",
+                ", ".join(sorted(forgotten)),
             )
         )
 

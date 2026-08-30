@@ -66,6 +66,7 @@ picklock/
 ├── valuetypes.py      # The type vocabulary and the signed/unsigned bridge
 ├── output.py          # Every byte Picklock prints: tables, hexdump, footers
 ├── processes.py       # Cross-platform process enumeration
+├── store.py           # The JSON files Picklock remembers things in
 ├── errors.py          # CommandError and friends
 └── commands/          # One module per group; each registers with @command
 ```

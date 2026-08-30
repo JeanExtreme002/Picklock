@@ -9,7 +9,7 @@ from typing import List, Tuple
 
 import PyMemoryEditor
 
-from .. import __version__, valuetypes
+from .. import __version__, store, valuetypes
 from ..errors import CommandError, ExitShell
 from ..output import (
     LEFT,
@@ -81,6 +81,47 @@ _TOPICS = {
     "addresses": ("Writing an address", _ADDRESS_TOPIC),
     "scanning": ("The scan / refine cycle", _SCANNING_TOPIC),
 }
+
+
+#: The file the changed settings live in, beside the aliases.
+_SETTINGS_FILE = "settings.json"
+
+
+def restore(session: Session) -> List[str]:
+    """Load the stored settings into ``session``; return the ones dropped.
+
+    A name or a value the current release no longer accepts is left out rather
+    than allowed to fail later — a setting renamed between versions should cost
+    one line of explanation, not a confusing error the first time it is used.
+    """
+    dropped = []
+    for name, value in sorted(store.load(_SETTINGS_FILE).items()):
+        try:
+            session.set_option(str(name), str(value))
+        except CommandError:
+            dropped.append(str(name))
+    return dropped
+
+
+def _persist(session: Session) -> None:
+    """Write the settings that differ from their defaults.
+
+    Only the differences, so the file stays a record of what *you* changed: a
+    default that moves in a later release then reaches you, instead of being
+    pinned forever by a value you never chose.
+    """
+    changed = {
+        setting.name: _format_setting(session.option(setting.name))
+        for setting in SETTINGS
+        if session.option(setting.name) != setting.default
+    }
+    try:
+        store.save(_SETTINGS_FILE, changed)
+    except OSError as error:
+        session.printer.note(
+            f"Could not save to {store.path(_SETTINGS_FILE)}: {error}. "
+            "The change holds for this session only."
+        )
 
 
 def _find_setting(name: str):
@@ -435,13 +476,13 @@ def _config_list_parser() -> CommandParser:
 @command(
     "config:list",
     parser=_config_list_parser,
-    summary="Show the session's settings and their current values.",
+    summary="Show the settings and their current values.",
     details=(
-        "Settings live for the session only. They tune one session's output, "
-        "and a stale one would be a surprise on the next run, so a fresh shell "
-        "always starts from the documented defaults — unlike aliases, which "
-        "are remembered. Put the 'config:set' lines in a script and run it "
-        "with 'source' to reuse a setup."
+        "A change is remembered between runs, so the shell comes back the way "
+        "you left it. Only what you changed is stored, so a default that moves "
+        "in a later release still reaches you — and 'config:reset' puts one "
+        "back, which restarting no longer does.\n\n"
+        "The path is printed under the table."
     ),
     examples=("config:list", "config:list limit"),
 )
@@ -463,6 +504,8 @@ def cmd_config_list(session: Session, args: List[str]) -> None:
         for setting in SETTINGS
     ]
     session.printer.table(("SETTING", "VALUE", "DESCRIPTION"), rows, (LEFT, RIGHT, LEFT))
+    session.printer.write(f"Stored in {store.path(_SETTINGS_FILE)}")
+    session.printer.write()
 
 
 def _config_set_parser() -> CommandParser:
@@ -482,7 +525,7 @@ def _config_set_parser() -> CommandParser:
 @command(
     "config:set",
     parser=_config_set_parser,
-    summary="Change one of the session's settings.",
+    summary="Change one of the settings.",
     details=(
         "'config:set limit 50' and 'config:set limit=50' do the same thing.\n\n"
         "The change lasts for the session and no longer. Run 'config:list' to "
@@ -508,7 +551,53 @@ def cmd_config_set(session: Session, args: List[str]) -> None:
 
     _find_setting(name)  # Reject an unknown name before parsing its value.
     applied = session.set_option(name, value)
+    _persist(session)
     session.printer.ok(f"{name.strip().lower()} = {_format_setting(applied)}")
+    session.printer.write()
+
+
+def _config_reset_parser() -> CommandParser:
+    parser = CommandParser("config:reset")
+    parser.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="the setting to put back; omit it to reset every one",
+    )
+    return parser
+
+
+@command(
+    "config:reset",
+    parser=_config_reset_parser,
+    summary="Put a setting back to its default.",
+    details=(
+        "Settings are remembered between runs, so restarting no longer undoes "
+        "one. This is what undoes it — for a single setting, or for all of "
+        "them at once.\n\n"
+        "A setting back at its default is dropped from the stored file rather "
+        "than written out as a default, so a default that moves in a later "
+        "release reaches you."
+    ),
+    examples=("config:reset limit", "config:reset"),
+)
+def cmd_config_reset(session: Session, args: List[str]) -> None:
+    options = _config_reset_parser().parse_args(args)
+
+    if options.name is not None:
+        setting = _find_setting(options.name)
+        session.set_option(setting.name, _format_setting(setting.default))
+        _persist(session)
+        session.printer.ok(
+            f"{setting.name} = {_format_setting(setting.default)} (the default)"
+        )
+        session.printer.write()
+        return
+
+    for setting in SETTINGS:
+        session.set_option(setting.name, _format_setting(setting.default))
+    _persist(session)
+    session.printer.ok(f"All {len(SETTINGS)} settings are back to their defaults.")
     session.printer.write()
 
 

@@ -12,7 +12,7 @@ import io
 
 import pytest
 
-from picklock import aliases
+from picklock import store
 from picklock.output import Printer
 from picklock.session import Session
 from picklock.shell import Shell
@@ -43,13 +43,13 @@ class Capture:
 
 @pytest.fixture(autouse=True)
 def isolated_config(tmp_path, monkeypatch):
-    """Point the alias file at a throwaway directory, for every test.
+    """Point Picklock's files at a throwaway directory, for every test.
 
-    Autouse and unconditional: the suite must never read or write the config
-    of whoever is running it, and remembering to opt in per test is exactly
-    the kind of thing that gets forgotten once.
+    Autouse and unconditional: the suite must never read or write the files of
+    whoever is running it, and remembering to opt in per test is exactly the
+    kind of thing that gets forgotten once.
     """
-    monkeypatch.setenv(aliases.ENV_DIR, str(tmp_path / "config"))
+    monkeypatch.setenv(store.ENV_DIR, str(tmp_path / "config"))
 
 
 @pytest.fixture

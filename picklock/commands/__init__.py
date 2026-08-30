@@ -101,7 +101,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
     Namespace(
         "config",
         "Configuration",
-        "Show or change the session's settings.",
+        "Show or change how Picklock behaves.",
         "picklock> config:set writable_only on\n"
         "writable_only = on\n"
         "\n"

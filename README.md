@@ -179,6 +179,7 @@ and `help scan` all produce the same output.
 | **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
 | **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
 | **`config:`** | `list` · `set` |
+| **`alias:`** | `add` · `list` · `remove` |
 | Top level | `help` · `source` · `version` · `clear` · `exit` |
 
 `help <command>` — or `<command> --help` — documents each one in full: every
@@ -223,6 +224,10 @@ Highlights:
 - **Progress you can trust.** Long scans report a percentage that advances
   whether or not anything is being found, and Ctrl+C stops a scan while keeping
   what it already found.
+- **Names of your own.** `alias:add r memory:read` makes `r` do the same
+  thing; `alias:add find-text scan:value string` carries arguments along, so
+  `find-text Peekmem` runs `scan:value string Peekmem`. A name already taken
+  by a command is refused rather than shadowing it.
 - **Every listing pages the same way.** `--limit`, `--page` and `--all` on each
   of them, a footer that says where you are — `Showing 20 of 3184 rows — page
   1 of 160` — and the command for the next page spelled out underneath, so it

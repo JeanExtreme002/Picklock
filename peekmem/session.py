@@ -93,6 +93,11 @@ class Session:
         self.settings: Dict[str, Any] = {
             setting.name: setting.default for setting in SETTINGS
         }
+        #: User-defined aliases: the word typed, mapped to the words it stands
+        #: for. Kept here rather than in the command registry because they
+        #: belong to this session and die with it, exactly like the settings —
+        #: Peekmem writes no config file.
+        self.aliases: Dict[str, List[str]] = {}
         self._regions: Optional[List[MemoryRegion]] = None
         self._modules: Optional[Dict[str, int]] = None
         # Set by the shell that owns this session, so 'source' can feed a
@@ -277,6 +282,21 @@ class Session:
                     table.setdefault(module.name.lower(), module.base_address)
             self._modules = table
         return self._modules
+
+    # -- aliases -----------------------------------------------------------
+
+    def expand_alias(self, word: str, args: Sequence[str]) -> Tuple[str, List[str]]:
+        """Substitute an alias, returning the command word and its arguments.
+
+        Expanded once, never repeatedly: an alias is checked when it is
+        created, so its target is always a real command and a chain cannot
+        form. One pass therefore always lands somewhere real, and no depth
+        limit or cycle check is needed to promise it.
+        """
+        tokens = self.aliases.get(word.strip().lower())
+        if not tokens:
+            return word, list(args)
+        return tokens[0], list(tokens[1:]) + list(args)
 
     # -- hooks used by the address expression parser ----------------------
 

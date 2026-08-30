@@ -86,6 +86,19 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "1 row in set (0.02 sec)",
     ),
     Namespace(
+        "alias",
+        "Aliases",
+        "Give a command a shorter name of your own.",
+        "peekmem> alias:add r memory:read\n"
+        "r = memory:read\n"
+        "\n"
+        "peekmem> alias:add find-text scan:value string\n"
+        "find-text = scan:value string\n"
+        "\n"
+        "peekmem> find-text Peekmem\n"
+        "(runs 'scan:value string Peekmem')",
+    ),
+    Namespace(
         "config",
         "Configuration",
         "Show or change the session's settings.",
@@ -514,7 +527,8 @@ def paginate(
     return Page(window, total, page, pages, offset, next_page)
 
 
-from . import memory_commands  # noqa: E402,F401  (registration side effect)
+from . import alias_commands  # noqa: E402,F401  (registration side effect)
+from . import memory_commands  # noqa: E402,F401
 from . import pointer_commands  # noqa: E402,F401
 from . import ps_commands  # noqa: E402,F401
 from . import scan_commands  # noqa: E402,F401

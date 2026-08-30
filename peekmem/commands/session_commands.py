@@ -390,6 +390,17 @@ def cmd_help(session: Session, args: List[str]) -> None:
         print_namespace(session, topic)
         return
 
+    # 'help r' where r is an alias: describe what it stands for. Anyone who
+    # named a command is entitled to ask about it by the name they gave it.
+    if topic in session.aliases:
+        stands_for = session.aliases[topic]
+        session.printer.write(
+            f"{topic} is an alias for '{' '.join(stands_for)}'."
+        )
+        session.printer.write()
+        _print_command_help(session, stands_for[0])
+        return
+
     _print_command_help(session, topic)
 
     # 'scan' and 'pointer' are aliases *and* namespaces. The alias wins, so

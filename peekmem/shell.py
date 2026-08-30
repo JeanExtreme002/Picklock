@@ -112,6 +112,12 @@ class Shell:
             if parsed is None:
                 return True
             word, args = parsed
+
+            # An alias stands for the first word, so it is substituted before
+            # anything else looks at the line: what follows sees only real
+            # commands, and '--help' on an alias describes what it stands for.
+            word, args = self.session.expand_alias(word, args)
+
             entry = self._resolve(word, args)
 
             if any(argument in _HELP_FLAGS for argument in args):
@@ -346,9 +352,11 @@ class Shell:
         if first_word:
             # Namespaces complete too, so tabbing from nothing shows the five
             # groups before it shows forty commands.
-            candidates: Sequence[str] = command_words() + [
-                name + ":" for name in namespaces()
-            ]
+            candidates: Sequence[str] = (
+                command_words()
+                + [name + ":" for name in namespaces()]
+                + list(self.session.aliases)
+            )
         else:
             head = buffer.strip().split()[0].lower()
             if head in ("config:set", "config:list"):

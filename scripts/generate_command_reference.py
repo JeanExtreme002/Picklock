@@ -31,7 +31,6 @@ sys.path.insert(0, str(REPO_ROOT))
 # Importing the command modules is what registers them; the shell does it for
 # its own reasons, and importing it here has the same effect.
 import picklock.shell  # noqa: E402,F401
-from picklock import __version__  # noqa: E402
 from picklock.commands import (  # noqa: E402
     NAMESPACES,
     Command,
@@ -48,9 +47,9 @@ HEADER = """<!--
 
 # Command reference
 
-Every command Picklock {version} accepts, with the arguments its parser
-declares. This page is generated from the code, so it cannot drift from what
-`help` prints at the prompt.
+Every command Picklock accepts, with the arguments its parser declares. This
+page is generated from the code, so it cannot drift from what `help` prints at
+the prompt.
 
 Commands are named `namespace:command`. Typing a namespace on its own
 (`scan`) prints that namespace's page; `help <command>` prints one command's
@@ -114,7 +113,7 @@ def write_command(out: TextIO, entry: Command) -> None:
 
 
 def write_reference(out: TextIO) -> None:
-    out.write(HEADER.format(version=__version__))
+    out.write(HEADER)
 
     for namespace in NAMESPACES:
         entries = [

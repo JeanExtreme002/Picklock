@@ -6,10 +6,37 @@ Everything else needs a target, so this is always the first thing you do.
 
 ```
 picklock> ps:list
++-------+--------------------+
+| PID   | NAME               |
++-------+--------------------+
+|  2104 | audiodg.exe        |
+|  1204 | chrome.exe         |
+|  1288 | chrome.exe         |
+|  1355 | chrome.exe         |
+|   612 | csrss.exe          |
+|  1088 | dwm.exe            |
+|  3320 | explorer.exe       |
+| 42117 | game-launcher.exe  |
+| 41902 | game.exe           |
+| 43004 | gamehelper.exe     |
+| 42130 | GameOverlayUI.exe  |
+|   704 | lsass.exe          |
+|   688 | services.exe       |
+|  2960 | sihost.exe         |
+|  1932 | spoolsv.exe        |
+| 39880 | steam.exe          |
+| 40122 | steamwebhelper.exe |
+|   932 | svchost.exe        |
+|  1016 | svchost.exe        |
+|  5544 | Taskmgr.exe        |
++-------+--------------------+
+Showing 20 of 312 rows — page 1 of 16 (0.04 sec)
+Next page: ps:list --page 2
 ```
 
-On its own it lists every process you can see, which on a desktop is hundreds
-of rows. Give it a substring instead:
+On its own it lists every process you can see — 312 of them here, and a page
+of 20 at a time. That is a lot of scrolling to find one name, so give it a
+substring instead:
 
 ```
 picklock> ps:list chrome

@@ -640,7 +640,7 @@ def _watch_parser() -> CommandParser:
         type=int,
         default=0,
         metavar="N",
-        help="stop after N samples; without it, watch runs until Ctrl+C",
+        help="stop after N samples; without it, watch runs until you press ENTER",
     )
     parser.add_argument(
         "-a",

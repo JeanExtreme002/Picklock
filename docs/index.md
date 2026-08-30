@@ -123,5 +123,6 @@ troubleshooting
 
 contributing
 security
+funding
 license
 ```

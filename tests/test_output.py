@@ -90,3 +90,28 @@ def test_clear_screen_wipes_screen_and_scrollback(capture):
 def test_progress_is_silent_when_stderr_is_not_a_terminal(capture):
     capture.printer.progress("Scanning", 0.5)
     assert capture.err == ""
+
+
+def test_dim_is_a_no_op_when_colour_is_off(capture):
+    assert capture.printer.dim("[game.exe:42]") == "[game.exe:42]"
+
+
+def test_dim_uses_the_faint_attribute_not_a_colour(capture):
+    """Faint follows the terminal's own foreground, so it reads on any theme."""
+    capture.printer.color = True
+    assert capture.printer.dim("x") == "\033[2mx\033[0m"
+
+
+def test_dim_brackets_its_escapes_for_readline(capture):
+    """Unbracketed escapes make readline miscount the prompt and misplace the
+    cursor as soon as the line wraps."""
+    capture.printer.color = True
+    styled = capture.printer.dim("x", in_prompt=True)
+    assert styled == "\001\033[2m\002x\001\033[0m\002"
+    # Every escape sits inside a pair of markers.
+    assert styled.count("\001") == styled.count("\002") == 2
+
+
+def test_dim_leaves_empty_text_alone(capture):
+    capture.printer.color = True
+    assert capture.printer.dim("") == ""

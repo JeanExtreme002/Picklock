@@ -122,8 +122,9 @@ echo "ps:list" | peekmem                             # a pipe
 ```
 
 Results go to stdout and errors to stderr, tables are plain ASCII, colour is
-off whenever the output is not a terminal, and a failing command exits
-non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave.
+off whenever the output is not a terminal — in a terminal it amounts to a red
+`ERROR` and a dimmed target in the prompt, and nothing else — and a failing
+command exits non-zero — so `peekmem -e ... | grep`, `>> log.txt` and `&& deploy` all behave.
 
 ## What it can do
 

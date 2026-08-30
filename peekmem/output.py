@@ -25,7 +25,19 @@ RIGHT = "right"
 LEFT = "left"
 
 _RED = "\033[31m"
+#: Faint, rather than any actual colour. It is derived from whatever the
+#: terminal's foreground already is, so it reads as "quieter" on a light theme
+#: and a dark one alike, and a terminal that does not implement it simply shows
+#: ordinary text — the worst case is no emphasis, never an unreadable one.
+_DIM = "\033[2m"
 _RESET = "\033[0m"
+
+#: readline measures a prompt to know where the cursor is. Escapes bracketed
+#: by these are excluded from that measurement; without them, a coloured prompt
+#: makes editing land in the wrong column as soon as the line wraps or history
+#: is recalled.
+_RL_IGNORE_START = "\001"
+_RL_IGNORE_END = "\002"
 
 
 def supports_color(stream: TextIO) -> bool:
@@ -251,6 +263,23 @@ class Printer:
             self.stdout.write("\033[2J\033[3J\033[H")
             self.stdout.flush()
         return True
+
+    def dim(self, text: str, *, in_prompt: bool = False) -> str:
+        """Return ``text`` faintly styled, or unchanged when colour is off.
+
+        :param in_prompt: bracket the escapes for readline. Pass it only when
+            readline is actually handling the line — the markers are invisible
+            to readline and literal control characters to anything else.
+        """
+        if not self.color or not text:
+            return text
+        if in_prompt:
+            return (
+                f"{_RL_IGNORE_START}{_DIM}{_RL_IGNORE_END}"
+                f"{text}"
+                f"{_RL_IGNORE_START}{_RESET}{_RL_IGNORE_END}"
+            )
+        return f"{_DIM}{text}{_RESET}"
 
     def note(self, message: str) -> None:
         """Print an aside — a warning that did not stop the command."""

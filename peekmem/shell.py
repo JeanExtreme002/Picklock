@@ -65,6 +65,9 @@ class Shell:
         self.session.shell = self
         self.stdin = stdin if stdin is not None else sys.stdin
         self._history_loaded = False
+        # True once readline is driving input(), which decides whether the
+        # prompt's escapes need its width-ignoring brackets.
+        self._readline = False
 
     # -- parsing and dispatch ---------------------------------------------
 
@@ -224,11 +227,17 @@ class Shell:
     # -- the interactive loop ---------------------------------------------
 
     def prompt(self) -> str:
-        """The prompt, naming the target so you cannot write to the wrong one."""
+        """The prompt, naming the target so you cannot write to the wrong one.
+
+        The target is dimmed rather than coloured: it is there to be noticed
+        out of the corner of your eye — a reminder that writes are going
+        somewhere — not to compete with the output above it.
+        """
         if self.session.process is None:
             return "peekmem> "
         name = self.session.process_name or "?"
-        return f"peekmem [{name}:{self.session.process.pid}]> "
+        target = f"[{name}:{self.session.process.pid}]"
+        return f"peekmem {self.printer.dim(target, in_prompt=self._readline)}> "
 
     def banner(self) -> str:
         import PyMemoryEditor
@@ -294,6 +303,8 @@ class Shell:
             import readline
         except ImportError:  # pragma: no cover - Windows without pyreadline3
             return
+
+        self._readline = True
 
         try:
             readline.read_history_file(HISTORY_FILE)

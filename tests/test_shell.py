@@ -68,8 +68,43 @@ def test_run_lines_returns_the_exit_status(shell):
     assert shell.run_lines(["version", "exit"]) == 0
 
 
+class _FakeProcess:
+    pid = 4242
+
+
+def _attach(shell):
+    shell.session.process = _FakeProcess()  # type: ignore[assignment]
+    shell.session.process_name = "game.exe"
+
+
 def test_prompt_names_the_target(shell):
     assert shell.prompt() == "peekmem> "
+    _attach(shell)
+    assert shell.prompt() == "peekmem [game.exe:4242]> "
+
+
+def test_the_target_is_dimmed_when_colour_is_on(shell, capture):
+    """A reminder that writes are going somewhere, not a thing to look at."""
+    capture.printer.color = True
+    _attach(shell)
+    assert shell.prompt() == "peekmem \033[2m[game.exe:4242]\033[0m> "
+
+
+def test_an_empty_prompt_is_never_styled(shell, capture):
+    """Nothing is attached, so there is nothing to point at."""
+    capture.printer.color = True
+    assert shell.prompt() == "peekmem> "
+    assert "\033" not in shell.prompt()
+
+
+def test_the_prompt_brackets_its_escapes_only_under_readline(shell, capture):
+    capture.printer.color = True
+    _attach(shell)
+    assert "\001" not in shell.prompt()
+
+    shell._readline = True
+    assert "\001" in shell.prompt()
+    assert shell.prompt().count("\001") == shell.prompt().count("\002")
 
 
 def test_help_lists_every_namespace(shell, capture):

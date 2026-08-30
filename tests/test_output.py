@@ -115,3 +115,12 @@ def test_dim_brackets_its_escapes_for_readline(capture):
 def test_dim_leaves_empty_text_alone(capture):
     capture.printer.color = True
     assert capture.printer.dim("") == ""
+
+
+def test_grey_is_a_no_op_when_colour_is_off(capture):
+    assert capture.printer.grey("peekmem> help") == "peekmem> help"
+
+
+def test_grey_is_bright_black(capture):
+    capture.printer.color = True
+    assert capture.printer.grey("x") == "\033[90mx\033[0m"

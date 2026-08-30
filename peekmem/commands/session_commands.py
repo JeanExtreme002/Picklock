@@ -163,12 +163,13 @@ def _command_rows(commands) -> List[Tuple[str, str]]:
 
 
 def _print_example(session: Session, example: str, *, indent: int = 0) -> None:
-    """Print an indented ``Example:`` block, verbatim but dimmed.
+    """Print an indented ``Example:`` block, verbatim but greyed.
 
     The label stays at full strength so the block is findable when skimming;
-    its contents are dimmed, because a transcript sitting inside a help page is
-    there to be recognised as a transcript at a glance, not read word by word
-    on the way past.
+    its contents are greyed, because a transcript sitting inside a help page is
+    there to be recognised as a transcript at a glance — set apart from the
+    prose, but still readable line after line, which is why it is grey rather
+    than the fainter shade the prompt uses.
 
     ``indent`` nests the whole block, which is how the top-level help tucks its
     example inside the command listing rather than floating it above.
@@ -180,9 +181,9 @@ def _print_example(session: Session, example: str, *, indent: int = 0) -> None:
     printer.write(f"{pad}Example:")
     printer.write()
     for line in example.splitlines():
-        # Dimmed a line at a time: one escape spanning a whole block survives
+        # Styled a line at a time: one escape spanning a whole block survives
         # neither a pager nor a terminal that reflows it.
-        printer.write(f"{pad}    {printer.dim(line)}" if line else "")
+        printer.write(f"{pad}    {printer.grey(line)}" if line else "")
     printer.write()
 
 
@@ -322,7 +323,7 @@ def _print_command_help(session: Session, name: str) -> None:
     if entry.examples:
         printer.write("Examples:")
         for example in entry.examples:
-            printer.write(f"  {printer.dim(example)}")
+            printer.write(f"  {printer.grey(example)}")
         printer.write()
 
 

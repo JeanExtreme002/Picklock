@@ -30,6 +30,13 @@ _RED = "\033[31m"
 #: and a dark one alike, and a terminal that does not implement it simply shows
 #: ordinary text — the worst case is no emphasis, never an unreadable one.
 _DIM = "\033[2m"
+
+#: Grey — bright black, the conventional "secondary text" colour. A shade
+#: lighter than faint on a dark terminal, which is what an example block wants:
+#: set apart from the prose around it, but a whole transcript at a time still
+#: has to be readable, where a one-line prompt only has to be noticed.
+_GREY = "\033[90m"
+
 _RESET = "\033[0m"
 
 #: readline measures a prompt to know where the cursor is. Escapes bracketed
@@ -264,22 +271,34 @@ class Printer:
             self.stdout.flush()
         return True
 
+    def _style(self, text: str, escape: str, *, in_prompt: bool = False) -> str:
+        """Wrap ``text`` in ``escape``, or return it unchanged when colour is off."""
+        if not self.color or not text:
+            return text
+        if in_prompt:
+            return (
+                f"{_RL_IGNORE_START}{escape}{_RL_IGNORE_END}"
+                f"{text}"
+                f"{_RL_IGNORE_START}{_RESET}{_RL_IGNORE_END}"
+            )
+        return f"{escape}{text}{_RESET}"
+
     def dim(self, text: str, *, in_prompt: bool = False) -> str:
-        """Return ``text`` faintly styled, or unchanged when colour is off.
+        """Return ``text`` faintly styled — for something to notice, not read.
 
         :param in_prompt: bracket the escapes for readline. Pass it only when
             readline is actually handling the line — the markers are invisible
             to readline and literal control characters to anything else.
         """
-        if not self.color or not text:
-            return text
-        if in_prompt:
-            return (
-                f"{_RL_IGNORE_START}{_DIM}{_RL_IGNORE_END}"
-                f"{text}"
-                f"{_RL_IGNORE_START}{_RESET}{_RL_IGNORE_END}"
-            )
-        return f"{_DIM}{text}{_RESET}"
+        return self._style(text, _DIM, in_prompt=in_prompt)
+
+    def grey(self, text: str) -> str:
+        """Return ``text`` in grey — for a block that is set apart but read.
+
+        A shade lighter than :meth:`dim`, because a transcript has to stay
+        legible line after line where a prompt only has to catch the eye.
+        """
+        return self._style(text, _GREY)
 
     def note(self, message: str) -> None:
         """Print an aside — a warning that did not stop the command."""

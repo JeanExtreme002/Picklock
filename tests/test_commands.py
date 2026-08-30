@@ -641,7 +641,7 @@ def _coloured_shell(capture):
 
 
 @pytest.mark.parametrize("line", ["help", "config:help", "scan:help", "ps:help"])
-def test_example_blocks_are_dimmed(capture, line):
+def test_example_blocks_are_greyed(capture, line):
     """A transcript inside a help page should read as a transcript at a glance."""
     shell = _coloured_shell(capture)
     shell.run_line(line)
@@ -654,10 +654,10 @@ def test_example_blocks_are_dimmed(capture, line):
     transcript = [row for row in body if "peekmem>" in row]
     assert transcript, f"{line!r} printed no example"
     for row in transcript:
-        assert "\033[2m" in row and "\033[0m" in row
+        assert "\033[90m" in row and "\033[0m" in row
 
 
-def test_the_example_label_is_not_dimmed(capture):
+def test_the_example_label_is_not_styled(capture):
     """It stays at full strength so the block is findable when skimming."""
     shell = _coloured_shell(capture)
     shell.run_line("scan:help")
@@ -667,7 +667,7 @@ def test_the_example_label_is_not_dimmed(capture):
     assert "\033" not in label
 
 
-def test_a_commands_own_examples_are_dimmed_too(capture):
+def test_a_commands_own_examples_are_greyed_too(capture):
     shell = _coloured_shell(capture)
     shell.run_line("help memory:read")
     # The escape comes before the text, so match on the content, not the start.
@@ -678,7 +678,7 @@ def test_a_commands_own_examples_are_dimmed_too(capture):
     ]
     assert listed
     for row in listed:
-        assert "\033[2m" in row
+        assert "\033[90m" in row
 
 
 @pytest.mark.parametrize("line", ["help", "scan:help", "help memory:read"])
@@ -686,3 +686,11 @@ def test_examples_stay_plain_when_colour_is_off(shell, capture, line):
     """Redirected output must not carry escapes into a file."""
     shell.run_line(line)
     assert "\033" not in capture.out
+
+
+def test_examples_and_the_prompt_use_different_shades(capture):
+    """A transcript is read; the prompt's target is only noticed."""
+    capture.printer.color = True
+    assert capture.printer.grey("x") != capture.printer.dim("x")
+    assert "\033[90m" in capture.printer.grey("x")
+    assert "\033[2m" in capture.printer.dim("x")

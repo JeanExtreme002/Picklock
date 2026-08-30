@@ -727,3 +727,19 @@ def test_command_listings_breathe(shell, capture, line):
         gap = re.search(r"\S(\s{2,})\S", row)
         assert gap, f"no column separator in {row!r}"
         assert len(gap.group(1)) >= 4, f"only {len(gap.group(1))} spaces in {row!r}"
+
+
+def test_the_scanning_topic_covers_the_whole_cycle(shell, capture):
+    """A walkthrough that stops before 'how do I see the rest?' is half a map."""
+    shell.run_line("help scanning")
+    out = capture.out
+    for command in (
+        "scan:value",
+        "scan:next",
+        "scan:results",
+        "scan:keep",
+        "memory:read #1",
+        "pointer:scan #1",
+    ):
+        assert command in out, f"the walkthrough never mentions {command}"
+    assert "--page" in out, "paging is how you reach past the first page"

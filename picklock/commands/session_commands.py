@@ -64,6 +64,21 @@ a health bar with no number — compare against the previous reading instead:
   scan:next changed / scan:next unchanged
   scan:next increased / scan:next decreased
 
+'scan:results' is how you look at where you are between rounds. It re-reads
+every address, so VALUE is what the target holds now rather than what the scan
+found, and PREVIOUS shows the reading the comparisons above are measured
+against. A scan only previews its first page; this is what reaches the rest:
+
+  scan:results              the first page, re-read
+  scan:results --page 2     the next one
+  scan:results --all        every row, however many
+
+When you can see which rows are real, say so directly instead of inventing a
+comparison that happens to exclude the others:
+
+  scan:keep 1 4 7-9         keep those, drop the rest
+  scan:drop 2               the other way round
+
 Then read, write or watch a surviving row by number:
 
   memory:read #1 int32

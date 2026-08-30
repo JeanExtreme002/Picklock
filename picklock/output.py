@@ -15,6 +15,7 @@ the exact text a user would have seen.
 """
 
 import os
+import select
 import sys
 import textwrap
 import time
@@ -47,6 +48,40 @@ _RESET = "\033[0m"
 #: is recalled.
 _RL_IGNORE_START = "\001"
 _RL_IGNORE_END = "\002"
+
+
+def wait_for_enter(stream: TextIO, timeout: float) -> bool:
+    """Wait up to ``timeout`` seconds, returning True if ENTER was pressed.
+
+    Used by the commands that watch an address: a key is a gentler way to stop
+    something than an interrupt, and it leaves Ctrl+C to mean the one thing it
+    should — leave the shell.
+
+    Falls back to plain sleeping when the input is not a terminal, which is
+    what a script or a pipe gives: there is nobody there to press anything, and
+    a redirected stdin is at end-of-file the instant it is polled, which would
+    end the watch immediately.
+    """
+    if not getattr(stream, "isatty", lambda: False)():
+        time.sleep(timeout)
+        return False
+
+    if sys.platform == "win32":  # pragma: no cover - Windows only
+        import msvcrt
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if msvcrt.kbhit():
+                msvcrt.getwch()
+                return True
+            time.sleep(0.02)
+        return False
+
+    ready, _, _ = select.select([stream], [], [], timeout)
+    if not ready:
+        return False
+    stream.readline()
+    return True
 
 
 def supports_color(stream: TextIO) -> bool:
@@ -431,4 +466,5 @@ __all__ = (
     "render_table",
     "render_vertical",
     "supports_color",
+    "wait_for_enter",
 )

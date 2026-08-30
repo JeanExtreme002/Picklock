@@ -5,6 +5,7 @@
 from picklock.output import (
     LEFT,
     RIGHT,
+    wait_for_enter,
     render_definitions,
     format_address,
     format_size,
@@ -135,3 +136,42 @@ def test_the_gap_widens_both_the_first_line_and_the_wrapping(capture):
     assert first.startswith("  name    a description")
     # The continuation sits under the description, not under the label.
     assert second.index(second.strip()[0]) == first.index("a description")
+
+
+def test_waiting_for_enter_just_sleeps_without_a_terminal():
+    """A pipe is at end-of-file the moment it is polled; that is not a keypress."""
+    import io
+    import time
+
+    stream = io.StringIO()
+    started = time.monotonic()
+    assert wait_for_enter(stream, 0.05) is False
+    assert time.monotonic() - started >= 0.04, "it waited rather than returning at once"
+
+
+def test_waiting_for_enter_sees_a_keypress():
+    """A real file descriptor, pretending to be a terminal."""
+    import os
+
+    read_fd, write_fd = os.pipe()
+    reader = os.fdopen(read_fd)
+    try:
+        reader.isatty = lambda: True  # type: ignore[method-assign]
+        os.write(write_fd, b"\n")
+        assert wait_for_enter(reader, 1.0) is True
+    finally:
+        reader.close()
+        os.close(write_fd)
+
+
+def test_waiting_for_enter_times_out_with_no_keypress():
+    import os
+
+    read_fd, write_fd = os.pipe()
+    reader = os.fdopen(read_fd)
+    try:
+        reader.isatty = lambda: True  # type: ignore[method-assign]
+        assert wait_for_enter(reader, 0.05) is False
+    finally:
+        reader.close()
+        os.close(write_fd)

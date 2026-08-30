@@ -219,7 +219,7 @@ def test_help_on_a_namespace_lists_it(shell, capture):
 def test_a_namespace_listing_shows_argument_signatures(shell, capture):
     """The dokku shape: what it is called and what it takes, in one line."""
     shell.run_line("memory:help")
-    assert "memory:dump <address> [length]" in capture.out
+    assert "memory:hex <address> [length]" in capture.out
     assert "memory:read <address> [type] [length]" in capture.out
 
 
@@ -380,7 +380,7 @@ def test_examples_parse_as_commands(entry, shell):
     [
         "memory:read 0x10",
         "memory:write 0x10 int32 1",
-        "memory:dump 0x10",
+        "memory:hex 0x10",
         "memory:regions",
         "memory:modules",
         "memory:threads",

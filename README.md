@@ -175,7 +175,7 @@ and `help scan` all produce the same output.
 | Command | Subcommands |
 | --- | --- |
 | **`ps:`** | `list` · `open` · `close` · `info` |
-| **`memory:`** | `read` · `write` · `dump` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
+| **`memory:`** | `read` · `write` · `hex` · `watch` · `regions` · `modules` · `threads` · `alloc` · `free` |
 | **`scan:`** | `value` · `next` · `aob` · `regex` · `results` · `keep` · `drop` · `reset` |
 | **`pointer:`** | `deref` · `read` · `scan` · `rescan` · `paths` · `save` · `load` · `diff` |
 | **`config:`** | `list` · `set` · `reset` |
@@ -187,11 +187,10 @@ argument, every flag, and examples. That list is generated from the command's
 own parser, so it is always exactly what the command accepts:
 
 ```console
-picklock> help dump
-dump — Hex-dump a range of memory.
+picklock> help memory:hex
+memory:hex — Show a range of memory as hex and text.
 
-Usage: dump <address> [length] [--width N]
-Aliases: hexdump, x
+Usage: memory:hex <address> [length] [--width N] [--watch] [--interval S]
 
 Arguments:
   address   address expression: a literal, module+offset, [pointer] or #N —
@@ -199,7 +198,10 @@ Arguments:
   [length]  number of bytes to read (default 256); hex accepted
 
 Options:
-  --width N  bytes per line, overriding the 'dump_width' setting
+  --width N     bytes per line, overriding the 'hex_width' setting
+  -w, --watch   redraw as the bytes change, until ENTER
+  --interval S  seconds between redraws with --watch, overriding
+                'watch_interval'
 ```
 
 `help types`, `help address` and `help scanning` cover what several commands

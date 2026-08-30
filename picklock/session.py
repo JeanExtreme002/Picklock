@@ -54,7 +54,7 @@ SETTINGS: Tuple[Setting, ...] = (
     Setting("timing", True, bool, "Print the elapsed time after each command."),
     Setting("progress", True, bool, "Show a progress line while scanning."),
     Setting("writable_only", False, bool, "Scan only writable regions (faster)."),
-    Setting("dump_width", 16, int, "Bytes per line in 'memory:dump' output."),
+    Setting("hex_width", 16, int, "Bytes per line in 'memory:hex' output."),
     Setting("watch_interval", 0.5, float, "Seconds between 'memory:watch' samples."),
 )
 

@@ -19,6 +19,7 @@ and costs nothing: the library processes regions independently anyway, so
 batching them changes no result.
 """
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple
 
@@ -719,7 +720,61 @@ def cmd_regex(session: Session, args: List[str]) -> None:
 
 
 def _results_parser() -> CommandParser:
-    return add_paging_arguments(CommandParser("scan:results"))
+    parser = CommandParser("scan:results")
+    parser.add_argument(
+        "--export",
+        default=None,
+        metavar="FILE",
+        help="write every result to a JSON file instead of paging through them",
+    )
+    return add_paging_arguments(parser)
+
+
+def _export_results(session: Session, state: ScanState, path: str) -> int:
+    """Write the whole result set to ``path`` as JSON, and say how many.
+
+    Every row, not the page on screen: an export exists precisely for the
+    results too numerous to read. Addresses are hex strings, the same shape
+    PyMemoryEditor writes pointer paths in, and the scan's type and width ride
+    along so the file says what the numbers in it mean.
+    """
+    process = session.require_process()
+    values = _read_values(session, state.value_type, state.width, state.addresses)
+
+    document = {
+        "process": {"pid": process.pid, "name": session.process_name or None},
+        "scan": state.description,
+        "type": state.value_type.name,
+        "width": state.width,
+        "results": [
+            {"address": "0x%X" % address, "value": _exportable(state, value)}
+            for address, value in zip(state.addresses, values)
+        ],
+    }
+
+    try:
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+            handle.write("\n")
+    except OSError as error:
+        raise CommandError(f"Cannot write {path!r}: {error}")
+
+    return len(state.addresses)
+
+
+def _exportable(state: ScanState, value) -> Any:
+    """A value JSON can hold, without inventing precision it does not have.
+
+    Numbers and booleans go through as themselves so a consumer can do
+    arithmetic on them. Bytes have no JSON form, so they take the same hex
+    spelling the table shows, and an address that could not be read stays
+    null rather than becoming a zero somebody might trust.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (bool, int, float, str)):
+        return value
+    return state.value_type.format(value)
 
 
 @command(
@@ -733,12 +788,16 @@ def _results_parser() -> CommandParser:
         "friends compare against — and is filled in only where the two "
         "differ.\n\n"
         "Row numbers are what '#N' refers to in an address, and they keep "
-        "counting across pages: row #21 is the first on page 2 of twenty."
+        "counting across pages: row #21 is the first on page 2 of twenty.\n\n"
+        "--export writes every result to a JSON file — all of them, not the "
+        "page on screen — with the scan's type and width alongside, so the "
+        "file says what its numbers mean."
     ),
     examples=(
         "scan:results",
         "scan:results --all",
         "scan:results --page 3 --limit 10",
+        "scan:results --export found.json",
     ),
 )
 def cmd_results(session: Session, args: List[str]) -> None:
@@ -747,6 +806,15 @@ def cmd_results(session: Session, args: List[str]) -> None:
     state = session.require_scan()
     process = session.require_process("scan:results")
     hex_output = bool(session.option("hex"))
+
+    if options.export is not None:
+        with Timer() as timer:
+            written = _export_results(session, state, options.export)
+        session.printer.ok(
+            f"Wrote {written} result(s) to {options.export}.", elapsed=timer.elapsed
+        )
+        session.printer.write()
+        return
 
     page = paginate(
         session,

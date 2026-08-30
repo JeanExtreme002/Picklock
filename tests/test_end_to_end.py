@@ -156,10 +156,39 @@ def test_memory_write_bytes(target, capture, block):
     assert list(block.blob[:4]) == [1, 2, 3, 4]
 
 
-def test_memory_dump_shows_hex_and_ascii(target, capture, block):
-    out = run(target, capture, f"memory:dump 0x{block.text_at:X} 16")
+def test_memory_hex_shows_hex_and_ascii(target, capture, block):
+    out = run(target, capture, f"memory:hex 0x{block.text_at:X} 16")
     assert "PicklockMarker42" in out, "the ASCII column"
     assert "50 69 63 6B" in out, "the hex column ('Pick')"
+
+
+def test_memory_hex_watch_redraws_until_enter(target, capture, block, monkeypatch):
+    """The keypress is injected: a test has no terminal to press ENTER on."""
+    from picklock.commands import memory_commands
+
+    presses = iter([False, False, True])
+    monkeypatch.setattr(
+        memory_commands, "wait_for_enter", lambda stream, timeout: next(presses)
+    )
+
+    out = run(
+        target, capture, f"memory:hex 0x{block.text_at:X} 16 --watch --interval 0.01"
+    )
+    assert out.count("PicklockMarker42") == 3, "redrew until the key came"
+    assert "3 redraw(s)" in out
+
+
+def test_memory_watch_stops_on_enter(target, capture, block, monkeypatch):
+    from picklock.commands import memory_commands
+
+    presses = iter([False, True])
+    monkeypatch.setattr(
+        memory_commands, "wait_for_enter", lambda stream, timeout: next(presses)
+    )
+
+    out = run(target, capture, f"memory:watch 0x{block.ints_at:X} int32 --interval 0.01")
+    assert "Press ENTER to stop" in out
+    assert "2 sample(s)" in out, "stopped on the second wait, not on a count"
 
 
 def test_memory_watch_samples_the_value(target, capture, block):
@@ -482,21 +511,59 @@ def test_the_regions_total_follows_the_filter(target, capture):
     assert int(writable.group(1)) < int(everything.group(1))
 
 
-@pytest.mark.skipif(
-    __import__("sys").platform != "darwin", reason="the caveat is macOS-only"
-)
-def test_threads_says_the_tid_is_a_port_name(target, capture):
-    """Two tools report different numbers for the same thread on macOS.
-
-    That is the Mach port namespace, not a bug in either of them, and the
-    listing is where someone finds out.
-    """
-    out = run(target, capture, "memory:threads")
-    assert "Mach port names" in out
-    assert "help memory:threads" in out
-
-
 def test_the_threads_help_explains_all_three_platforms(shell, capture):
     shell.run_line("help memory:threads")
     for platform_name in ("Linux", "Windows", "macOS"):
         assert platform_name in capture.out
+
+
+def test_results_export_writes_every_row(target, capture, block, tmp_path):
+    """An export exists for the results too many to read, so it takes them all."""
+    import json
+
+    from picklock import valuetypes
+
+    base = block.ints_at
+    target.session.store_scan(
+        valuetypes.resolve("int32"), 4, [base, base + 4], [MARKER, MARKER], "int32 eq"
+    )
+    target.session.set_option("limit", "1")  # one row on screen, two in the file
+
+    path = tmp_path / "found.json"
+    out = run(target, capture, f"scan:results --export {path}")
+    assert "Wrote 2 result(s)" in out
+
+    document = json.loads(path.read_text())
+    assert document["type"] == "int32"
+    assert document["width"] == 4
+    assert document["process"]["pid"] == os.getpid()
+    assert [row["address"] for row in document["results"]] == [
+        "0x%X" % base,
+        "0x%X" % (base + 4),
+    ]
+    assert document["results"][0]["value"] == MARKER
+
+
+def test_results_export_spells_bytes_as_hex(target, capture, block, tmp_path):
+    """JSON has no form for bytes, so they take the spelling the table shows."""
+    import json
+
+    from picklock import valuetypes
+
+    target.session.store_scan(
+        valuetypes.resolve("bytes"), 4, [block.blob_at], [b""], "aob"
+    )
+    path = tmp_path / "bytes.json"
+    run(target, capture, f"scan:results --export {path}")
+
+    assert json.loads(path.read_text())["results"][0]["value"] == "DE AD BE EF"
+
+
+def test_results_export_reports_a_path_it_cannot_write(target, capture, block):
+    from picklock import valuetypes
+
+    target.session.store_scan(
+        valuetypes.resolve("int32"), 4, [block.ints_at], [MARKER], "t"
+    )
+    assert target.run_line("scan:results --export /nope/found.json") is False
+    assert "Cannot write" in capture.err

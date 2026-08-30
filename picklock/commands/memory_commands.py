@@ -4,7 +4,7 @@
 Looking at, and changing, the target's memory.
 
 ``regions`` / ``modules`` / ``threads`` describe the address space; ``read`` /
-``write`` / ``dump`` / ``watch`` work on a single address; ``alloc`` / ``free``
+``write`` / ``hex`` / ``watch`` work on a single address; ``alloc`` / ``free``
 hand the target new pages.
 """
 
@@ -15,7 +15,15 @@ from typing import Any, List, Optional, Tuple
 from .. import valuetypes
 from ..addressing import parse_address, parse_int
 from ..errors import CommandError
-from ..output import LEFT, RIGHT, Timer, format_address, format_size, render_hexdump
+from ..output import (
+    LEFT,
+    RIGHT,
+    Timer,
+    format_address,
+    format_size,
+    render_hexdump,
+    wait_for_enter,
+)
 from ..session import Session
 from ..valuetypes import ValueType
 from . import CommandParser, add_paging_arguments, command, paginate
@@ -59,6 +67,12 @@ def _type_and_width(
 
     value_type = _resolve_type(named)
     return value_type, value_type.read_width(length)
+
+
+def _input_stream(session: Session):
+    """Where a keypress would come from, if anyone is there to make one."""
+    shell = session.shell
+    return shell.stdin if shell is not None else sys.stdin
 
 
 def _permissions(region) -> str:
@@ -309,18 +323,6 @@ def cmd_threads(session: Session, args: List[str]) -> None:
         next_page=page.next_page,
     )
 
-    if sys.platform == "darwin":
-        # One line, every time, because this is where it bites: on macOS a
-        # thread is named by a Mach port, and a port name means something only
-        # inside the address space that asked for it. Two tools looking at the
-        # same process get different numbers for the same thread, and neither
-        # is wrong. The why is in 'help memory:threads'.
-        session.printer.write(
-            "These are Mach port names, not thread ids: another tool will "
-            "report different numbers. See 'help memory:threads'."
-        )
-        session.printer.write()
-
 
 def _read_parser() -> CommandParser:
     parser = CommandParser("memory:read")
@@ -472,8 +474,8 @@ def cmd_write(session: Session, args: List[str]) -> None:
     session.printer.write()
 
 
-def _dump_parser() -> CommandParser:
-    parser = CommandParser("memory:dump")
+def _hex_parser() -> CommandParser:
+    parser = CommandParser("memory:hex")
     parser.add_argument("address", help=_ADDRESS_HELP)
     parser.add_argument(
         "length",
@@ -486,48 +488,120 @@ def _dump_parser() -> CommandParser:
         type=int,
         default=None,
         metavar="N",
-        help="bytes per line, overriding the 'dump_width' setting",
+        help="bytes per line, overriding the 'hex_width' setting",
+    )
+    parser.add_argument(
+        "-w",
+        "--watch",
+        action="store_true",
+        help="redraw as the bytes change, until ENTER",
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=None,
+        metavar="S",
+        help="seconds between redraws with --watch, overriding "
+        "'watch_interval'",
     )
     return parser
 
 
 @command(
-    "memory:dump",
-    parser=_dump_parser,
-    summary="Hex-dump a range of memory.",
+    "memory:hex",
+    parser=_hex_parser,
+    summary="Show a range of memory as hex and text.",
     details=(
-        "Prints the classic three-column layout: absolute address, hex bytes, "
-        "printable ASCII.\n\n"
+        "The classic three-column layout: absolute address, hex bytes, "
+        "printable ASCII. Length defaults to 256 bytes.\n\n"
+        "With --watch it redraws in place until you press ENTER, which turns "
+        "it into a live view of a structure — a whole record changing at once, "
+        "where 'memory:watch' follows a single value.\n\n"
         "The read is a single call, so a range that crosses into an unmapped "
         "page fails as a whole rather than returning half the bytes."
     ),
-    examples=("memory:dump 0x7ffee3a01000", "memory:dump game.exe+0x1000 512", "memory:dump #1 64 --width 8"),
+    examples=(
+        "memory:hex 0x7ffee3a01000",
+        "memory:hex game.exe+0x1000 512",
+        "memory:hex #1 64 --width 8",
+        "memory:hex #1 64 --watch",
+    ),
 )
-def cmd_dump(session: Session, args: List[str]) -> None:
-    options = _dump_parser().parse_args(args)
+def cmd_hex(session: Session, args: List[str]) -> None:
+    options = _hex_parser().parse_args(args)
 
-    process = session.require_process("memory:dump")
+    process = session.require_process("memory:hex")
     address = parse_address(options.address, session)
     length = parse_int(str(options.length), "length")
-    width = options.width if options.width else int(session.option("dump_width"))
+    width = options.width if options.width else int(session.option("hex_width"))
 
     if length < 1:
         raise CommandError("Length must be at least 1 byte.")
     if width < 1:
         raise CommandError("Line width must be at least 1 byte.")
 
-    with Timer() as timer:
+    def read() -> bytes:
         try:
-            data = process.read_bytes(address, length)
+            return process.read_bytes(address, length)
         except OSError as error:
             raise CommandError(
                 f"Cannot read {length} byte(s) at 0x{address:X}: {error}"
             )
 
-    session.printer.write(render_hexdump(data, address, width))
-    session.printer.write()
-    session.printer.ok(f"{len(data)} bytes", elapsed=timer.elapsed)
-    session.printer.write()
+    if not options.watch:
+        with Timer() as timer:
+            data = read()
+        session.printer.write(render_hexdump(data, address, width))
+        session.printer.write()
+        session.printer.ok(f"{len(data)} bytes", elapsed=timer.elapsed)
+        session.printer.write()
+        return
+
+    _watch_hex(session, read, address, width, options.interval)
+
+
+def _watch_hex(
+    session: Session,
+    read,
+    address: int,
+    width: int,
+    interval: Optional[float],
+) -> None:
+    """Redraw the same range until ENTER.
+
+    Cleared and reprinted rather than appended, so the bytes stay in one place
+    and the eye can see which of them moved — a scrolling wall of near-identical
+    dumps shows change only by accident.
+    """
+    printer = session.printer
+    every = (
+        interval if interval is not None else float(session.option("watch_interval"))
+    )
+    if every <= 0:
+        raise CommandError("--interval must be greater than zero.")
+
+    stream = _input_stream(session)
+    redraws = 0
+
+    try:
+        while True:
+            data = read()
+            printer.clear_screen()
+            printer.write(
+                f"Watching {format_address(address, session.require_process().pointer_size)}"
+                f" — {len(data)} bytes every {every:g}s. Press ENTER to stop."
+            )
+            printer.write()
+            printer.write(render_hexdump(data, address, width))
+            printer.write()
+            redraws += 1
+            if wait_for_enter(stream, every):
+                break
+    except KeyboardInterrupt:
+        printer.write("^C")
+
+    printer.ok(f"{redraws} redraw(s).")
+    printer.write()
 
 
 def _watch_parser() -> CommandParser:
@@ -563,11 +637,13 @@ def _watch_parser() -> CommandParser:
     parser=_watch_parser,
     summary="Poll an address and print it as it changes.",
     details=(
-        "Reads the address on a timer and prints a line per sample. By default "
-        "only samples whose value differs from the previous one are printed, "
-        "which turns the terminal into a change log — so a value that is not "
-        "moving shows one line and then nothing, and '--all' is how you tell "
-        "that apart from a watch that has stopped.\n\n"
+        "Reads the address on a timer and prints a line per sample. Press ENTER "
+        "to stop; Ctrl+C is left to mean what it means everywhere else, which "
+        "is leaving the shell.\n\n"
+        "By default only samples whose value differs from the previous one are "
+        "printed, which turns the terminal into a change log — so a value that "
+        "is not moving shows one line and then nothing, and '--all' is how you "
+        "tell that apart from a watch that has stopped.\n\n"
         "A '#N' row is watched with the type the scan used, not int32.\n\n"
         "This is the terminal answer to a cheat table: leave it running in one "
         "window while the target does its thing."
@@ -598,9 +674,10 @@ def cmd_watch(session: Session, args: List[str]) -> None:
     printer = session.printer
     printer.write(
         f"Watching {format_address(address, process.pointer_size)} as "
-        f"{value_type.name} every {interval:g}s. Press Ctrl+C to stop."
+        f"{value_type.name} every {interval:g}s. Press ENTER to stop."
     )
 
+    stream = _input_stream(session)
     samples = 0
     printed = 0
     previous = object()  # A sentinel no read can equal, so sample 1 always prints.
@@ -626,10 +703,11 @@ def cmd_watch(session: Session, args: List[str]) -> None:
 
             if options.count and samples >= options.count:
                 break
-            time.sleep(interval)
+            if wait_for_enter(stream, interval):
+                break
     except KeyboardInterrupt:
-        # Ctrl+C is how a watch is meant to end, not an error.
-        printer.write()
+        # Ctrl+C still works, and still means what it means everywhere else.
+        printer.write("^C")
 
     printer.ok(f"{samples} sample(s), {printed} printed.")
     printer.write()

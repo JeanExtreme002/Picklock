@@ -113,6 +113,27 @@ def test_the_max_results_cap_stops_the_scan(scannable):
     assert len(calls) == 1, "the cap must stop the scan, not just trim the output"
 
 
+def test_the_max_argument_caps_one_scan_without_changing_the_setting(scannable):
+    """``--max`` is an override for the scan that carries it, and nothing else.
+
+    It used to be implemented by writing the ``max_results`` setting, so one
+    capped scan quietly capped every scan after it for the rest of the session
+    — with `config:list` reporting a number the user never chose.
+    """
+    def search(batch):
+        yield batch[0].address
+        yield batch[0].address + 4
+
+    capped = _run_scan(scannable, search, max_results=1)
+    assert capped.truncated is True
+    assert len(capped.addresses) == 1
+    assert int(scannable.option("max_results")) == 1000000
+
+    uncapped = _run_scan(scannable, search)
+    assert uncapped.truncated is False
+    assert len(uncapped.addresses) == 6
+
+
 def test_a_cap_of_zero_means_no_cap(scannable):
     scannable.set_option("max_results", "0")
 

@@ -175,10 +175,15 @@ def _run_scan(
     search: Callable[[List[MemoryRegion]], Iterable[Any]],
     *,
     label: str = "Scanning",
+    max_results: Optional[int] = None,
 ) -> ScanOutcome:
     """Drive ``search`` over the target's regions.
 
     :param search: called with a batch of regions, yields matching addresses.
+    :param max_results: cap for this scan only, from ``--max``. Without it the
+        ``max_results`` setting applies. It is an argument rather than a write
+        to the setting so that capping one scan does not quietly cap every
+        scan after it.
 
     Nothing here throws away results it already has. Ctrl+C stops the scan and
     keeps them, because punishing an impatient keystroke by discarding four
@@ -191,7 +196,8 @@ def _run_scan(
     """
     regions = session.scan_regions()
     total = sum(region.size for region in regions) or 1
-    max_results = int(session.option("max_results"))
+    if max_results is None:
+        max_results = int(session.option("max_results"))
     show_progress = bool(session.option("progress"))
     printer = session.printer
 
@@ -285,8 +291,9 @@ def _report(
         printer.note("Interrupted — showing what had been found so far.")
     if state.truncated:
         printer.note(
-            f"Stopped at the max_results cap ({session.option('max_results')}). "
-            "Narrow the scan, or raise it with 'config:set max_results N'."
+            f"Stopped at the cap of {len(state.addresses)} results. "
+            "Narrow the scan, or raise it with '--max N' for one scan or "
+            "'config:set max_results N' for all of them."
         )
     if outcome.skipped:
         printer.note(
@@ -406,8 +413,6 @@ def cmd_scan(session: Session, args: List[str]) -> None:
         else False if options.all_regions
         else bool(session.option("writable_only"))
     )
-    if options.max is not None:
-        session.set_option("max_results", str(options.max))
 
     # Refresh the map before a first scan: the target has probably allocated
     # since the last one, and a stale snapshot would silently skip new regions.
@@ -454,7 +459,7 @@ def cmd_scan(session: Session, args: List[str]) -> None:
             )
 
     with Timer() as timer:
-        outcome = _run_scan(session, search)
+        outcome = _run_scan(session, search, max_results=options.max)
         state = _store(
             session,
             value_type,
@@ -619,8 +624,6 @@ def cmd_aob(session: Session, args: List[str]) -> None:
             "as a one-byte wildcard, e.g. '48 8B ? ? 00'."
         )
 
-    if options.max is not None:
-        session.set_option("max_results", str(options.max))
     session.regions(refresh=True)
 
     def search(batch: List[MemoryRegion]) -> Iterable[Any]:
@@ -629,7 +632,7 @@ def cmd_aob(session: Session, args: List[str]) -> None:
     value_type = valuetypes.resolve("bytes")
 
     with Timer() as timer:
-        outcome = _run_scan(session, search, label="AOB scan")
+        outcome = _run_scan(session, search, label="AOB scan", max_results=options.max)
         state = _store(
             session,
             value_type,
@@ -692,8 +695,6 @@ def cmd_regex(session: Session, args: List[str]) -> None:
     except re.error as error:
         raise CommandError(f"Invalid regex: {error}")
 
-    if options.max is not None:
-        session.set_option("max_results", str(options.max))
     session.regions(refresh=True)
 
     def search(batch: List[MemoryRegion]) -> Iterable[Any]:
@@ -706,7 +707,7 @@ def cmd_regex(session: Session, args: List[str]) -> None:
     value_type = valuetypes.resolve("string")
 
     with Timer() as timer:
-        outcome = _run_scan(session, search, label="Regex scan")
+        outcome = _run_scan(session, search, label="Regex scan", max_results=options.max)
         state = _store(
             session,
             value_type,

@@ -14,12 +14,12 @@ picklock
 <p align="center">
   <img src="https://raw.githubusercontent.com/JeanExtreme002/Picklock/main/assets/screenshots/terminal.png"
        alt="A Picklock session: scanning a live process for a value, narrowing it down, and writing to it"
-       width="820" />
+       width="780" />
 </p>
 
 <p align="center">
-  <i>A real session, captured by <a href="scripts/generate_terminal_image.py">a script that runs the commands</a> —
-  no numbers in it were typed by hand.</i>
+  <i>A real session, captured by <a href="scripts/generate_terminal_image.py">a script that runs the commands</a>
+  against a process it stands up for the purpose — no numbers in it were typed by hand.</i>
 </p>
 
 ## Usage

@@ -6,16 +6,24 @@ This is a maintainer-only helper — it is intentionally kept out of the
 published package (see the sdist excludes in ``pyproject.toml``).
 
 Nothing in the image is typed by hand. The script drives the *real* shell
-against a real process — this one, the same trick the end-to-end suite uses,
+against a real process — itself, the same trick the end-to-end suite uses,
 which is what lets it run anywhere without privileges and without a second
 program to launch — and records exactly what a user would have seen, escape
 codes included. The addresses, the row counts and the timings in the picture
 are whatever that run produced.
 
+So that the picture is not a screenshot of Picklock reading Python, the
+recording runs under a hard link to this interpreter named ``game``: the
+process really is called that, which is the name the kernel hands back and
+the name the shell prints. It is staging, not faking — the same staging as
+pointing a demo at a toy program written for the occasion, minus the program.
+Where the link cannot be made or cannot run, the recording happens in this
+process and the picture says ``python`` instead.
+
 The scan it stages is real too: a value is planted in this process's memory,
 scanned for across the writable regions, and the first address that comes
-back is then written to and read again as hex. Nothing is arranged so that
-the numbers agree — they agree because the commands ran.
+back is written to. Nothing is arranged so that the numbers agree — they
+agree because the commands ran.
 
 The transcript is then rendered as HTML and screenshotted with headless
 Chrome, the same way ``build_preview.py`` does it in PyMemoryEditor.
@@ -31,6 +39,7 @@ import argparse
 import ctypes
 import html
 import io
+import json
 import math
 import os
 import re
@@ -39,7 +48,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "assets" / "screenshots" / "terminal.png"
@@ -54,6 +63,13 @@ os.environ["PICKLOCK_CONFIG_DIR"] = _CONFIG_DIR.name
 sys.path.insert(0, str(REPO_ROOT))
 
 from picklock.shell import Shell  # noqa: E402  (must follow the env var above)
+
+#: The name the recording runs under. Short, lowercase and evocative of what
+#: people actually point a memory scanner at.
+DEMO_NAME = "game"
+
+#: Passed to the renamed child to tell it where to leave the transcript.
+RECORD_FLAG = "--record-to"
 
 #: The value planted in this process for the scan to find. Arbitrary, and
 #: ordinary enough in a live interpreter that the scan comes back with a few
@@ -99,19 +115,25 @@ def record() -> List[str]:
     shell.printer.stderr = buffer
     shell.printer.color = True
 
-    pid = os.getpid()
+    # Attaching by name reads better than a bare PID, but only once the name
+    # is worth reading; unrenamed, several interpreters may share it and the
+    # match would be ambiguous.
+    renamed = Path(sys.executable).name == DEMO_NAME
+    open_by = f"ps:open {DEMO_NAME}" if renamed else f"ps:open {os.getpid()}"
+
+    # Show a sample of the hits rather than a screenful. `limit` is one of the
+    # settings Picklock persists, so a session inherits it rather than being
+    # told it every time — which is why this is set here and not typed as a
+    # `config:set` line in the demo. The scan is unaffected: the footer still
+    # reports how many rows there really are.
+    shell.session.set_option("limit", "3")
 
     #: (line, hook) — a hook runs *before* its line, for a step that needs the
-    #: process to have changed by the time the command looks. The display
-    #: limit is turned down so the first scan's table stays a sample rather
-    #: than twenty rows of the same number; the footer still reports the true
-    #: total, and turning it down is itself a command worth showing.
+    #: process to have changed by the time the command looks.
     script: List[Tuple[str, object]] = [
-        (f"ps:open {pid}", None),
-        ("config:set limit 3", None),
+        (open_by, None),
         (f"scan:value int32 {target.value} --writable", None),
         ("memory:write #1 int32 9999", None),
-        ("memory:hex #1 16", None),
     ]
 
     lines = shell.banner().rstrip("\n").split("\n")
@@ -133,6 +155,67 @@ def record() -> List[str]:
 
     shell.run_line("ps:close")
     return lines
+
+
+def link_interpreter(directory: str) -> Optional[str]:
+    """Return a path to this interpreter under :data:`DEMO_NAME`, or None.
+
+    A hard link, so the bytes — and therefore the code signature macOS checks
+    — are the ones already on disk; a copy only if the link cannot be made.
+    """
+    linked = os.path.join(directory, DEMO_NAME)
+    try:
+        os.link(sys.executable, linked)
+    except OSError:
+        try:
+            shutil.copy2(sys.executable, linked)
+        except OSError:
+            return None
+    return linked
+
+
+def transcript() -> List[str]:
+    """Record the demo, under the demo name where the platform allows it.
+
+    The renamed interpreter is run as a child rather than exec'd into, so
+    that a name that cannot be made to work — an interpreter that will not
+    start from outside its own directory, most likely on Windows, where the
+    runtime DLL sits next to the executable — costs a fallback rather than
+    the whole run.
+    """
+    with tempfile.TemporaryDirectory(prefix="picklock-demo-") as directory:
+        linked = link_interpreter(directory)
+        if linked is None:
+            print(f"Could not create an interpreter named {DEMO_NAME!r}.")
+            return record()
+
+        output = os.path.join(directory, "transcript.json")
+
+        # The link has no directory of its own to find a standard library in,
+        # and no site-packages; hand it this interpreter's.
+        environment = dict(os.environ)
+        environment["PYTHONHOME"] = sys.base_prefix
+        environment["PYTHONPATH"] = os.pathsep.join(p for p in sys.path if p)
+
+        result = subprocess.run(
+            [linked, os.path.abspath(__file__), RECORD_FLAG, output],
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and os.path.exists(output):
+            print(f"Recorded in a process named {DEMO_NAME!r}.")
+            with open(output, encoding="utf-8") as handle:
+                return json.load(handle)
+
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        print(
+            f"Could not record under the name {DEMO_NAME!r} "
+            f"({detail[-1] if detail else f'exit {result.returncode}'}); "
+            "recording in this process instead."
+        )
+
+    return record()
 
 
 # -- rendering ------------------------------------------------------------
@@ -197,6 +280,12 @@ MARGIN = 26
 #: text — so the empty columns on the right are what a real one looks like.
 #: Trim the demo rather than raising this if the transcript outgrows it.
 ASPECT = 1.06
+
+#: And never narrower than this, however short the lines get. A window that
+#: hugs its longest line stops looking like a terminal and starts looking like
+#: a quotation, and it also keeps the image from shrinking every time a
+#: command is dropped from the demo.
+MIN_COLUMNS = 84
 
 TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
@@ -267,6 +356,7 @@ def build_page(lines: List[str]) -> Tuple[str, int, int]:
     # for more.
     columns = max(
         max(widths) + 2,
+        MIN_COLUMNS,
         math.ceil((card_h * ASPECT - PAD_X * 2) / character),
     )
     card_w = round(columns * character) + PAD_X * 2
@@ -341,9 +431,19 @@ def main() -> None:
         "--keep-html", action="store_true",
         help="leave the intermediate HTML next to the PNG, for tweaking the CSS",
     )
+    parser.add_argument(
+        RECORD_FLAG, metavar="FILE",
+        help=argparse.SUPPRESS,  # internal: how the renamed child reports back
+    )
     args = parser.parse_args()
 
-    page, width, height = build_page(record())
+    # The renamed child's whole job: run the demo and hand the lines back.
+    if args.record_to:
+        with open(args.record_to, "w", encoding="utf-8") as handle:
+            json.dump(record(), handle)
+        return
+
+    page, width, height = build_page(transcript())
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     source = OUT.with_suffix(".html")

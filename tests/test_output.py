@@ -96,8 +96,8 @@ def test_dim_is_a_no_op_when_colour_is_off(capture):
     assert capture.printer.dim("[game.exe:42]") == "[game.exe:42]"
 
 
-def test_dim_uses_the_quieter_grey(capture):
-    """An explicit shade, so it never lands on the terminal's default foreground."""
+def test_dim_uses_an_explicit_shade(capture):
+    """Explicit, so it never lands on the terminal's own default foreground."""
     capture.printer.color = True
     assert capture.printer.dim("x") == "\033[38;5;247mx\033[0m"
 
@@ -115,12 +115,3 @@ def test_dim_brackets_its_escapes_for_readline(capture):
 def test_dim_leaves_empty_text_alone(capture):
     capture.printer.color = True
     assert capture.printer.dim("") == ""
-
-
-def test_grey_is_a_no_op_when_colour_is_off(capture):
-    assert capture.printer.grey("peekmem> help") == "peekmem> help"
-
-
-def test_grey_is_the_lighter_shade(capture):
-    capture.printer.color = True
-    assert capture.printer.grey("x") == "\033[38;5;252mx\033[0m"

@@ -25,22 +25,19 @@ RIGHT = "right"
 LEFT = "left"
 
 _RED = "\033[31m"
-# Two greys, named for what they mark rather than for their number, and picked
-# from the 256-colour cube rather than the 16-colour palette. The basic codes
-# do not offer a choice of shade — bright black is one fixed grey, and "white"
-# is often exactly the terminal's default foreground, which would leave the
-# text looking unstyled. These are explicit values, so the two shades stay
-# distinct from each other and from ordinary text whatever the theme does.
-#
-# A terminal without 256-colour support ignores the parameter and prints plain
-# text: no emphasis, never a mess.
-
-#: The quieter of the two — the prompt's target, which only has to be noticed.
+#: The one shade Peekmem uses for text that is set apart from the rest: the
+#: target in the prompt, and the contents of an example block. One shade
+#: because they mean the same thing — this is context, not output — and using
+#: two would have implied a difference that is not there.
+#:
+#: Picked from the 256-colour cube rather than the 16-colour palette, which
+#: offers no choice of shade: faint is whatever the terminal makes of the
+#: foreground, bright black is one fixed grey, and "white" is often exactly the
+#: default foreground, which would leave the text looking unstyled. An explicit
+#: value stays distinct from ordinary text whatever the theme does, and a
+#: terminal without 256-colour support ignores the parameter and prints plain
+#: text — no emphasis, never a mess.
 _DIM = "\033[38;5;247m"
-
-#: The lighter one — example blocks, which have to stay readable line after
-#: line, so they sit closer to ordinary text than the prompt does.
-_GREY = "\033[38;5;252m"
 
 _RESET = "\033[0m"
 
@@ -289,21 +286,13 @@ class Printer:
         return f"{escape}{text}{_RESET}"
 
     def dim(self, text: str, *, in_prompt: bool = False) -> str:
-        """Return ``text`` in the quieter grey — for something to notice, not read.
+        """Return ``text`` set apart from ordinary output, or plain when colour is off.
 
         :param in_prompt: bracket the escapes for readline. Pass it only when
             readline is actually handling the line — the markers are invisible
             to readline and literal control characters to anything else.
         """
         return self._style(text, _DIM, in_prompt=in_prompt)
-
-    def grey(self, text: str) -> str:
-        """Return ``text`` in the lighter grey — for a block set apart but read.
-
-        A shade lighter than :meth:`dim`, because a transcript has to stay
-        legible line after line where a prompt only has to catch the eye.
-        """
-        return self._style(text, _GREY)
 
     def note(self, message: str) -> None:
         """Print an aside — a warning that did not stop the command."""

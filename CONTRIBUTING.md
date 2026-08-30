@@ -150,7 +150,9 @@ Two rules keep the shape:
    `<command>:help` is a dispatcher convention rather than a registered
    command, so it answers for every command at every depth — `memory:help`,
    `memory:read:help`, `clear:help` — without one `help` command per group
-   cluttering the listings it exists to print.
+   cluttering the listings it exists to print. It keeps working, but the
+   spelling the help *advertises* is `help <command>`: one form for everything,
+   and it reads as a sentence.
 
 3. Use `CommandParser`, not a bare `ArgumentParser`: it raises instead of
    calling `sys.exit`, which would kill the shell on a typo.

@@ -223,7 +223,7 @@ def print_namespace(session: Session, prefix: str) -> bool:
     head = prefix.strip().lower().rstrip(":")
     printer = session.printer
 
-    printer.write(f"usage: {head}[:COMMAND]")
+    printer.write(f"usage: {head}[:SUBCOMMAND]")
     printer.write()
 
     declared = namespace(head)
@@ -232,7 +232,7 @@ def print_namespace(session: Session, prefix: str) -> bool:
         printer.write()
         _print_example(session, declared.example)
 
-    printer.write(f"{head} commands: (get help with {head}:COMMAND:help)")
+    printer.write(f'{head} subcommands: (get help with "help {head}:SUBCOMMAND")')
     printer.write()
     printer.write(
         render_definitions(

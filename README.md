@@ -134,7 +134,7 @@ its commands with the arguments they take.
 
 ```console
 peekmem> scan:help
-usage: scan[:COMMAND]
+usage: scan[:SUBCOMMAND]
 
 Search memory for a value, then narrow what you found.
 
@@ -151,7 +151,7 @@ Example:
     +-----+--------------------+-------+
     1 row in set (0.02 sec)
 
-scan commands: (get help with scan:COMMAND:help)
+scan subcommands: (get help with "help scan:SUBCOMMAND")
 
     scan:aob <pattern> [--max N]                 Scan for a byte pattern with wildcards (AOB).
     scan:drop <row> [row ...]                    Remove the named result rows.

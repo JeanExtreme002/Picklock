@@ -43,7 +43,7 @@ def _format_commands() -> str:
     lines += [f"  {signature.ljust(width)}  {summary}" for signature, summary in rows]
     lines += [
         "",
-        "Run 'peekmem <command>:help' for what a command takes, or",
+        "Run 'peekmem help <command>' for what a command takes, or",
         "'peekmem help' for the topics ('types', 'address', 'scanning').",
     ]
     return "\n".join(lines)

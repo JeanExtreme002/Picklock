@@ -52,8 +52,8 @@ def test_only_shell_commands_are_top_level():
 def test_a_bare_namespace_lists_it(shell, capture, namespace):
     """Including 'scan' and 'pointer', which are command aliases as well."""
     shell.run_line(namespace)
-    assert f"usage: {namespace}[:COMMAND]" in capture.out
-    assert f"{namespace} commands:" in capture.out
+    assert f"usage: {namespace}[:SUBCOMMAND]" in capture.out
+    assert f"{namespace} subcommands:" in capture.out
     assert capture.err == ""
 
 
@@ -173,7 +173,7 @@ def test_the_overview_lists_names_only(shell, capture):
 @pytest.mark.parametrize("namespace", [item.name for item in NAMESPACES])
 def test_namespace_help_lists_that_layer(shell, capture, namespace):
     shell.run_line(f"{namespace}:help")
-    assert f"{namespace} commands:" in capture.out
+    assert f"{namespace} subcommands:" in capture.out
     for entry in children(namespace):
         assert entry.name in capture.out
     assert capture.err == ""
@@ -193,8 +193,8 @@ def test_every_namespace_has_commands(namespace):
 
 def test_typing_a_namespace_lists_it(shell, capture):
     shell.run_line("memory")
-    assert "usage: memory[:COMMAND]" in capture.out
-    assert "memory commands:" in capture.out
+    assert "usage: memory[:SUBCOMMAND]" in capture.out
+    assert "memory subcommands:" in capture.out
     assert "memory:read" in capture.out
     assert capture.err == ""
 
@@ -213,7 +213,7 @@ def test_a_parent_with_nonsense_arguments_is_still_explained(shell, capture):
 
 def test_help_on_a_namespace_lists_it(shell, capture):
     shell.run_line("help memory")
-    assert "memory commands:" in capture.out
+    assert "memory subcommands:" in capture.out
     assert "memory:read" in capture.out
 
 
@@ -262,15 +262,15 @@ def test_namespace_help_with_a_bad_subcommand_is_reported(shell, capture):
 def test_every_way_of_asking_about_a_namespace_agrees(shell, capture, line):
     """Five spellings, one page — whichever a reader reaches for."""
     shell.run_line(line)
-    assert capture.out.startswith("usage: scan[:COMMAND]")
-    assert "scan commands:" in capture.out
+    assert capture.out.startswith("usage: scan[:SUBCOMMAND]")
+    assert "scan subcommands:" in capture.out
     assert capture.err == ""
 
 
 @pytest.mark.parametrize("topic", ["pointer:", "scan:", "memory:"])
 def test_a_trailing_colon_asks_for_the_namespace(shell, capture, topic):
     shell.run_line(f"help {topic}")
-    assert f"{topic.rstrip(':')} commands:" in capture.out
+    assert f"{topic.rstrip(':')} subcommands:" in capture.out
 
 
 @pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
@@ -562,7 +562,7 @@ def test_the_word_namespace_never_reaches_the_reader(shell, capture):
 @pytest.mark.parametrize(
     "line,expected",
     [
-        ("memory:help", "usage: memory[:COMMAND]"),
+        ("memory:help", "usage: memory[:SUBCOMMAND]"),
         ("memory:read:help", "memory:read — Read a typed value"),
         ("scan:results:help", "scan:results — Show the current result set"),
         ("clear:help", "clear — Clear the terminal"),
@@ -582,3 +582,22 @@ def test_colon_help_works_for_every_registered_command(entry, shell, capture):
     shell.run_line(f"{entry.name}:help")
     assert entry.summary in capture.out
     assert capture.err == ""
+
+
+@pytest.mark.parametrize("entry", COMMANDS, ids=lambda entry: entry.name)
+def test_the_advertised_help_form_works_for_every_command(entry, shell, capture):
+    """'help <command>' is the one spelling the help names, so it must be total."""
+    shell.run_line(f"help {entry.name}")
+    assert entry.summary in capture.out
+    assert capture.err == ""
+
+
+def test_the_help_only_ever_advertises_one_spelling(shell, capture):
+    """Both forms work; only 'help <command>' is taught, everywhere."""
+    for line in ["help", "memory:help", "scan:help", "ps:help", "pointer:help"]:
+        capture.reset()
+        shell.run_line(line)
+        hint = next(
+            row for row in capture.out.splitlines() if "get help with" in row
+        )
+        assert '"help ' in hint, f"{line!r} advertises something else: {hint!r}"

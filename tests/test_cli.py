@@ -123,6 +123,6 @@ def test_help_lists_the_layers_not_every_command(capsys):
         assert name in text
     for name in ("help", "config", "version", "exit"):
         assert name in text
-    assert "<command>:help" in text
+    assert "peekmem help <command>" in text
     assert "memory:read" not in text, "the deeper layer is reached, not dumped"
     assert "namespace" not in text.lower()

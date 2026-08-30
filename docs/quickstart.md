@@ -16,9 +16,10 @@ Type 'help' for the command list, or 'help scanning' for a walkthrough.
 picklock>
 ```
 
-`help` prints the namespaces. Typing a namespace on its own — `scan` — prints
-that namespace's commands. `help scan:value` prints one command's arguments.
-Three layers, so you never face forty commands at once.
+When you do not know what to type, type `help`. It lists the namespaces —
+`ps`, `memory`, `scan` and so on. Typing one of those on its own, like `scan`,
+lists the commands in it. And `help scan:value` says what that one command
+takes.
 
 ## 2. Find the process
 

@@ -36,14 +36,21 @@ session rather than about a target:
 | `config:` | settings, which persist between sessions |
 | *(none)* | `help`, `source`, `version`, `clear`, `exit` |
 
-Help comes in three layers, so you are never shown forty commands at once:
+## Finding a command
 
-```
-help                 the namespaces, and the session commands
-scan                 (or 'help scan') the commands in one namespace
-help scan:value      one command's arguments
-```
+When you do not know what to type, type `help`.
 
-The last of those is generated from the parser the command actually runs with,
-so a flag that exists is a flag that shows up. `scan:value --help` prints the
-same page.
+| Type this | You get |
+| --- | --- |
+| `help` | the namespaces above |
+| `scan` | the commands in that namespace |
+| `help scan:value` | what that one command takes |
+
+So you go from "what can this do?" to "how do I run this?" in two steps,
+without ever being shown forty commands at once.
+
+`scan:value --help` prints the same page as `help scan:value`, if that is the
+habit your fingers have.
+
+Those pages are built from the command itself, so they cannot be out of date:
+if a command accepts a flag, the flag is on its help page.

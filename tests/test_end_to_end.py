@@ -19,6 +19,8 @@ import re
 
 import pytest
 
+from picklock.output import format_size
+
 #: A value unlikely to be lying around in a Python process, so a scan for it
 #: finds the block below and little else.
 MARKER = 0x5C0FFEE1
@@ -492,9 +494,9 @@ def test_counting_forward_steps_by_the_scans_width(target, capture):
 
 
 def test_regions_reports_the_count_and_the_size(target, capture):
-    """A page of rows cannot answer "how much is mapped?"."""
+    """A page of rows cannot answer "how much is there?"."""
     out = run(target, capture, "memory:regions --limit 2")
-    match = re.search(r"(\d+) regions, ([\d.]+ \w+) mapped", out)
+    match = re.search(r"(\d+) regions, ([\d.,]+ \w+) accessible", out)
     assert match, out
     assert int(match.group(1)) > 2, "the whole set, not the page"
 
@@ -509,6 +511,37 @@ def test_the_regions_total_follows_the_filter(target, capture):
     )
     assert everything and writable
     assert int(writable.group(1)) < int(everything.group(1))
+
+
+def test_the_total_counts_only_memory_with_access(target, capture):
+    """Summing every region answers a question nobody asks.
+
+    A process reserves address space it cannot touch — on macOS a single
+    anonymous range of hundreds of gigabytes — so a total that includes it is
+    dominated by a hole. This is also what PyMemoryEditor's own app reports,
+    and the two disagreeing on the same process is what surfaced it.
+    """
+    from picklock.commands.memory_commands import _totals
+
+    regions = target.session.regions(refresh=True)
+    accessible = sum(
+        region.size
+        for region in regions
+        if region.is_readable or region.is_writable or region.is_executable
+    )
+    everything = sum(region.size for region in regions)
+
+    line = _totals(regions)
+    assert format_size(accessible) in line
+    if everything != accessible:
+        assert "reserved with no access" in line
+        assert format_size(everything - accessible) in line
+
+
+def test_ps_info_separates_accessible_from_reserved(target, capture):
+    out = run(target, capture, "ps:info")
+    assert "Accessible:" in out
+    assert "Reserved:" in out
 
 
 def test_the_threads_help_explains_all_three_platforms(shell, capture):

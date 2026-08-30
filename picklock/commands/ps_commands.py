@@ -222,7 +222,12 @@ def cmd_info(session: Session, args: List[str]) -> None:
 
     with Timer() as timer:
         regions = session.regions(refresh=True)
-        mapped = sum(region.size for region in regions)
+        accessible = sum(
+            region.size
+            for region in regions
+            if region.is_readable or region.is_writable or region.is_executable
+        )
+        reserved = sum(region.size for region in regions) - accessible
         writable = sum(region.size for region in regions if region.is_writable)
         executable = sum(region.size for region in regions if region.is_executable)
 
@@ -234,9 +239,14 @@ def cmd_info(session: Session, args: List[str]) -> None:
         ("Architecture", "64-bit" if process.is_64bit else "32-bit"),
         ("Bitness certain", "yes" if process.is_bitness_certain else "no (assumed)"),
         ("Pointer size", f"{process.pointer_size} bytes"),
-        ("Regions", f"{len(regions)} ({format_size(mapped)} mapped)"),
+        ("Regions", len(regions)),
+        # Accessible, not the sum of every region: a process reserves address
+        # space it cannot touch — on macOS often hundreds of gigabytes of it —
+        # and totalling that says nothing about the process.
+        ("Accessible", format_size(accessible)),
         ("Writable", format_size(writable)),
         ("Executable", format_size(executable)),
+        ("Reserved", format_size(reserved)),
         ("Main thread", main_thread.tid if main_thread else "unknown"),
     ]
 

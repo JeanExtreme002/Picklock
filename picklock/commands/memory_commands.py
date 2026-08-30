@@ -75,6 +75,32 @@ def _input_stream(session: Session):
     return shell.stdin if shell is not None else sys.stdin
 
 
+def _totals(regions) -> str:
+    """The totals for what was listed, filters included.
+
+    Accessible first, because summing every region answers a question nobody
+    asks: a process holds enormous ranges of *reserved* address space with no
+    access at all — on macOS a single anonymous 384 GB hole — and a footprint
+    dominated by one of those is a number you cannot use. The reserved figure
+    is still named, so the difference is explained rather than hidden.
+    """
+    accessible = sum(
+        region.size
+        for region in regions
+        if region.is_readable or region.is_writable or region.is_executable
+    )
+    reserved = sum(region.size for region in regions) - accessible
+
+    count = len(regions)
+    line = (
+        f"{count} region{'' if count == 1 else 's'}, "
+        f"{format_size(accessible)} accessible"
+    )
+    if reserved:
+        line += f" (plus {format_size(reserved)} reserved with no access)"
+    return line
+
+
 def _permissions(region) -> str:
     """Render a region's access bits the way ``/proc/*/maps`` does."""
     return "".join(
@@ -181,14 +207,7 @@ def cmd_regions(session: Session, args: List[str]) -> None:
         next_page=page.next_page,
     )
 
-    # The totals for what was listed, filters included — "the writable regions
-    # come to 1.6 GB" is the answer people are usually after, and counting the
-    # rows of one page cannot give it.
-    mapped = sum(region.size for region in regions)
-    session.printer.write(
-        f"{len(regions)} region{'' if len(regions) == 1 else 's'}, "
-        f"{format_size(mapped)} mapped"
-    )
+    session.printer.write(_totals(regions))
     session.printer.write()
 
 

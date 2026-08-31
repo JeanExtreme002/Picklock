@@ -70,7 +70,7 @@ nothing to do with your value. The workflow that separates them is a restart.
 ```
 
 Step 4 is the whole point. A path that still reaches the value after a restart
-describes the *structure*; one that does not described that one run.
+describes the *structure*; one that does not describes only that one run.
 
 `pointer:rescan` without a file rescans the paths currently held.
 

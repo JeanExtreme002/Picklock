@@ -35,11 +35,7 @@ processes and pointless when you do not.
 ```bash
 git clone https://github.com/JeanExtreme002/Picklock
 cd Picklock
-make install-dev
 ```
-
-`make install-dev` installs the package in editable mode along with the test
-and lint tooling. See [Contributing](contributing.md).
 
 ## Running it
 

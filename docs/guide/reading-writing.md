@@ -103,8 +103,7 @@ whole rather than handing back half the bytes and letting you believe the rest.
 
 ## Watching
 
-Two commands follow memory as it changes, and both stop when you press ENTER —
-not Ctrl+C, which would be indistinguishable from wanting out of the shell.
+Two commands follow memory as it changes, and both stop when you press ENTER.
 
 ```
 memory:watch #1 int32       one value, redrawn as it changes

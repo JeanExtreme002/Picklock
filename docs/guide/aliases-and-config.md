@@ -73,8 +73,9 @@ path they are using, so you never have to guess.
 
 Two details:
 
-- **`PICKLOCK_CONFIG_DIR`** moves both. It is the flag to reach for in CI, or
-  when you want a session that cannot touch your real configuration.
+- **`PICKLOCK_CONFIG_DIR`** moves both. It is the environment variable to
+  reach for in CI, or when you want a session that cannot touch your real
+  configuration.
 - **Only settings you changed are stored.** A default that moves in a later
   release still reaches you, instead of being frozen by a file that recorded
   the old value for no reason.

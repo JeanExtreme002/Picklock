@@ -1,14 +1,5 @@
 # Picklock
 
-A terminal client for [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor).
-Read, write and scan the memory of a running process from any shell, on Windows,
-Linux and macOS.
-
-```
-pip install picklock
-picklock
-```
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/JeanExtreme002/Picklock/main/assets/screenshots/terminal.png"
        alt="A Picklock session: attaching to a process, scanning for a value, and writing to it"
@@ -16,8 +7,28 @@ picklock
 </p>
 
 <p align="center">
-  One dependency, pure Python, so it installs on a bare server as readily as on a desktop.
+  <b>Read, write and scan the memory of a running process from any terminal.</b><br>
+  <i>Pure Python. It installs on a bare server as easily as on a desktop.</i>
 </p>
+
+<p align="center">
+  <a href="https://github.com/JeanExtreme002/Picklock/actions/workflows/python-package.yml"><img src="https://github.com/JeanExtreme002/Picklock/actions/workflows/python-package.yml/badge.svg" alt="Python Package" /></a>
+  <a href="https://pypi.org/project/Picklock/"><img src="https://img.shields.io/pypi/v/Picklock" alt="Pypi" /></a>
+  <a href="https://github.com/JeanExtreme002/Picklock"><img src="https://img.shields.io/pypi/l/Picklock" alt="License" /></a>
+  <a href="https://github.com/JeanExtreme002/Picklock"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2" alt="Python Version" /></a>
+</p>
+
+---
+
+A terminal client for reading, writing and scanning process memory, on Windows,
+Linux and macOS.
+
+```
+pip install picklock
+picklock
+```
+
+It uses [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor) as its only dependency, so it can be used easily anywhere.
 
 ## Documentation
 
@@ -37,21 +48,7 @@ permissions, and every command's arguments.
 <tr><td><a href="https://picklock.readthedocs.io/en/latest/troubleshooting.html"><b>Troubleshooting</b></a></td><td>Scans that find nothing, chains that stop working.</td></tr>
 </table>
 
-The same help is at the prompt: `help` lists the namespaces, typing a namespace
-lists its commands, and `help <command>` prints one command's arguments —
-generated from the parser that runs it, so the two cannot disagree.
-
-## Development
-
-```
-git clone https://github.com/JeanExtreme002/Picklock
-cd Picklock
-make install-dev
-make pre-commit        # lint, type-check, tests
-```
-
-Every command is covered end-to-end against a real process — the test process
-itself, so the suite needs no privileges and no second program to launch.
+Use `help` to list Picklock's commands, and `help <command>` to get more details about one command.
 
 ## 🤝 Contributing
 
@@ -59,12 +56,12 @@ Pull requests, bug reports and feature ideas are very welcome. Read
 [CONTRIBUTING.md](https://github.com/JeanExtreme002/Picklock/blob/main/CONTRIBUTING.md) for the development setup, test layout and
 the small set of platform-specific quirks to be aware of.
 
-## Related
+## ⭐ Related
 
 Every read, write, scan and pointer walk is performed by
 [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor), the
 cross-platform memory library Picklock is built on. If you find Picklock
-useful, star that one too — it is what makes any of this work on three
+useful, check out that one too — it is what makes any of this work on three
 operating systems at once.
 
 ## License

@@ -18,7 +18,7 @@ the thing on your screen changed.
 
 ```
 picklock [game.exe:41902]> scan:value int32 100 --writable
-Showing 20 of 3184 rows — page 1 of 160 (1.42 sec)
+Showing 20 of 3184 rows — page 1 of 160 — writable regions only (1.42 sec)
 
 picklock [game.exe:41902]> scan:next 95
 2 rows in set (0.02 sec)
@@ -30,17 +30,18 @@ faster. `--all-regions` overrides it when you are looking for something in
 read-only data.
 
 Because that restriction is easy to forget and expensive to forget, a
-result set that skipped read-only memory says so — on the scan, on every
-refine, and again on `scan:results`:
+result set that skipped read-only memory says so in its footer — on the scan,
+on every refine, and again on `scan:results`:
 
 ```
-Note: Writable regions only — nothing in read-only memory was searched.
-Use '--all-regions' on the first scan to include it.
+20 rows in set — writable regions only (0.02 sec)
 ```
 
-You will also see it without having typed `--writable`, if the
-`writable_only` setting is on. That is the point of the line: the reason an
-address is missing should not be a setting you turned on last week.
+It sits under the rows because that is where the question gets asked: you are
+looking at what came back and wondering whether it is everything. You will also
+see it without having typed `--writable`, if the `writable_only` setting is on
+— the reason an address is missing should not be a setting you turned on last
+week.
 
 ## When you cannot see the number
 

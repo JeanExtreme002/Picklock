@@ -19,8 +19,8 @@ Work through these in order:
    instead: `scan:value float --between 0.7 0.8`.
 3. **`--writable` excluded it.** A value that never changes may live in
    read-only data. `--all-regions` searches everything. Picklock says so when
-   a result set skipped read-only memory, so check for the
-   "Writable regions only" note — and remember the `writable_only` setting
+   a result set skipped read-only memory, so check the footer under the table
+   for "writable regions only" — and remember the `writable_only` setting
    produces it too.
 4. **It moved.** Between your first scan and your refine, the target may have
    reallocated. Start over with `scan:reset`.

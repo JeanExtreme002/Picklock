@@ -14,7 +14,7 @@ PyMemoryEditor, which Picklock depends on but does not vendor.
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from .errors import CommandError, NoProcessError, PicklockError
 from .session import Session

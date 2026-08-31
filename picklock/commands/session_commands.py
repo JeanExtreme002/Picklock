@@ -263,9 +263,11 @@ def _print_overview(session: Session) -> None:
     """
     printer = session.printer
 
-    printer.write("usage: COMMAND[:SUBCOMMAND] [arguments]")
-    printer.write()
+    # What this is, before how to type it: the first line of the first page a
+    # new reader sees should say what they are looking at.
     printer.write(f"Picklock {__version__} — a terminal client for PyMemoryEditor.")
+    printer.write()
+    printer.write("usage: COMMAND[:SUBCOMMAND] [arguments]")
     printer.write()
 
     printer.write('picklock commands: (get help with "help <command>")')

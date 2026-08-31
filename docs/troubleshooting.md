@@ -63,8 +63,7 @@ That is the design: only samples whose value *changed* are printed, so a still
 value prints once. `--all` prints every sample, which is how you tell a still
 value apart from a watch that has stopped.
 
-Press ENTER to stop a watch. Ctrl+C is left meaning what it means everywhere
-else, which is leaving the shell.
+Press ENTER to stop a watch.
 
 ## `memory:regions` reports far more memory than Activity Monitor
 

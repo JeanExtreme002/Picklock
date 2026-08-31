@@ -9,5 +9,3 @@ If Picklock is useful to you, consider [supporting the project](https://github.c
 <br/>
 
 You can also help by [⭐ starring the repository](https://github.com/JeanExtreme002/Picklock) or [contributing](contributing.md).
-
-And if Picklock earns a star, [PyMemoryEditor](https://github.com/JeanExtreme002/PyMemoryEditor) has earned one too — every read, write and scan here is its work.

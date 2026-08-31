@@ -353,13 +353,15 @@ class Printer:
         page: Optional[int] = None,
         pages: Optional[int] = None,
         next_page: Optional[str] = None,
+        marker: Optional[str] = None,
     ) -> None:
         """Print a result table plus its footer.
 
         ``total`` names the number of rows that *matched* when ``rows`` only
         carries the ones that fit the display limit, so the footer can say how
         many were left out instead of pretending they do not exist, and
-        ``next_page`` is the command that shows them.
+        ``next_page`` is the command that shows them. ``marker`` is a short
+        caveat about the result set itself, carried in the same footer.
         """
         self.clear_progress()
         if rows:
@@ -371,6 +373,7 @@ class Printer:
             page=page,
             pages=pages,
             next_page=next_page,
+            marker=marker,
         )
 
     def footer(
@@ -382,8 +385,13 @@ class Printer:
         page: Optional[int] = None,
         pages: Optional[int] = None,
         next_page: Optional[str] = None,
+        marker: Optional[str] = None,
     ) -> None:
-        """Print the ``N rows in set (0.01 sec)`` line, and how to see more."""
+        """Print the ``N rows in set (0.01 sec)`` line, and how to see more.
+
+        ``marker`` rides in that line rather than above the table, where a
+        caveat about the rows sits next to the rows it is about.
+        """
         if count == 0 and not total:
             text = "Empty set"
         elif total is not None and total != count:
@@ -396,6 +404,8 @@ class Printer:
                 text += f" — page {page} of {pages}"
         else:
             text = f"{count} row{'' if count == 1 else 's'} in set"
+        if marker:
+            text += f" — {marker}"
         if self.timing and elapsed is not None:
             text += f" ({format_duration(elapsed)})"
         self.write(text)

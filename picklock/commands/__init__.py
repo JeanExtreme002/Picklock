@@ -75,7 +75,7 @@ NAMESPACES: Tuple[Namespace, ...] = (
         "Scanning",
         "Search memory for a value, then narrow what you found.",
         "picklock> scan:value int32 100 --writable\n"
-        "Showing 20 of 3184 rows (1.42 sec)\n"
+        "Showing 20 of 3184 rows — writable regions only (1.42 sec)\n"
         "\n"
         "picklock> scan:next 95\n"
         "+-----+--------------------+-------+\n"

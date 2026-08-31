@@ -10,7 +10,7 @@ picklock
 ```
 
 ```
-Welcome to Picklock 0.1.1, a terminal client for PyMemoryEditor.
+Welcome to Picklock 0.2.0, a terminal client for PyMemoryEditor.
 Type 'help' for the command list, or 'help scanning' for a walkthrough.
 
 picklock>
@@ -67,7 +67,7 @@ for it:
 
 ```
 picklock [game.exe:41902]> scan:value int32 100 --writable
-Showing 20 of 3184 rows — page 1 of 160 (1.42 sec)
+Showing 20 of 3184 rows — page 1 of 160 — writable regions only (1.42 sec)
 Next page: scan:results --page 2
 ```
 

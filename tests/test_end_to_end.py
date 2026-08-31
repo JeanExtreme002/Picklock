@@ -319,14 +319,19 @@ def test_a_range_written_backwards_is_refused(target, capture):
 def test_a_writable_only_scan_says_so_and_keeps_saying_so(target, capture, block):
     """The restriction is easy to forget and expensive to forget."""
     out = run(target, capture, f"scan:value int32 {MARKER} --writable")
-    assert "Writable regions only" in out
+    assert "writable regions only" in out
+
+    # under the rows rather than above them: a caveat about the results
+    # belongs next to the results, where the eye already is when it asks
+    # whether they are all of them.
+    assert out.index("writable regions only") > out.rindex("+--")
 
     # and again when the results are looked at later, which is when the
     # question "why is my address not here?" actually gets asked
-    assert "Writable regions only" in run(target, capture, "scan:results")
+    assert "writable regions only" in run(target, capture, "scan:results")
 
     # a refine narrows what that scan found, so it inherits the caveat
-    assert "Writable regions only" in run(target, capture, "scan:next --unchanged")
+    assert "writable regions only" in run(target, capture, "scan:next --unchanged")
 
 
 @slow

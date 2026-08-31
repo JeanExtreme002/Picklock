@@ -288,14 +288,12 @@ def _read_values(
     return [value_type.decode(found.get(address)) for address in addresses]
 
 
-#: Said whenever a result set that skipped read-only memory is shown. A scan
-#: that quietly searched a tenth of the address space is the kind of thing you
-#: work out an hour later, from an address that should have been found and was
-#: not.
-_WRITABLE_ONLY = (
-    "Writable regions only — nothing in read-only memory was searched. "
-    "Use '--all-regions' on the first scan to include it."
-)
+#: Marks every result set that skipped read-only memory. A scan that quietly
+#: searched a tenth of the address space is the kind of thing you work out an
+#: hour later, from an address that should have been found and was not — so it
+#: rides in the footer, under the rows it applies to, on the scan and on every
+#: later look at the results.
+_WRITABLE_ONLY = "writable regions only"
 
 
 def _store(
@@ -362,9 +360,6 @@ def _print_results(
     The next page is fetched with ``scan:results``, not by re-running the scan
     — which is why the hint names that command whatever produced the rows.
     """
-    if state.writable_only:
-        session.printer.note(_WRITABLE_ONLY)
-
     process = session.require_process()
     hex_output = bool(session.option("hex"))
     indexes = range(len(state.addresses))
@@ -390,6 +385,7 @@ def _print_results(
         page=page.number,
         pages=page.count,
         next_page=page.next_page,
+        marker=_WRITABLE_ONLY if state.writable_only else None,
     )
 
 
@@ -874,9 +870,6 @@ def cmd_results(session: Session, args: List[str]) -> None:
         session.printer.write()
         return
 
-    if state.writable_only:
-        session.printer.note(_WRITABLE_ONLY)
-
     page = paginate(
         session,
         range(len(state.addresses)),
@@ -919,6 +912,7 @@ def cmd_results(session: Session, args: List[str]) -> None:
         page=page.number,
         pages=page.count,
         next_page=page.next_page,
+        marker=_WRITABLE_ONLY if state.writable_only else None,
     )
 
 

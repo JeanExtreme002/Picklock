@@ -44,6 +44,19 @@ def test_footer_counts_rows_and_says_when_it_is_showing_fewer(capture):
     assert lines == ["3 rows in set", "Empty set", "Showing 3 of 90 rows"]
 
 
+def test_footer_carries_a_marker_before_the_timing(capture):
+    """A caveat about the result set travels with the count line."""
+    capture.printer.timing = True
+    capture.printer.footer(3, total=90, marker="writable regions only")
+    assert "Showing 3 of 90 rows — writable regions only" in capture.out
+
+
+def test_an_empty_result_set_still_carries_its_marker(capture):
+    """"Nothing found" and "nothing found *there*" are different answers."""
+    capture.printer.footer(0, marker="writable regions only")
+    assert "Empty set — writable regions only" in capture.out
+
+
 def test_footer_reports_one_row_in_the_singular(capture):
     capture.printer.footer(1)
     assert "1 row in set" in capture.out

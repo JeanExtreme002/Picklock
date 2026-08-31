@@ -10,7 +10,7 @@ picklock
 ```
 
 ```
-Welcome to Picklock 0.1.0, a terminal client for PyMemoryEditor.
+Welcome to Picklock 0.1.1, a terminal client for PyMemoryEditor.
 Type 'help' for the command list, or 'help scanning' for a walkthrough.
 
 picklock>

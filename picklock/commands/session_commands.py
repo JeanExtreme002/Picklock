@@ -292,8 +292,7 @@ def _print_overview(session: Session) -> None:
         "\n"
         "picklock> scan:value int32 100 --writable\n"
         "Showing 20 of 3184 rows — page 1 of 160 — writable regions only "
-        "(1.42 sec)\n"
-        "Next page: scan:results --page 2",
+        "(1.42 sec)",
         indent=4,
     )
 
